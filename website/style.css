@@ -1,0 +1,162 @@
+@font-face {
+    font-family: 'Artemis';
+    src: url('/assets/Artemis_Inter_041621.otf') format('opentype');
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap&text=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789%20%E2%80%94');
+
+:root {
+    --primary: #a8292a;
+    --gold: #c9a84c;
+    --gold-dim: rgba(201, 168, 76, 0.3);
+    --accent: #ffffff;
+    --bg-dark: #040300;
+    --text-primary: #ffffff;
+    --text-secondary: #f5f0e8;
+    /* Solid Ivory — Dither Defeated */
+    --rule: rgba(201, 168, 76, 0.2);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Cormorant Garamond', serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow: hidden;
+    background-image:
+        /* Stronger dark overlay to defeat the dithered background red */
+        radial-gradient(ellipse at 50% 50%, rgba(4, 3, 0, 0.5) 0%, rgba(4, 3, 0, 0.85) 100%),
+        url('/assets/background.png');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+/* Optimized grain texture — reduced octaves for "fast asf" rendering */
+body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='1' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.03;
+    pointer-events: none;
+    z-index: 100;
+    mix-blend-mode: overlay;
+}
+
+#app {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+    animation: fadeIn 2s cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: opacity, transform;
+}
+
+.hero {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4.5rem;
+    max-width: 950px;
+}
+
+.title-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+h1.app-name {
+    font-family: 'Artemis', sans-serif;
+    font-size: 8rem;
+    font-weight: 400;
+    letter-spacing: 0.5rem;
+    text-transform: lowercase;
+    color: var(--accent);
+    line-height: 1;
+    text-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+}
+
+.description {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem;
+    font-style: italic;
+    font-weight: 400;
+    color: var(--text-secondary);
+    max-width: 440px;
+    line-height: 1.8;
+    /* Sidebar border removed as requested */
+    border: none;
+    padding-left: 0;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.logo {
+    width: 210px;
+    height: 210px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--gold-dim);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    mask-image: radial-gradient(circle at 50% 50%, black 60%, transparent 95%);
+    -webkit-mask-image: radial-gradient(circle at 50% 50%, black 60%, transparent 95%);
+    filter: contrast(1.05) brightness(0.95);
+}
+
+.footer-line {
+    position: absolute;
+    bottom: 4rem;
+    opacity: 0.7;
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.25rem;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 800px) {
+    .hero {
+        flex-direction: column-reverse;
+        text-align: center;
+        gap: 2.5rem;
+    }
+
+    .description {
+        border-left: none;
+        padding-left: 0;
+        max-width: 100%;
+        font-size: 1.2rem;
+    }
+
+    h1.app-name {
+        font-size: 5.5rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .logo {
+        width: 160px;
+        height: 160px;
+    }
+}
