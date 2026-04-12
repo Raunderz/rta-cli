@@ -28,8 +28,18 @@ body {
     background-color: var(--bg-dark);
     color: var(--text-primary);
     min-height: 100vh;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     position: relative;
+}
+
+body::-webkit-scrollbar {
+    width: 6px;
+}
+
+body::-webkit-scrollbar-thumb {
+    background: var(--gold-dim);
+    border-radius: 3px;
 }
 
 body::before {
@@ -57,7 +67,11 @@ body::after {
 
 
 #app {
-    height: 100vh;
+    min-height: 100vh;
+}
+
+.container {
+    min-height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -117,9 +131,40 @@ h1.app-name {
     filter: contrast(1.05) brightness(0.95);
 }
 
+.cta-container {
+    margin-top: 3.5rem;
+    display: flex;
+    justify-content: center;
+    z-index: 10;
+}
+
+.waitlist-btn {
+    font-family: 'Cormorant Garamond', serif;
+    background: transparent;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    padding: 0.8rem 2.5rem;
+    font-size: 1.2rem;
+    font-style: italic;
+    letter-spacing: 0.15rem;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    backdrop-filter: blur(4px);
+    text-decoration: none;
+    display: inline-block;
+}
+
+.waitlist-btn:hover {
+    background: var(--gold-dim);
+    color: var(--accent);
+    border-color: var(--gold);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+}
+
 .footer-line {
-    position: absolute;
-    bottom: 4rem;
+    margin-top: 4rem;
     opacity: 0.7;
     font-size: 0.85rem;
     font-weight: 500;

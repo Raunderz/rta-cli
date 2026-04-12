@@ -1,9 +1,9 @@
 import van from "vanjs-core"
 
-const { div, h1, p, img, main, section } = van.tags
+const { div, h1, p, img, main, section, a, button } = van.tags
 
 const App = () => {
-    return main({ id: "app" },
+    return main({ class: "container" },
         section({ class: "hero" },
             div({ class: "title-container" },
                 h1({ class: "app-name" }, "rta"),
@@ -15,8 +15,19 @@ const App = () => {
                 img({ class: "logo", src: "/assets/icon.png", alt: "Rta Icon" })
             )
         ),
+        div({ class: "cta-container" },
+            a({ 
+                class: "waitlist-btn", 
+                href: "https://docs.google.com/forms/d/e/1FAIpQLSfnm1xCMBLUks3NIFWDfcyjvc6zIzC5gkQkevuXnTSGUnPQOQ/viewform",
+                target: "_blank",
+                rel: "noopener noreferrer"
+            }, "join waitlist")
+        ),
         p({ class: "footer-line" }, "Coming Soon — October 2026")
     )
 }
 
-van.add(document.getElementById("app"), App())
+const root = document.getElementById("app")
+if (root) {
+    van.add(root, App())
+}
