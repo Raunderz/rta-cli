@@ -188,6 +188,49 @@ h1.app-name {
     }
 }
 
+/* Waitlist Page Styles */
+.waitlist-page {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    animation: fadeIn 2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.back-link {
+    margin-bottom: 2rem;
+    color: var(--gold);
+    text-decoration: none;
+    font-style: italic;
+    letter-spacing: 0.1rem;
+    transition: color 0.3s;
+    font-size: 1rem;
+}
+
+.back-link:hover {
+    color: var(--accent);
+}
+
+.iframe-container {
+    width: 100%;
+    max-width: 640px;
+    height: 700px;
+    border: 1px solid var(--gold-dim);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(4px);
+    overflow: hidden;
+}
+
+.iframe-container iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+    filter: invert(0.92) hue-rotate(180deg) brightness(1.1) contrast(0.9);
+}
+
 @media (max-width: 800px) {
     .hero {
         flex-direction: column-reverse;
@@ -210,5 +253,9 @@ h1.app-name {
     .logo {
         width: 160px;
         height: 160px;
+    }
+
+    .iframe-container {
+        height: 600px;
     }
 }
