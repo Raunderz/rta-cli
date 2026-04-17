@@ -1,4 +1,5 @@
 import os
+import json
 from google import genai
 from google.genai import types
 from dotenv import load_dotenv
@@ -30,10 +31,13 @@ def call_function(function_call_part, workspace_dir: str):
         ],
     )
 
-def run_agent(prompt: str, workspace_dir: str, max_iterations: int = 15) -> str:
+def run_agent(prompt: str, workspace_dir: str, messages: list[types.Content], max_iterations: int = 20) -> str:
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key)
+
+    # Append the user prompt to history
+    messages.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
 
     system_prompt = (
         """
@@ -55,8 +59,6 @@ def run_agent(prompt: str, workspace_dir: str, max_iterations: int = 15) -> str:
         """
     )
 
-    messages = [types.Content(role="user", parts=[types.Part(text=prompt)])]
-
     available_functions = types.Tool(
         function_declarations=[
             schema_get_files_info,
@@ -71,9 +73,16 @@ def run_agent(prompt: str, workspace_dir: str, max_iterations: int = 15) -> str:
         tools=[available_functions],
     )
 
+    # Load model from config
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    model_name = "gemini-2.5-flash"
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            model_name = json.load(f).get("model", model_name)
+
     for i in range(max_iterations):
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model=model_name,
             contents=messages,
             config=config,
         )

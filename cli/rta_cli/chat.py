@@ -3,6 +3,7 @@ import sys
 import time
 import signal
 import subprocess
+import json
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -30,7 +31,15 @@ class RtaChat:
         self.version = "v0.0.1"
         self.ascii_art = ASCII_ART
         self.user = "Guest"
-        self.model = "Rta-v1"
+        
+        # Load model from config
+        self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        self.model = "gemini-2.5-flash"
+        if os.path.exists(self.config_path):
+            with open(self.config_path, 'r') as f:
+                self.model = json.load(f).get("model", self.model)
+                
+        self.messages = []
         self.start_mem = self._get_memory_usage()
 
     def _get_memory_usage(self):
@@ -92,15 +101,40 @@ class RtaChat:
         parts = command_str[1:].split()
         if not parts:
             return
-        cmd_name = parts[0]
+        cmd_name = parts[0].lower()
         args = parts[1:]
+
         if cmd_name == "help":
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
-            console.print("  /init  - Initialize a new project")
-            console.print("  /auth  - Authenticate with Rta backend")
-            console.print("  /clone - Clone a repository")
-            console.print("  /exit  - Exit the chat\n")
+            console.print("  /model <name> - Change the Gemini model")
+            console.print("  /clear         - Clear chat history & screen")
+            console.print("  /init          - Initialize a new project")
+            console.print("  /auth          - Authenticate with Rta backend")
+            console.print("  /clone         - Clone a repository")
+            console.print("  /exit          - Exit the chat\n")
             return
+
+        if cmd_name == "model":
+            if not args:
+                console.print(f"[bold #ff3333]Current model: [/bold #ff3333]{self.model}")
+                return
+            new_model = args[0]
+            self.model = new_model
+            with open(self.config_path, 'r+') as f:
+                config = json.load(f)
+                config['model'] = new_model
+                f.seek(0)
+                json.dump(config, f, indent=4)
+                f.truncate()
+            console.print(f"[bold green]Model updated to: {new_model}[/bold green]")
+            return
+
+        if cmd_name in ["clear", "cls"]:
+            os.system('cls' if os.name == 'nt' else 'clear')
+            self.messages = []
+            self.print_header()
+            return
+
         try:
             orig_argv = sys.argv
             sys.argv = ["rta", cmd_name] + args
@@ -130,7 +164,7 @@ class RtaChat:
                     continue
                 from rta_cli.agent import run_agent
                 with console.status("[bold #ff3333]Agent is thinking...[/bold #ff3333]", spinner="dots"):
-                    response_text = run_agent(user_input, self.workspace)
+                    response_text = run_agent(user_input, self.workspace, self.messages)
                 console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
                 console.print(Markdown(response_text))
                 console.print(f"\n[dim #440000]─── {self.workspace_name} ───[/dim #440000]\n")
