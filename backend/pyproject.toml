@@ -4,14 +4,14 @@ version = "0.1.0"
 description = "Backend API layer for Rta - AI-assisted code editor"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.32.0",
-    "pydantic>=2.9.0",
-    "python-dotenv>=1.0.1",
-    "supabase>=2.10.0",
-    "python-jose[cryptography]>=3.3.0",
-    "passlib[bcrypt]>=1.7.4",
-    "stripe>=11.0.0",
+    "fastapi==0.115.0",
+    "uvicorn[standard]==0.32.0",
+    "pydantic==2.9.0",
+    "python-dotenv==1.0.1",
+    "supabase==2.10.0",
+    "python-jose[cryptography]==3.3.0",
+    "passlib[bcrypt]==1.7.4",
+    "stripe==11.0.0",
 ]
 
 [project.scripts]
