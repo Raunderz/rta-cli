@@ -128,8 +128,11 @@ class RtaChat:
                         break
                     self.handle_slash_command(user_input)
                     continue
+                from rta_cli.agent import run_agent
+                with console.status("[bold #ff3333]Agent is thinking...[/bold #ff3333]", spinner="dots"):
+                    response_text = run_agent(user_input, self.workspace)
                 console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
-                console.print(Markdown("I'm here to help you with your code. What's on your mind?"))
+                console.print(Markdown(response_text))
                 console.print(f"\n[dim #440000]─── {self.workspace_name} ───[/dim #440000]\n")
             except EOFError:
                 break

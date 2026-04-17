@@ -1,18 +1,38 @@
 import os
-import sys
-from dotenv import load_dotenv
 from google import genai
 from google.genai import types
-from functions.get_file_content import schema_get_file_contents
-from functions.get_files_info import schema_get_files_info
-from functions.run_python_file import schema_run_python_file
-from functions.write_file import schema_write_file
-from call_function import call_function
+from dotenv import load_dotenv
 
-def main():
+from rta_cli.functions.get_file_content import get_file_contents, schema_get_file_contents
+from rta_cli.functions.get_files_info import get_files_info, schema_get_files_info
+from rta_cli.functions.run_python_file import run_python_file, schema_run_python_file
+from rta_cli.functions.write_file import write_file, schema_write_file
+
+def call_function(function_call_part, workspace_dir: str):
+    if function_call_part.name == "get_files_info":
+        result = get_files_info(workspace_dir, **function_call_part.args)
+    elif function_call_part.name == "get_file_contents":
+        result = get_file_contents(workspace_dir, **function_call_part.args)
+    elif function_call_part.name == "run_python_file":
+        result = run_python_file(workspace_dir, **function_call_part.args)
+    elif function_call_part.name == "write_file":
+        result = write_file(workspace_dir, **function_call_part.args)
+    else:
+        result = f"Error: function {function_call_part.name} not found"
+
+    return types.Content(
+        role="tool",
+        parts=[
+            types.Part.from_function_response(
+                name=function_call_part.name,
+                response={"result": result},
+            )
+        ],
+    )
+
+def run_agent(prompt: str, workspace_dir: str, max_iterations: int = 15) -> str:
     load_dotenv()
-    api_key =  os.environ.get("GEMINI_API_KEY")
-
+    api_key = os.environ.get("GEMINI_API_KEY")
     client = genai.Client(api_key=api_key)
 
     system_prompt = (
@@ -35,19 +55,7 @@ def main():
         """
     )
 
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <prompt>")
-        return
-
-    if len(sys.argv) == 3 and sys.argv[2] == "--verbose":
-        verbose_flag = True
-    else:
-        verbose_flag = False
-        
-
-    prompt = sys.argv[1]
-
-    messages = [types.Content(role="user",parts=[types.Part(text=prompt)]),]
+    messages = [types.Content(role="user", parts=[types.Part(text=prompt)])]
 
     available_functions = types.Tool(
         function_declarations=[
@@ -63,7 +71,7 @@ def main():
         tools=[available_functions],
     )
 
-    for i in range(20):
+    for i in range(max_iterations):
         response = client.models.generate_content(
             model="gemini-2.5-flash",
             contents=messages,
@@ -71,25 +79,18 @@ def main():
         )
 
         if response is None or response.candidates is None or not response.candidates:
-            print("response is malformed")
-            return
+            return "response is malformed or empty"
 
-        # Add the model's primary response to conversation history
         messages.append(response.candidates[0].content)
 
         if response.function_calls:
             function_responses = []
             for function_call in response.function_calls:
-                tool_content = call_function(function_call, verbose_flag)
+                tool_content = call_function(function_call, workspace_dir)
                 function_responses.extend(tool_content.parts)
             
-            # Add all function responses as a single "tool" role message
             messages.append(types.Content(role="tool", parts=function_responses))
         else:
-            print(f"Final response:\n{response.text}")
-            return
+            return response.text
 
-    print("Error: Maximum iterations reached without a final response.")
-    sys.exit(1)
-
-main()
+    return "Error: Maximum iterations reached without a final response."

@@ -1,6 +1,6 @@
 import os
 from google.genai import types
-from config import MAX_CHARS
+from rta_cli.config import MAX_CHARS
 
 def get_file_contents(working_directory,file_path):
     abs_working_dir = os.path.abspath(working_directory)
