@@ -13,58 +13,8 @@ load_dotenv()  # Load environment variables from .env file
 
 hcaptcha_secret_key = os.getenv("HCAPTCHA_SECRET_KEY")  # Your hCaptcha secret key
 
-class Sanitizer:
-    """Handles scrubbing of sensitive info before DB insertion."""
+from rta_backend.utils import Sanitizer
 
-    @staticmethod
-    def strip_secrets(text: str) -> str:
-        """
-        Scrubs sensitive information from the given text using regular expressions.
-        
-        Replaces:
-        - AWS/GCP Keys
-        - Auth Tokens
-        - Absolute Paths
-        
-        Args:
-            text (str): The input text to sanitize.
-        
-        Returns:
-            str: The sanitized text with sensitive info replaced by [SCRUBBED].
-        """
-        # AWS Access Key pattern (starts with 'AKIA')
-        aws_key_pattern = r'AKIA[0-9A-Z]{16}'
-        
-        # GCP Access Key pattern (for example purposes, you can adjust this)
-        gcp_key_pattern = r'AIza[0-9A-Za-z_-]{35}'
-        
-        # Bearer Token pattern (simple example, adjust for more complex cases)
-        auth_token_pattern = r'[A-Za-z0-9\-\._~\+\/]+=*'  # Basic token regex (could be expanded)
-        
-        # Absolute local path pattern (matches paths like '/home/user/project/file.txt')
-        path_pattern = r'/([a-zA-Z0-9_\-/]+)+'  # Matches absolute paths (simplified)
-
-        # Replace sensitive info with [SCRUBBED]
-        text = re.sub(aws_key_pattern, '[SCRUBBED]', text)
-        text = re.sub(gcp_key_pattern, '[SCRUBBED]', text)
-        text = re.sub(auth_token_pattern, '[SCRUBBED]', text)
-        text = re.sub(path_pattern, '[SCRUBBED]', text)
-
-        return text
-
-    @staticmethod
-    def strip_paths(text: str) -> str:
-        """
-        Strips absolute paths in the text and replaces them with just the filename.
-        
-        Args:
-            text (str): The input text to sanitize.
-        
-        Returns:
-            str: The text with paths replaced by just filenames.
-        """
-        path_pattern = r'/([a-zA-Z0-9_\-/]+)+'  # Matches absolute paths
-        return re.sub(path_pattern, lambda m: m.group(0).split('/')[-1], text)
 
 # Asynchronous function to verify the hCaptcha response
 async def verify_hcaptcha(token: str) -> bool:

@@ -3,8 +3,9 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from pydantic import BaseModel, EmailStr
 from fastapi import Request, HTTPException
-from rta_backend.db import get_supabase_client, upsert_profile
+from rta_backend.db import get_supabase_client, upsert_profile, save_api_key
 from rta_backend.security import verify_hcaptcha, validate_password_strength, generate_api_key, hash_key
+
 
 # Initialize the limiter
 # This will track requests per IP address
@@ -78,8 +79,10 @@ async def login(request: Request, data: LoginRequest):
         })
 
         existing_key = supabase_client.table("api_keys").select("*").eq("user_id", res.user.id).execute()
-
+        
+        raw_key = None
         if not existing_key.data:
+
             raw_key = generate_api_key()
             hashed_key = hash_key(raw_key)
             save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")

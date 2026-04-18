@@ -2,6 +2,9 @@ import van from "vanjs-core"
 
 const { div, h1, h2, h3, p, img, main, section, a, button, pre } = van.tags
 
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8008"
+
+
 // State for current page
 const currentPage = van.state("home")
 const currency = van.state("INR")

@@ -3,7 +3,7 @@
 import supabase
 from dotenv import load_dotenv
 import os
-from rta_backend.security import Sanitizer
+from rta_backend.utils import Sanitizer
 
 load_dotenv()
 
