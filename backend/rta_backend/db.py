@@ -3,6 +3,7 @@
 import supabase
 from dotenv import load_dotenv
 import os
+from rta_backend.security import Sanitizer
 
 load_dotenv()
 
@@ -34,12 +35,19 @@ def save_api_key(user_id: str, key_hash: str, hint: str):
     }).execute()
 
 def log_telemetry(user_id: str, data: dict):
-    """Log AI interaction telemetry."""
+    """Log AI interaction telemetry (with scrubbing)."""
+    # Scrub text data
+    if "ai_prompt" in data and data["ai_prompt"]:
+        data["ai_prompt"] = Sanitizer.strip_secrets(data["ai_prompt"])
+    if "ai_response" in data and data["ai_response"]:
+        data["ai_response"] = Sanitizer.strip_secrets(data["ai_response"])
+        
     client = get_supabase_client()
     return client.table("telemetry").insert({
         "user_id": user_id,
         **data
     }).execute()
+
 
 """
 DB Schema Reference:
