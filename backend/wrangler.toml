@@ -1,0 +1,7 @@
+name = "rta-backend"
+main = "rta_backend/main.py" # your app entry
+compatibility_date = "2024-04-01"
+
+[python]
+# Enable Python support
+"python_version" = "3.12"
