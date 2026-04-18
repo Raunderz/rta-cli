@@ -32,8 +32,15 @@ class RtaChat:
         self.ascii_art = ASCII_ART
         self.user = "Guest"
         
-        # Load model from config
-        self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+        # Determine the path for the configuration file.
+        # This handles both standard development runs and standalone binary runs (PyInstaller).
+        if hasattr(sys, '_MEIPASS'):
+            # Path for the bundled binary mode
+            self.config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
+        else:
+            # Path for the local development mode
+            self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+            
         self.model = "gemini-2.5-flash"
         if os.path.exists(self.config_path):
             with open(self.config_path, 'r') as f:
@@ -120,6 +127,7 @@ class RtaChat:
                 return
             new_model = args[0]
             self.model = new_model
+            # Persist the model change to config.json so it carries over to future sessions.
             with open(self.config_path, 'r+') as f:
                 config = json.load(f)
                 config['model'] = new_model

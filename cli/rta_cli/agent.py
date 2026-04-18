@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 from google import genai
 from google.genai import types
@@ -73,8 +74,14 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[types.Content], ma
         tools=[available_functions],
     )
 
-    # Load model from config
-    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    # Load the active model from the config file.
+    # We check sys._MEIPASS to see if we're running as a bundled PyInstaller binary.
+    # If so, we use the internal bundled path; otherwise, we use the local file.
+    if hasattr(sys, '_MEIPASS'):
+        config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
+    else:
+        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    
     model_name = "gemini-2.5-flash"
     if os.path.exists(config_path):
         with open(config_path, 'r') as f:
