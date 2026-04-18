@@ -1,5 +1,7 @@
 from fastapi import FastAPI
-from rta_backend.auth import router as auth_router
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from rta_backend.auth import router as auth_router, limiter
 from rta_backend.data import router as data_router
 from rta_backend.billing import router as billing_router
 
@@ -8,6 +10,10 @@ app = FastAPI(
     description="Backend API for Rta - Securing Auth & Threaded Telemetry",
     version="0.1.0",
 )
+
+# SlowAPI setup
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Include routers
 app.include_router(auth_router, prefix="/v1")
