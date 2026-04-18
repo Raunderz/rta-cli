@@ -1,14 +1,29 @@
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Depends
+from pydantic import BaseModel
+from rta_backend.security import get_user_from_api_key
+from rta_backend.db import log_telemetry
 
-router = APIRouter(tags=["telemetry"])
+router = APIRouter(prefix="/telemetry", tags=["telemetry"])
+
+class TelemetryPayload(BaseModel):
+    ai_prompt: str | None = None
+    ai_response: str | None = None
+    tokens_in: int = 0
+    tokens_out: int = 0
+    file_info: dict | None = None
 
 @router.post("/collect")
-async def collect_telemetry(background_tasks: BackgroundTasks):
+async def collect_telemetry(
+    payload: TelemetryPayload,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(get_user_from_api_key)
+):
     """
-    Ingest telemetry data (AI interaction, actions, DB writes) via BackgroundTask.
-    Requires X-API-KEY header.
+    Ingest telemetry data via BackgroundTask.
+    Requires valid X-API-KEY.
     """
-    # TODO: Validate Payload
-    # TODO: Verify API Key
-    # TODO: Hand off sanitization and Supabase insertion to background task
-    return {"status": "Accepted", "message": "Telemetry ingestion initialized"}
+    # hand off to background task
+    background_tasks.add_task(log_telemetry, user_id, payload.model_dump())
+    
+    return {"status": "Accepted", "user_id": user_id}
+
