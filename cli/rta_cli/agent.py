@@ -1,8 +1,7 @@
 import os
 import sys
 import json
-from google import genai
-from google.genai import types
+import httpx
 from dotenv import load_dotenv
 
 from rta_cli.functions.get_file_content import get_file_contents, schema_get_file_contents
@@ -10,73 +9,61 @@ from rta_cli.functions.get_files_info import get_files_info, schema_get_files_in
 from rta_cli.functions.run_python_file import run_python_file, schema_run_python_file
 from rta_cli.functions.write_file import write_file, schema_write_file
 
-def call_function(function_call_part, workspace_dir: str):
-    if function_call_part.name == "get_files_info":
-        result = get_files_info(workspace_dir, **function_call_part.args)
-    elif function_call_part.name == "get_file_contents":
-        result = get_file_contents(workspace_dir, **function_call_part.args)
-    elif function_call_part.name == "run_python_file":
-        result = run_python_file(workspace_dir, **function_call_part.args)
-    elif function_call_part.name == "write_file":
-        result = write_file(workspace_dir, **function_call_part.args)
+def call_function(function_call, workspace_dir: str):
+    name = function_call.get("name")
+    args = function_call.get("args", {})
+    if name == "get_files_info":
+        result = get_files_info(workspace_dir, **args)
+    elif name == "get_file_contents":
+        result = get_file_contents(workspace_dir, **args)
+    elif name == "run_python_file":
+        result = run_python_file(workspace_dir, **args)
+    elif name == "write_file":
+        result = write_file(workspace_dir, **args)
     else:
-        result = f"Error: function {function_call_part.name} not found"
+        result = f"Error: function {name} not found"
 
-    return types.Content(
-        role="tool",
-        parts=[
-            types.Part.from_function_response(
-                name=function_call_part.name,
-                response={"result": result},
-            )
-        ],
-    )
+    return {
+        "functionResponse": {
+            "name": name,
+            "response": {"name": name, "content": result}
+        }
+    }
 
-def run_agent(prompt: str, workspace_dir: str, messages: list[types.Content], max_iterations: int = 20) -> str:
+def run_agent(prompt: str, workspace_dir: str, messages: list[dict], max_iterations: int = 20) -> str:
     load_dotenv()
     api_key = os.environ.get("GEMINI_API_KEY")
-    client = genai.Client(api_key=api_key)
+    if not api_key:
+        return "Error: GEMINI_API_KEY environment variable not set."
 
-    # Append the user prompt to history
-    messages.append(types.Content(role="user", parts=[types.Part(text=prompt)]))
+    messages.append({
+        "role": "user",
+        "parts": [{"text": prompt}]
+    })
 
     system_prompt = (
-        """
-        You are an expert AI software engineer.
-        When a user asks a question or makes a request, work systematically:
-        1. Explore the current directory to understand the project structure and find relevant files.
-        2. Read and understand the contents of those files.
-        3. Reproduce the bug or issue.
-        4. Implement a fix.
-        5. Verify the fix by running relevant code or tests.
-
-        You can perform the following operations:
-        - List files and directories: get_files_info(directory="path")
-        - Read the contents of a file: get_file_contents(file_path="path")
-        - Run a Python file: run_python_file(file_path="path", args=["arg1", "arg2"])
-        - Write content to a file: write_file(file_path="path", content="content")
-
-        All paths you provide should be relative to the current working directory.
-        """
+        "You are an expert AI software engineer.\n"
+        "When a user asks a question or makes a request, work systematically:\n"
+        "1. Explore the current directory to understand the project structure and find relevant files.\n"
+        "2. Read and understand the contents of those files.\n"
+        "3. Reproduce the bug or issue.\n"
+        "4. Implement a fix.\n"
+        "5. Verify the fix by running relevant code or tests.\n\n"
+        "You can perform the following operations:\n"
+        "- List files and directories: get_files_info(directory=\"path\")\n"
+        "- Read the contents of a file: get_file_contents(file_path=\"path\")\n"
+        "- Run a Python file: run_python_file(file_path=\"path\", args=[\"arg1\", \"arg2\"])\n"
+        "- Write content to a file: write_file(file_path=\"path\", content=\"content\")\n\n"
+        "All paths you provide should be relative to the current working directory."
     )
 
-    available_functions = types.Tool(
-        function_declarations=[
-            schema_get_files_info,
-            schema_get_file_contents,
-            schema_run_python_file,
-            schema_write_file,
-        ]
-    )
+    available_functions = [
+        schema_get_files_info,
+        schema_get_file_contents,
+        schema_run_python_file,
+        schema_write_file,
+    ]
 
-    config = types.GenerateContentConfig(
-        system_instruction=system_prompt,
-        tools=[available_functions],
-    )
-
-    # Load the active model from the config file.
-    # We check sys._MEIPASS to see if we're running as a bundled PyInstaller binary.
-    # If so, we use the internal bundled path; otherwise, we use the local file.
     if hasattr(sys, '_MEIPASS'):
         config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
     else:
@@ -87,26 +74,50 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[types.Content], ma
         with open(config_path, 'r') as f:
             model_name = json.load(f).get("model", model_name)
 
-    for i in range(max_iterations):
-        response = client.models.generate_content(
-            model=model_name,
-            contents=messages,
-            config=config,
-        )
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
-        if response is None or response.candidates is None or not response.candidates:
+    for i in range(max_iterations):
+        payload = {
+            "systemInstruction": {
+                "parts": [{"text": system_prompt}]
+            },
+            "contents": messages,
+            "tools": [{"functionDeclarations": available_functions}]
+        }
+
+        with httpx.Client(timeout=60.0) as client:
+            try:
+                response = client.post(url, json=payload)
+                response.raise_for_status()
+                data = response.json()
+            except httpx.HTTPError as e:
+                return f"HTTP error during Gemini API call: {e}"
+            except json.JSONDecodeError:
+                return "Failed to parse JSON response from Gemini API"
+
+        candidates = data.get("candidates", [])
+        if not candidates:
             return "response is malformed or empty"
 
-        messages.append(response.candidates[0].content)
+        content = candidates[0].get("content", {})
+        messages.append(content)
 
-        if response.function_calls:
+        parts = content.get("parts", [])
+        
+        function_calls = [p["functionCall"] for p in parts if "functionCall" in p]
+        
+        if function_calls:
             function_responses = []
-            for function_call in response.function_calls:
-                tool_content = call_function(function_call, workspace_dir)
-                function_responses.extend(tool_content.parts)
+            for function_call in function_calls:
+                tool_part = call_function(function_call, workspace_dir)
+                function_responses.append(tool_part)
             
-            messages.append(types.Content(role="tool", parts=function_responses))
+            messages.append({
+                "role": "function",
+                "parts": function_responses
+            })
         else:
-            return response.text
+            texts = [p["text"] for p in parts if "text" in p]
+            return "".join(texts)
 
     return "Error: Maximum iterations reached without a final response."

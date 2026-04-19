@@ -1,5 +1,4 @@
 import os
-from google.genai import types
 from rta_cli.config import MAX_CHARS
 
 def get_file_contents(working_directory,file_path):
@@ -21,16 +20,16 @@ def get_file_contents(working_directory,file_path):
     except Exception as e:
         return f"Error : {e}"
 
-schema_get_file_contents = types.FunctionDeclaration(
-    name="get_file_contents",
-    description="Reads the contents of a specified file relative to the working directory",
-    parameters=types.Schema(
-        type=types.Type.OBJECT,
-        properties={
-            "file_path": types.Schema(
-                type=types.Type.STRING,
-                description="Path to the file to read, relative to the working directory",
-            ),
+schema_get_file_contents = {
+    "name": "get_file_contents",
+    "description": "Reads the contents of a specified file relative to the working directory",
+    "parameters": {
+        "type": "OBJECT",
+        "properties": {
+            "file_path": {
+                "type": "STRING",
+                "description": "Path to the file to read, relative to the working directory",
+            },
         },
-    ),
-)
+    },
+}
