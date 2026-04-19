@@ -116,7 +116,7 @@ class RtaChat:
         except:
             pass
 
-    def _trim_messages(self, max_msgs=30):
+    def _trim_messages(self, max_msgs=12):
         if len(self.messages) > max_msgs:
             self.messages = self.messages[:2] + self.messages[-(max_msgs-2):]
 
