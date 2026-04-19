@@ -2,6 +2,8 @@ import os
 import sys
 import json
 import httpx
+import toons
+import time
 from dotenv import load_dotenv
 
 from rta_cli.functions.get_file_content import get_file_contents, schema_get_file_contents
@@ -23,6 +25,9 @@ def call_function(function_call, workspace_dir: str):
     else:
         result = f"Error: function {name} not found"
 
+    if name in ["get_files_info"]:
+        result = toons.dumps(result)
+        
     return {
         "functionResponse": {
             "name": name,
@@ -30,31 +35,26 @@ def call_function(function_call, workspace_dir: str):
         }
     }
 
-def run_agent(prompt: str, workspace_dir: str, messages: list[dict], max_iterations: int = 20) -> str:
+def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "google", model_name: str = "gemini-2.5-flash-lite", max_iterations: int = 20) -> tuple[str, dict]:
     load_dotenv()
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        return "Error: GEMINI_API_KEY environment variable not set."
-
-    messages.append({
-        "role": "user",
-        "parts": [{"text": prompt}]
-    })
-
+    usage = {"prompt_tokens": 0, "candidate_tokens": 0, "total_tokens": 0, "start_time": time.time()}
+    final_output = ""
+    
     system_prompt = (
-        "You are an expert AI software engineer.\n"
-        "When a user asks a question or makes a request, work systematically:\n"
-        "1. Explore the current directory to understand the project structure and find relevant files.\n"
-        "2. Read and understand the contents of those files.\n"
-        "3. Reproduce the bug or issue.\n"
-        "4. Implement a fix.\n"
-        "5. Verify the fix by running relevant code or tests.\n\n"
-        "You can perform the following operations:\n"
-        "- List files and directories: get_files_info(directory=\"path\")\n"
-        "- Read the contents of a file: get_file_contents(file_path=\"path\")\n"
-        "- Run a Python file: run_python_file(file_path=\"path\", args=[\"arg1\", \"arg2\"])\n"
-        "- Write content to a file: write_file(file_path=\"path\", content=\"content\")\n\n"
-        "All paths you provide should be relative to the current working directory."
+        "You are an expert AI software engineer. Respond in Caveman Lite mode (no filler/hedging, fragments OK, professional but tight).\n"
+        "All data communication uses TOON format for efficiency.\n\n"
+        "## TOON Rules:\n"
+        "- Objects: key: value (no braces, 2-space indent for nesting)\n"
+        "- Arrays: tags[3]: admin,ops,dev (always declare length [N])\n"
+        "- Array of objects: users[2]{id,name}: 1,Alice \\n 2,Bob\n"
+        "- Escape: \\\\, \\\", \\n, \\r, \\t\n\n"
+        "Work systematically: explore → read → reproduce → fix → verify.\n"
+        "Operations:\n"
+        "- get_files_info(directory=\"path\")\n"
+        "- get_file_contents(file_path=\"path\")\n"
+        "- run_python_file(file_path=\"path\", args=[\"arg1\", \"arg2\"])\n"
+        "- write_file(file_path=\"path\", content=\"content\")\n\n"
+        "All paths relative to CWD."
     )
 
     available_functions = [
@@ -64,60 +64,81 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[dict], max_iterati
         schema_write_file,
     ]
 
-    if hasattr(sys, '_MEIPASS'):
-        config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
-    else:
-        config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-    
-    model_name = "gemini-2.5-flash"
-    if os.path.exists(config_path):
-        with open(config_path, 'r') as f:
-            model_name = json.load(f).get("model", model_name)
-
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
-
     for i in range(max_iterations):
-        payload = {
-            "systemInstruction": {
-                "parts": [{"text": system_prompt}]
-            },
-            "contents": messages,
-            "tools": [{"functionDeclarations": available_functions}]
-        }
-
-        with httpx.Client(timeout=60.0) as client:
-            try:
-                response = client.post(url, json=payload)
-                response.raise_for_status()
-                data = response.json()
-            except httpx.HTTPError as e:
-                return f"HTTP error during Gemini API call: {e}"
-            except json.JSONDecodeError:
-                return "Failed to parse JSON response from Gemini API"
-
-        candidates = data.get("candidates", [])
-        if not candidates:
-            return "response is malformed or empty"
-
-        content = candidates[0].get("content", {})
-        messages.append(content)
-
-        parts = content.get("parts", [])
-        
-        function_calls = [p["functionCall"] for p in parts if "functionCall" in p]
-        
-        if function_calls:
-            function_responses = []
-            for function_call in function_calls:
-                tool_part = call_function(function_call, workspace_dir)
-                function_responses.append(tool_part)
+        if provider == "google":
+            api_key = os.environ.get("GEMINI_API_KEY")
+            if not api_key: return "Error: GEMINI_API_KEY unset", usage
             
-            messages.append({
-                "role": "function",
-                "parts": function_responses
-            })
-        else:
-            texts = [p["text"] for p in parts if "text" in p]
-            return "".join(texts)
+            if not any(m["role"] == "user" and m["parts"][0].get("text") == prompt for m in messages[-2:]):
+                messages.append({"role": "user", "parts": [{"text": prompt}]})
 
-    return "Error: Maximum iterations reached without a final response."
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+            payload = {
+                "systemInstruction": {"parts": [{"text": system_prompt}]},
+                "contents": messages,
+                "tools": [{"functionDeclarations": available_functions}]
+            }
+
+            with httpx.Client(timeout=60.0) as client:
+                try:
+                    resp = client.post(url, json=payload)
+                    resp.raise_for_status()
+                    data = resp.json()
+                except Exception as e: return f"Google API Error: {e}", usage
+
+            usage_data = data.get("usageMetadata", {})
+            usage["prompt_tokens"] += usage_data.get("promptTokenCount", 0)
+            usage["candidate_tokens"] += usage_data.get("candidatesTokenCount", 0)
+            usage["total_tokens"] += usage_data.get("totalTokenCount", 0)
+
+            candidate = data.get("candidates", [{}])[0]
+            content = candidate.get("content", {})
+            messages.append(content)
+            parts = content.get("parts", [])
+            
+            texts = [p["text"] for p in parts if "text" in p]
+            if texts: final_output += "".join(texts) + "\n\n"
+            
+            fcalls = [p["functionCall"] for p in parts if "functionCall" in p]
+            if not fcalls: return final_output.strip(), usage
+            
+            fresps = []
+            for fc in fcalls:
+                final_output += f"*(Executed tool: `{fc['name']}`)*\n\n"
+                fresps.append(call_function(fc, workspace_dir))
+            messages.append({"role": "function", "parts": fresps})
+
+        elif provider == "ollama":
+            url = "http://localhost:11434/api/chat"
+            # Map Gemini messages to Ollama format
+            ollama_messages = [{"role": "system", "content": system_prompt}]
+            for m in messages:
+                role = "assistant" if m["role"] == "model" else m["role"]
+                # Simplify parts to string for basic Ollama compatibility
+                content = ""
+                for p in m.get("parts", []):
+                    if "text" in p: content += p["text"]
+                ollama_messages.append({"role": role, "content": content})
+            
+            # Add current prompt if not in history
+            ollama_messages.append({"role": "user", "content": prompt})
+
+            payload = {"model": model_name, "messages": ollama_messages, "stream": False}
+            
+            with httpx.Client(timeout=60.0) as client:
+                try:
+                    resp = client.post(url, json=payload)
+                    resp.raise_for_status()
+                    data = resp.json()
+                except Exception as e: return f"Ollama Error: {e}", usage
+
+            usage["prompt_tokens"] += data.get("prompt_eval_count", 0)
+            usage["candidate_tokens"] += data.get("eval_count", 0)
+            usage["total_tokens"] += usage["prompt_tokens"] + usage["candidate_tokens"]
+
+            res_text = data.get("message", {}).get("content", "")
+            final_output += res_text
+            # Tool calling not yet mapped for Ollama in this simplified version
+            return final_output.strip(), usage
+
+    return final_output.strip() + "\nError: Max iterations.", usage

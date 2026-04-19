@@ -4,6 +4,11 @@ import time
 import signal
 import subprocess
 import json
+try:
+    import readline
+except ImportError:
+    pass # Windows might not have it by default
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
@@ -41,13 +46,19 @@ class RtaChat:
             # Path for the local development mode
             self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
             
-        self.model = "gemini-2.5-flash"
+        self.model = "gemini-2.5-flash-lite"
+        self.provider = "google"
         if os.path.exists(self.config_path):
             with open(self.config_path, 'r') as f:
-                self.model = json.load(f).get("model", self.model)
+                cfg = json.load(f)
+                self.model = cfg.get("model", self.model)
+                self.provider = cfg.get("provider", self.provider)
+
                 
         self.messages = []
         self.start_mem = self._get_memory_usage()
+        self.session_usage = {"input": 0, "output": 0, "total": 0, "start_time": time.time()}
+
 
     def _get_memory_usage(self):
         try:
@@ -76,10 +87,13 @@ class RtaChat:
         info_text.append(f"\n   Rta Cli {self.version}\n", style="bold #ff3333")
         info_text.append(f"   User:  ", style="#880000")
         info_text.append(f"{self.user}\n", style="#cc0000")
-        info_text.append(f"   Model: ", style="#880000")
+        info_text.append(f"   Provider: ", style="#880000")
+        info_text.append(f"{self.provider}\n", style="#cc0000")
+        info_text.append(f"   Model:    ", style="#880000")
         info_text.append(f"{self.model}\n", style="#cc0000")
-        info_text.append(f"   RAM:   ", style="#880000")
+        info_text.append(f"   RAM:      ", style="#880000")
         info_text.append(f"{self.start_mem}\n", style="#cc0000")
+
         
         header_content = Columns([styled_ascii, info_text], expand=False)
         header_panel = Panel(
@@ -113,8 +127,10 @@ class RtaChat:
 
         if cmd_name == "help":
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
-            console.print("  /model <name> - Change the Gemini model")
+            console.print("  /model <name> - Change the model")
+            console.print("  /provider <name> - Switch between google/ollama")
             console.print("  /clear         - Clear chat history & screen")
+
             console.print("  /init          - Initialize a new project")
             console.print("  /auth          - Authenticate with Rta backend")
             console.print("  /clone         - Clone a repository")
@@ -137,6 +153,25 @@ class RtaChat:
             console.print(f"[bold green]Model updated to: {new_model}[/bold green]")
             return
 
+        if cmd_name in ["provider", "providers"]:
+            if not args:
+                console.print(f"[bold #ff3333]Current provider: [/bold #ff3333]{self.provider}")
+                return
+            new_prov = args[0].lower()
+            if new_prov not in ["google", "ollama"]:
+                console.print(f"[bold red]Unsupported provider: {new_prov}[/bold red]")
+                return
+            self.provider = new_prov
+            with open(self.config_path, 'r+') as f:
+                config = json.load(f)
+                config['provider'] = new_prov
+                f.seek(0)
+                json.dump(config, f, indent=4)
+                f.truncate()
+            console.print(f"[bold green]Provider updated to: {new_prov}[/bold green]")
+            return
+
+
         if cmd_name in ["clear", "cls"]:
             os.system('cls' if os.name == 'nt' else 'clear')
             self.messages = []
@@ -153,15 +188,38 @@ class RtaChat:
         except Exception as e:
             console.print(f"[red]Error executing command: {e}[/red]")
 
+    def print_summary(self):
+        duration = time.time() - self.session_usage["start_time"]
+        mins, secs = divmod(int(duration), 60)
+        
+        summary = Text()
+        summary.append("\n ──────────────── Session Summary ────────────────\n", style="dim #440000")
+        summary.append(f"   Model:     ", style="#880000")
+        summary.append(f"{self.model}\n", style="#cc0000")
+        summary.append(f"   Duration:  ", style="#880000")
+        summary.append(f"{mins}m {secs}s\n", style="#cc0000")
+        summary.append(f"   Tokens:    ", style="#880000")
+        summary.append(f"In: {self.session_usage['input']} | Out: {self.session_usage['output']} | Total: {self.session_usage['total']}\n", style="#cc0000")
+        summary.append(" ─────────────────────────────────────────────────\n", style="dim #440000")
+        
+        console.print(Panel(summary, border_style="#440000", box=box.ROUNDED, padding=(1, 2)))
+
+    def get_prompt(self):
+
+        # Reset color ( \x1b[0m ) before the trailing space ensures user input is normal color
+        prompt_text = "\001\x1b[1;37;48;2;136;0;0m\002 rta \001\x1b[0m\002\001\x1b[1;38;2;255;51;51m\002 ❯ \001\x1b[0m\002 "
+        return prompt_text
+
+
+
     def run(self):
         signal.signal(signal.SIGINT, self.handle_sigint)
         os.system('cls' if os.name == 'nt' else 'clear')
         self.print_header()
         while True:
             try:
-                prompt = Text(" rta ", style="bold black on #880000")
-                prompt.append(" ❯ ", style="#880000")
-                user_input = console.input(prompt).strip()
+                user_input = input(self.get_prompt()).strip()
+
                 if not user_input:
                     continue
                 if user_input.startswith("/"):
@@ -172,7 +230,13 @@ class RtaChat:
                     continue
                 from rta_cli.agent import run_agent
                 with console.status("[bold #ff3333]Agent is thinking...[/bold #ff3333]", spinner="dots"):
-                    response_text = run_agent(user_input, self.workspace, self.messages)
+                    response_text, usage = run_agent(user_input, self.workspace, self.messages, self.provider, self.model)
+
+                    
+                self.session_usage["input"] += usage.get("prompt_tokens", 0)
+                self.session_usage["output"] += usage.get("candidate_tokens", 0)
+                self.session_usage["total"] += usage.get("total_tokens", 0)
+
                 console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
                 console.print(Markdown(response_text))
                 console.print(f"\n[dim #440000]─── {self.workspace_name} ───[/dim #440000]\n")
@@ -182,6 +246,9 @@ class RtaChat:
                 continue
             except Exception as e:
                 console.print(f"[red]Error: {e}[/red]")
+        
+        self.print_summary()
+
 
 def start_chat():
     chat = RtaChat()
