@@ -1,6 +1,6 @@
 import van from "vanjs-core"
 
-const { div, h1, h2, h3, p, img, main, section, a, button, pre } = van.tags
+const { div, h1, h2, h3, p, img, main, section, a, button, pre, li } = van.tags
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8008"
 
@@ -44,6 +44,7 @@ const NavLink = (text, page) => a({
 
 const Footer = () => div({ class: "footer-links" },
     NavLink("pricing", "pricing"),
+    NavLink("roadmap", "roadmap"),
     NavLink("privacy", "privacy"),
     NavLink("terms", "terms"),
     NavLink("sign in", "auth"),
@@ -122,20 +123,92 @@ const PricingPage = () => {
                 h2({}, "Free"),
                 div({ class: "price" }, "₹0 / $0"),
                 p({ class: "tier-desc" }, "Perfect for light edits."),
-                pre({}, "7 AI calls / day\nDesktop & CLI Access\nApp Access (Limited)")
+                pre({}, "10 calls / day\n2,000 tokens / request\n25,000 tokens / month")
             ),
             div({ class: "price-card featured" },
                 h2({}, "Basic"),
                 div({ class: "price" }, () => priceMap[currency.val].basic + "/mo"),
                 p({ class: "tier-desc" }, "For the focused student."),
-                pre({}, "13 AI calls / day\nFull Mobile Access\nCloud Code Execution")
+                pre({}, "20 calls / minute\n4,000 tokens / request\n500,000 tokens / month")
             ),
             div({ class: "price-card" },
                 h2({}, "Pro"),
                 div({ class: "price" }, () => priceMap[currency.val].pro + "/mo"),
                 p({ class: "tier-desc" }, "For the daily builder."),
-                pre({}, "100 AI calls / day\nFull Mobile Access\nEarly Access to Models")
+                pre({}, "100 calls / minute\n10,000 tokens / request\n5,000,000 tokens / month")
             )
+        ),
+        Footer()
+    )
+}
+
+const RoadmapPage = () => {
+    const phases = [
+        {
+            title: "Phase I",
+            tag: "Current",
+            status: "active",
+            items: [
+                "Build the central backend: secure auth, API routing, and billing.",
+                "Ship the initial headless CLI for early developer testing.",
+                "Begin logging anonymized telemetry to understand real-world workflows."
+            ]
+        },
+        {
+            title: "Phase II",
+            tag: "Next",
+            items: [
+                "Open public access to the Rta CLI experience.",
+                "Introduce fast, context-aware AI code generation straight from the terminal.",
+                "Deploy initial subscription tiers to ensure stable server performance."
+            ]
+        },
+        {
+            title: "Phase III",
+            tag: "Soon",
+            items: [
+                "Release the full Rta Desktop application.",
+                "Add deep project navigation and file-system indexing.",
+                "Integrate advanced, multi-step AI reasoning for complex refactoring."
+            ]
+        },
+        {
+            title: "Phase IV",
+            tag: "Later",
+            items: [
+                "Launch the core Rta mobile app for Android — the pocket workstation.",
+                "Enable seamless, encrypted workspace syncing between CLI, Desktop, and Mobile.",
+                "Bring native Git integration (commit, push, pull) straight to your phone."
+            ]
+        },
+        {
+            title: "Phase V",
+            tag: "Future",
+            items: [
+                "Train custom models fine-tuned purely on the anonymized Rta developer dataset.",
+                "Dramatically reduce subscription costs by running our own intelligence layer.",
+                "Explore open-sourcing non-critical parts of the Rta infrastructure."
+            ]
+        }
+    ]
+
+    return div({ class: "roadmap-page" },
+        NavLink("← back to home", "home"),
+        h1({ class: "page-title" }, "Roadmap"),
+        p({ class: "page-subtitle" }, "The architectural evolution of Rta."),
+        div({ class: "roadmap-timeline" },
+            phases.map(phase => div({ class: "roadmap-phase" },
+                div({ class: `phase-marker ${phase.status || ""}` }),
+                div({ class: "phase-header" },
+                    h2({ class: "phase-title" }, phase.title),
+                    div({ class: "phase-tag" }, phase.tag)
+                ),
+                div({ class: "roadmap-card" },
+                    div({ class: "roadmap-list" },
+                        phase.items.map(item => li({}, item))
+                    )
+                )
+            ))
         ),
         Footer()
     )
@@ -200,7 +273,7 @@ const ReleasesPage = () => {
         NavLink("← back to home", "home"),
         div({ class: "release-card" },
             h1({ class: "release-title" }, "rta cli v0.1.0"),
-            p({ class: "release-subtitle" }, "free • no signup required"),
+            p({ class: "release-subtitle" }, "free tier • signup required"),
             div({ class: "download-section" },
                 a({
                     href: "/rta",
@@ -212,13 +285,13 @@ const ReleasesPage = () => {
             div({ class: "guide-section" },
                 h2({}, "Installation & Setup"),
                 div({ class: "guide-step" },
-                    h3({}, "1. Environment Setup"),
-                    p({}, "Create a .env file in your project root with your Gemini API Key:"),
-                    pre({}, "GEMINI_API_KEY=your_key_here")
+                    h3({}, "1. Authentication"),
+                    p({}, "Login to your Rta account via the CLI:"),
+                    pre({}, "rta login")
                 ),
                 div({ class: "guide-step" },
-                    h3({}, "2. Add to PATH (Optional)"),
-                    p({}, "To run rta from anywhere, use:"),
+                    h3({}, "2. Configuration"),
+                    p({}, "Your config.json will automatically update. To run from anywhere:"),
                     pre({}, "chmod +x rta\nsudo mv rta /usr/local/bin/")
                 )
             )
@@ -263,6 +336,7 @@ const App = () => {
             case "waitlist": loadWaitlistIframe(); return WaitlistPage()
             case "releases": return ReleasesPage()
             case "pricing": return PricingPage()
+            case "roadmap": return RoadmapPage()
             case "privacy": return PrivacyPage()
             case "terms": return TermsPage()
             case "auth":
@@ -294,6 +368,7 @@ const initRoute = () => {
     if (path === "/waitlist") currentPage.val = "waitlist"
     else if (path === "/releases") currentPage.val = "releases"
     else if (path === "/pricing") currentPage.val = "pricing"
+    else if (path === "/roadmap") currentPage.val = "roadmap"
     else if (path === "/privacy") currentPage.val = "privacy"
     else if (path === "/terms") currentPage.val = "terms"
     else if (path === "/auth") currentPage.val = "auth"

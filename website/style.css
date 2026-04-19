@@ -656,6 +656,132 @@ pre {
 }
 
 
+/* Roadmap Styles */
+.roadmap-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 6rem 2rem;
+    animation: fadeIn 1s ease-out;
+}
+
+.roadmap-timeline {
+    position: relative;
+    padding: 2rem 0;
+}
+
+.roadmap-timeline::before {
+    content: '';
+    position: absolute;
+    left: 20px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(to bottom, transparent, var(--gold-dim), var(--gold), var(--gold-dim), transparent);
+    opacity: 0.3;
+}
+
+.roadmap-phase {
+    position: relative;
+    padding-left: 60px;
+    margin-bottom: 4rem;
+}
+
+.phase-marker {
+    position: absolute;
+    left: 11px;
+    top: 5px;
+    width: 20px;
+    height: 20px;
+    background: var(--bg-dark);
+    border: 2px solid var(--gold);
+    border-radius: 50%;
+    z-index: 2;
+    box-shadow: 0 0 15px var(--gold-dim);
+}
+
+.phase-marker.active {
+    background: var(--gold);
+    box-shadow: 0 0 20px var(--gold);
+}
+
+.phase-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.phase-title {
+    font-family: 'Artemis', sans-serif;
+    font-size: 2.2rem;
+    color: var(--accent);
+    margin: 0;
+    letter-spacing: 0.1rem;
+}
+
+.phase-tag {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.15rem;
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    padding: 0.2rem 0.8rem;
+    border-radius: 4px;
+    background: rgba(201, 168, 76, 0.05);
+}
+
+.roadmap-card {
+    background: rgba(10, 8, 4, 0.5);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 2rem;
+    border-radius: 12px;
+    transition: all 0.4s;
+}
+
+.roadmap-card:hover {
+    border-color: var(--rule);
+    background: rgba(15, 12, 6, 0.6);
+    transform: translateX(10px);
+}
+
+.roadmap-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+.roadmap-list li {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.roadmap-list li::before {
+    content: '→';
+    color: var(--gold);
+    font-family: serif;
+}
+
+@media (max-width: 600px) {
+    .roadmap-timeline::before {
+        left: 10px;
+    }
+    .phase-marker {
+        left: 1px;
+    }
+    .roadmap-phase {
+        padding-left: 40px;
+    }
+    .phase-title {
+        font-size: 1.8rem;
+    }
+}
+
+
 @media (max-width: 800px) {
     .container {
         justify-content: flex-start;
