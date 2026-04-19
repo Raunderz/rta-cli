@@ -44,7 +44,7 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
     usage = {"prompt_tokens": 0, "candidate_tokens": 0, "total_tokens": 0, "cached_tokens": 0, "start_time": time.time()}
     
     system_prompt = (
-        "Role: Expert coder. Style: Caveman Ultra (min tokens). No filler.\n"
+        "Role: Expert coder. Style: Caveman Lite (min tokens, professional). No filler.\n"
         "Workflow: explore → read → fix → verify. Paths relative to workspace.\n"
         "Note: Tool results older than 1 turn are truncated for efficiency."
     )
@@ -309,7 +309,12 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
                         content += p["text"]
                     if "functionCall" in p and supports_tools:
                         fc = p["functionCall"]
-                        call_id = fc.get("id") or f"call_{uuid.uuid4().hex[:8]}"
+                        # Robust ID handling: reuse existing ID, or generate and PERSIST it
+                        call_id = fc.get("id")
+                        if not call_id:
+                            call_id = f"call_{uuid.uuid4().hex[:8]}"
+                            fc["id"] = call_id
+                        
                         tcalls.append({
                             "id": call_id,
                             "type": "function",
@@ -329,8 +334,11 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
             fallbacks = ["nvidia/nemotron-3-super-120b-a12b:free", "openrouter/elephant-alpha", "google/gemma-4-26b-a4b-it:free", "z-ai/glm-4.5-air:free", "openai/gpt-oss-120b:free", "openrouter/free"]
             for f in fallbacks:
                 if f not in models_to_try: models_to_try.append(f)
-            
+
             payload = {"messages": openrouter_messages}
+            if supports_tools:
+                payload["tools"] = ollama_tools
+                payload["tool_choice"] = "auto"
             
             data = None
             success = False
@@ -419,9 +427,17 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
                     args = json.loads(fn.get("arguments", "{}"))
                 except Exception:
                     pass
+                
+                # Yield and call function
                 yield {"type": "tool_start", "content": name}
                 res = call_function({"name": name, "args": args}, workspace_dir)
                 res["functionResponse"]["call_id"] = call_id
+                
+                # Sync the ID back to the 'model' message parts we just appended
+                for p in parts:
+                    if "functionCall" in p and p["functionCall"]["name"] == name and not p["functionCall"].get("id"):
+                        p["functionCall"]["id"] = call_id
+                
                 fresps.append(res)
             messages.append({"role": "function", "parts": fresps})
 

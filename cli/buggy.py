@@ -1,5 +1,5 @@
-def buggy_func():
+def fixed_func():
     lst = [10, 20, 30]
-    print(lst[5])  # Index out of range
+    print(lst[2])  # Fixed: index 2 is within bounds
 
-buggy_func()
+fixed_func()
