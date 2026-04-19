@@ -4,6 +4,7 @@ import time
 import signal
 import subprocess
 import json
+import random
 try:
     import readline
 except ImportError:
@@ -28,6 +29,24 @@ ASCII_ART = """ _  .-')   .-') _      ('-.
  |  |\  \    |  |     |  | |  | 
  `--' '--'   `--'     `--' `--' """
 
+LOADING_MESSAGES = [
+    "Navigating the codebase...",
+    "Herding electrons...",
+    "Consulting the silicon gods...",
+    "Decrypting spaghetti code...",
+    "Optimizing orbits...",
+    "Refactoring the universe...",
+    "Avoiding infinite loops...",
+    "Polishing pixels...",
+    "Chasing segment faults...",
+    "Compiling thoughts...",
+    "Summoning the logic...",
+    "Rewriting the future...",
+    "Chasing bugs in the dark...",
+    "Parsing complexity...",
+    "Thinking in TOON..."
+]
+
 class RtaChat:
     def __init__(self):
         self.last_ctrl_c = 0
@@ -37,28 +56,38 @@ class RtaChat:
         self.ascii_art = ASCII_ART
         self.user = "Guest"
         
-        # Determine the path for the configuration file.
-        # This handles both standard development runs and standalone binary runs (PyInstaller).
         if hasattr(sys, '_MEIPASS'):
-            # Path for the bundled binary mode
             self.config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
         else:
-            # Path for the local development mode
             self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
             
-        self.model = "gemini-2.5-flash-lite"
+        self.model = "gemini-3.1-flash-lite-preview"
+
         self.provider = "google"
-        if os.path.exists(self.config_path):
+        if not os.path.exists(self.config_path):
+            try:
+                with open(self.config_path, 'w') as f:
+                    json.dump({
+                        "model": self.model,
+                        "provider": self.provider,
+                        "server_url": "http://localhost:8000"
+                    }, f, indent=4)
+            except:
+                pass # Might be read-only binary pass
+        else:
             with open(self.config_path, 'r') as f:
                 cfg = json.load(f)
                 self.model = cfg.get("model", self.model)
                 self.provider = cfg.get("provider", self.provider)
 
-                
+
         self.messages = []
+        self.rta_dir = os.path.join(self.workspace, ".rta")
+        self.history_path = os.path.join(self.rta_dir, "history.json")
+        self._load_history()
+
         self.start_mem = self._get_memory_usage()
         self.session_usage = {"input": 0, "output": 0, "total": 0, "start_time": time.time()}
-
 
     def _get_memory_usage(self):
         try:
@@ -67,14 +96,30 @@ class RtaChat:
                     for line in f:
                         if line.startswith('VmRSS:'):
                             return f"{int(line.split()[1]) / 1024:.1f} MB"
-            if os.name == 'posix':
-                import resource
-                return f"{resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.1f} MB"
-            else:
-                out = subprocess.check_output(['tasklist', '/FI', f'PID eq {os.getpid()}', '/FO', 'CSV', '/NH']).decode()
-                return f"{int(out.split(',')[4].strip('\"').replace(' K', '').replace(',', '')) / 1024:.1f} MB"
+            return "N/A"
         except:
             return "N/A"
+
+    def _load_history(self):
+        if os.path.exists(self.history_path):
+            try:
+                with open(self.history_path, 'r') as f:
+                    self.messages = json.load(f)
+            except:
+                self.messages = []
+
+    def _save_history(self):
+        if not os.path.exists(self.rta_dir):
+            os.makedirs(self.rta_dir, exist_ok=True)
+        try:
+            with open(self.history_path, 'w') as f:
+                json.dump(self.messages, f, indent=2)
+        except:
+            pass
+
+    def _trim_messages(self, max_msgs=20):
+        if len(self.messages) > max_msgs:
+            self.messages = self.messages[:2] + self.messages[-(max_msgs-2):]
 
     def print_header(self):
         ascii_lines = self.ascii_art.splitlines()
@@ -93,7 +138,6 @@ class RtaChat:
         info_text.append(f"{self.model}\n", style="#cc0000")
         info_text.append(f"   RAM:      ", style="#880000")
         info_text.append(f"{self.start_mem}\n", style="#cc0000")
-
         
         header_content = Columns([styled_ascii, info_text], expand=False)
         header_panel = Panel(
@@ -118,10 +162,8 @@ class RtaChat:
 
     def handle_slash_command(self, command_str):
         from rta_cli.commands import app
-        import typer
         parts = command_str[1:].split()
-        if not parts:
-            return
+        if not parts: return
         cmd_name = parts[0].lower()
         args = parts[1:]
 
@@ -130,10 +172,6 @@ class RtaChat:
             console.print("  /model <name> - Change the model")
             console.print("  /provider <name> - Switch between google/ollama")
             console.print("  /clear         - Clear chat history & screen")
-
-            console.print("  /init          - Initialize a new project")
-            console.print("  /auth          - Authenticate with Rta backend")
-            console.print("  /clone         - Clone a repository")
             console.print("  /exit          - Exit the chat\n")
             return
 
@@ -143,7 +181,6 @@ class RtaChat:
                 return
             new_model = args[0]
             self.model = new_model
-            # Persist the model change to config.json so it carries over to future sessions.
             with open(self.config_path, 'r+') as f:
                 config = json.load(f)
                 config['model'] = new_model
@@ -151,6 +188,7 @@ class RtaChat:
                 json.dump(config, f, indent=4)
                 f.truncate()
             console.print(f"[bold green]Model updated to: {new_model}[/bold green]")
+            self.print_header()
             return
 
         if cmd_name in ["provider", "providers"]:
@@ -169,12 +207,14 @@ class RtaChat:
                 json.dump(config, f, indent=4)
                 f.truncate()
             console.print(f"[bold green]Provider updated to: {new_prov}[/bold green]")
+            self.print_header()
             return
-
 
         if cmd_name in ["clear", "cls"]:
             os.system('cls' if os.name == 'nt' else 'clear')
             self.messages = []
+            if os.path.exists(self.history_path): os.remove(self.history_path)
+            self._save_history()
             self.print_header()
             return
 
@@ -183,34 +223,21 @@ class RtaChat:
             sys.argv = ["rta", cmd_name] + args
             app()
             sys.argv = orig_argv
-        except SystemExit:
-            pass
-        except Exception as e:
-            console.print(f"[red]Error executing command: {e}[/red]")
+        except SystemExit: pass
+        except Exception as e: console.print(f"[red]Error: {e}[/red]")
 
     def print_summary(self):
         duration = time.time() - self.session_usage["start_time"]
         mins, secs = divmod(int(duration), 60)
-        
         summary = Text()
         summary.append("\n ──────────────── Session Summary ────────────────\n", style="dim #440000")
-        summary.append(f"   Model:     ", style="#880000")
-        summary.append(f"{self.model}\n", style="#cc0000")
-        summary.append(f"   Duration:  ", style="#880000")
-        summary.append(f"{mins}m {secs}s\n", style="#cc0000")
-        summary.append(f"   Tokens:    ", style="#880000")
-        summary.append(f"In: {self.session_usage['input']} | Out: {self.session_usage['output']} | Total: {self.session_usage['total']}\n", style="#cc0000")
+        summary.append(f"   Model:     {self.model}\n   Duration:  {mins}m {secs}s\n", style="#cc0000")
+        summary.append(f"   Tokens:    In: {self.session_usage['input']} | Out: {self.session_usage['output']}\n", style="#cc0000")
         summary.append(" ─────────────────────────────────────────────────\n", style="dim #440000")
-        
         console.print(Panel(summary, border_style="#440000", box=box.ROUNDED, padding=(1, 2)))
 
     def get_prompt(self):
-
-        # Reset color ( \x1b[0m ) before the trailing space ensures user input is normal color
-        prompt_text = "\001\x1b[1;37;48;2;136;0;0m\002 rta \001\x1b[0m\002\001\x1b[1;38;2;255;51;51m\002 ❯ \001\x1b[0m\002 "
-        return prompt_text
-
-
+        return "\001\x1b[1;37;48;2;136;0;0m\002 rta \001\x1b[0m\002\001\x1b[1;38;2;255;51;51m\002 ❯ \001\x1b[0m\002 "
 
     def run(self):
         signal.signal(signal.SIGINT, self.handle_sigint)
@@ -219,37 +246,37 @@ class RtaChat:
         while True:
             try:
                 user_input = input(self.get_prompt()).strip()
-
-                if not user_input:
-                    continue
+                if not user_input: continue
                 if user_input.startswith("/"):
                     cmd = user_input[1:].lower()
-                    if cmd in ["exit", "quit"]:
-                        break
+                    if cmd in ["exit", "quit"]: break
                     self.handle_slash_command(user_input)
                     continue
-                from rta_cli.agent import run_agent
-                with console.status("[bold #ff3333]Agent is thinking...[/bold #ff3333]", spinner="dots"):
-                    response_text, usage = run_agent(user_input, self.workspace, self.messages, self.provider, self.model)
 
-                    
+                think_mode = "think_it" in user_input
+                if think_mode:
+                    hl = "[bold #ff0000]t[/][bold #00ff00]h[/][bold #0000ff]i[/][bold #ffff00]n[/][bold #ff00ff]k[/][bold #00ffff]_[/][bold #ffffff]i[/][bold #ff8800]t[/]"
+                    console.print(f" [dim]Prompt:[/dim] {user_input.replace('think_it', hl)}")
+
+                from rta_cli.agent import run_agent
+                msg = random.choice(LOADING_MESSAGES)
+                with console.status(f"[bold #ff3333]{msg}[/bold #ff3333]", spinner="dots"):
+                    res, usage = run_agent(user_input, self.workspace, self.messages, self.provider, self.model, think=think_mode)
+                
+                self._trim_messages()
+                self._save_history()
                 self.session_usage["input"] += usage.get("prompt_tokens", 0)
                 self.session_usage["output"] += usage.get("candidate_tokens", 0)
                 self.session_usage["total"] += usage.get("total_tokens", 0)
 
                 console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
-                console.print(Markdown(response_text))
+                console.print(Markdown(res))
+
                 console.print(f"\n[dim #440000]─── {self.workspace_name} ───[/dim #440000]\n")
-            except EOFError:
-                break
-            except KeyboardInterrupt:
-                continue
-            except Exception as e:
-                console.print(f"[red]Error: {e}[/red]")
+            except (EOFError, KeyboardInterrupt): break
+            except Exception as e: console.print(f"[red]Error: {e}[/red]")
         
         self.print_summary()
 
-
 def start_chat():
-    chat = RtaChat()
-    chat.run()
+    RtaChat().run()

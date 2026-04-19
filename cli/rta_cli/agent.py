@@ -2,8 +2,9 @@ import os
 import sys
 import json
 import httpx
-import toons
 import time
+
+import re
 from dotenv import load_dotenv
 
 from rta_cli.functions.get_file_content import get_file_contents, schema_get_file_contents
@@ -25,9 +26,7 @@ def call_function(function_call, workspace_dir: str):
     else:
         result = f"Error: function {name} not found"
 
-    if name in ["get_files_info"]:
-        result = toons.dumps(result)
-        
+
     return {
         "functionResponse": {
             "name": name,
@@ -35,27 +34,17 @@ def call_function(function_call, workspace_dir: str):
         }
     }
 
-def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "google", model_name: str = "gemini-2.5-flash-lite", max_iterations: int = 20) -> tuple[str, dict]:
+def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "google", model_name: str = "gemini-2.5-flash-lite", max_iterations: int = 20, think: bool = False) -> tuple[str, dict]:
     load_dotenv()
     usage = {"prompt_tokens": 0, "candidate_tokens": 0, "total_tokens": 0, "start_time": time.time()}
     final_output = ""
     
     system_prompt = (
-        "You are an expert AI software engineer. Respond in Caveman Lite mode (no filler/hedging, fragments OK, professional but tight).\n"
-        "All data communication uses TOON format for efficiency.\n\n"
-        "## TOON Rules:\n"
-        "- Objects: key: value (no braces, 2-space indent for nesting)\n"
-        "- Arrays: tags[3]: admin,ops,dev (always declare length [N])\n"
-        "- Array of objects: users[2]{id,name}: 1,Alice \\n 2,Bob\n"
-        "- Escape: \\\\, \\\", \\n, \\r, \\t\n\n"
+        "Respond in Caveman Lite mode (no filler/hedging, fragments OK, professional but tight).\n"
         "Work systematically: explore → read → reproduce → fix → verify.\n"
-        "Operations:\n"
-        "- get_files_info(directory=\"path\")\n"
-        "- get_file_contents(file_path=\"path\")\n"
-        "- run_python_file(file_path=\"path\", args=[\"arg1\", \"arg2\"])\n"
-        "- write_file(file_path=\"path\", content=\"content\")\n\n"
-        "All paths relative to CWD."
+        "All paths are relative to the current workspace."
     )
+
 
     available_functions = [
         schema_get_files_info,
@@ -64,14 +53,17 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: s
         schema_write_file,
     ]
 
+    ollama_tools = [{"type": "function", "function": f} for f in available_functions]
+
+    # Add initial user prompt to messages if empty
+    if not any(m["role"] == "user" for m in messages):
+        messages.append({"role": "user", "parts": [{"text": prompt}]})
+
     for i in range(max_iterations):
         if provider == "google":
             api_key = os.environ.get("GEMINI_API_KEY")
             if not api_key: return "Error: GEMINI_API_KEY unset", usage
             
-            if not any(m["role"] == "user" and m["parts"][0].get("text") == prompt for m in messages[-2:]):
-                messages.append({"role": "user", "parts": [{"text": prompt}]})
-
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
             payload = {
                 "systemInstruction": {"parts": [{"text": system_prompt}]},
@@ -80,11 +72,23 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: s
             }
 
             with httpx.Client(timeout=60.0) as client:
-                try:
-                    resp = client.post(url, json=payload)
-                    resp.raise_for_status()
-                    data = resp.json()
-                except Exception as e: return f"Google API Error: {e}", usage
+                for attempt in range(5):
+                    try:
+                        resp = client.post(url, json=payload)
+                        if resp.status_code == 429:
+                            time.sleep(2 ** attempt)
+                            continue
+                        resp.raise_for_status()
+                        data = resp.json()
+                        break
+                    except httpx.HTTPStatusError as e:
+                        if e.response.status_code == 429 and attempt < 4: continue
+                        return f"Google API Error: {e.response.status_code} - Resource exhausted or rate limited.", usage
+                    except Exception as e:
+                        return f"API Connection Error. Check your internet or API Key.", usage
+                else:
+                    return "Rate limit exceeded after multiple retries. Slow down!", usage
+
 
             usage_data = data.get("usageMetadata", {})
             usage["prompt_tokens"] += usage_data.get("promptTokenCount", 0)
@@ -92,7 +96,16 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: s
             usage["total_tokens"] += usage_data.get("totalTokenCount", 0)
 
             candidate = data.get("candidates", [{}])[0]
+            reason = candidate.get("finishReason")
+            if reason in ["SAFETY", "BLOCKed", "OTHER"]:
+                return f"Response blocked by safety filters (Reason: {reason})", usage
+            
             content = candidate.get("content", {})
+            if not content: 
+                if final_output.strip(): return final_output.strip(), usage
+                return "The model returned an empty response.", usage
+
+
             messages.append(content)
             parts = content.get("parts", [])
             
@@ -100,7 +113,11 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: s
             if texts: final_output += "".join(texts) + "\n\n"
             
             fcalls = [p["functionCall"] for p in parts if "functionCall" in p]
-            if not fcalls: return final_output.strip(), usage
+            if not fcalls: 
+                if not final_output.strip():
+                    return "Model responded with no text or actions.", usage
+                return final_output.strip(), usage
+
             
             fresps = []
             for fc in fcalls:
@@ -110,35 +127,90 @@ def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: s
 
         elif provider == "ollama":
             url = "http://localhost:11434/api/chat"
-            # Map Gemini messages to Ollama format
             ollama_messages = [{"role": "system", "content": system_prompt}]
             for m in messages:
                 role = "assistant" if m["role"] == "model" else m["role"]
-                # Simplify parts to string for basic Ollama compatibility
+                role = "tool" if m["role"] == "function" else role
                 content = ""
+                tcalls = []
                 for p in m.get("parts", []):
                     if "text" in p: content += p["text"]
-                ollama_messages.append({"role": role, "content": content})
-            
-            # Add current prompt if not in history
-            ollama_messages.append({"role": "user", "content": prompt})
+                    if "functionCall" in p:
+                        fc = p["functionCall"]
+                        tcalls.append({"type": "function", "function": {"name": fc["name"], "arguments": fc.get("args", {})}})
+                    if "functionResponse" in p:
+                        content = str(p["functionResponse"].get("response", {}).get("content", ""))
+                
+                msg = {"role": role, "content": content}
+                if tcalls: msg["tool_calls"] = tcalls
+                ollama_messages.append(msg)
 
-            payload = {"model": model_name, "messages": ollama_messages, "stream": False}
+            payload = {
+                "model": model_name, "messages": ollama_messages, "stream": False, 
+                "think": think, "tools": ollama_tools
+            }
             
             with httpx.Client(timeout=60.0) as client:
-                try:
-                    resp = client.post(url, json=payload)
-                    resp.raise_for_status()
-                    data = resp.json()
-                except Exception as e: return f"Ollama Error: {e}", usage
+                for attempt in range(3):
+                    try:
+                        resp = client.post(url, json=payload)
+                        if resp.status_code == 429:
+                            time.sleep(2 ** attempt)
+                            continue
+                        resp.raise_for_status()
+                        data = resp.json()
+                        break
+                    except Exception as e:
+                        if attempt < 2: continue
+                        return "Ollama Error: Could not connect to local server.", usage
+                else:
+                    return "Ollama is too busy or rate limited.", usage
+
 
             usage["prompt_tokens"] += data.get("prompt_eval_count", 0)
             usage["candidate_tokens"] += data.get("eval_count", 0)
             usage["total_tokens"] += usage["prompt_tokens"] + usage["candidate_tokens"]
 
-            res_text = data.get("message", {}).get("content", "")
-            final_output += res_text
-            # Tool calling not yet mapped for Ollama in this simplified version
-            return final_output.strip(), usage
+            msg_obj = data.get("message", {})
+            thinking = msg_obj.get("thinking", "")
+            if thinking: final_output += f"> *{thinking.strip()}*\n\n"
+            
+            text = msg_obj.get("content", "")
+            if text: final_output += text + "\n\n"
+            
+            fcalls = msg_obj.get("tool_calls", [])
+            
+            # --- Regex Fallback for "stupid" models ---
+            if not fcalls and text:
+                pattern = r"(\w+)\((.*?)\)"
+                matches = re.findall(pattern, text)
+                for name, args_str in matches:
+                    if name in [f["name"] for f in available_functions]:
+                        try:
+                            # Try to parse as JSON or simple dict
+                            args_str = args_str.replace("'", '"')
+                            args = json.loads(f"{{{args_str}}}") if ":" in args_str else {}
+                            fcalls.append({"function": {"name": name, "arguments": args}})
+                        except: pass
+            
+            parts = [{"text": text}] if text else []
+            for tc in fcalls:
+                fn = tc.get("function", {})
+                parts.append({"functionCall": {"name": fn.get("name"), "args": fn.get("arguments", {})}})
+            
+            messages.append({"role": "model", "parts": parts})
+            if not fcalls: 
+                if not final_output.strip():
+                    return "Ollama returned no text or tool calls.", usage
+                return final_output.strip(), usage
+
+            
+            fresps = []
+            for tc in fcalls:
+                fn = tc.get("function", {})
+                name = fn.get("name")
+                final_output += f"*(Executed tool: `{name}`)*\n\n"
+                fresps.append(call_function({"name": name, "args": fn.get("arguments", {})}, workspace_dir))
+            messages.append({"role": "function", "parts": fresps})
 
     return final_output.strip() + "\nError: Max iterations.", usage
