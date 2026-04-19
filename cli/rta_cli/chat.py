@@ -116,9 +116,21 @@ class RtaChat:
         except:
             pass
 
-    def _trim_messages(self, max_msgs=12):
+    def _trim_messages(self, max_msgs=8):
         if len(self.messages) > max_msgs:
             self.messages = self.messages[:2] + self.messages[-(max_msgs-2):]
+        
+        # Aggressively prune older tool results to save tokens and reduce 'context noise'
+        # We prune everything except the last 2 turns.
+        for msg in self.messages[:-2]:
+            if msg.get("role") == "function":
+                for part in msg.get("parts", []):
+                    if "functionResponse" in part:
+                        fr = part["functionResponse"]
+                        resp = fr.get("response", {})
+                        content = resp.get("content", "")
+                        if isinstance(content, str) and len(content) > 150:
+                            resp["content"] = content[:150] + "\n[... HISTORICAL TOOL RESULT TRUNCATED ...]"
 
     def print_header(self):
         ascii_lines = self.ascii_art.splitlines()

@@ -44,8 +44,9 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
     usage = {"prompt_tokens": 0, "candidate_tokens": 0, "total_tokens": 0, "cached_tokens": 0, "start_time": time.time()}
     
     system_prompt = (
-        "Role: Expert coder. Style: Caveman Ultra (min tokens). No filler. No repetition.\n"
-        "Workflow: explore → read → fix → verify. If solution clear, just apply."
+        "Role: Expert coder. Style: Caveman Ultra (min tokens). No filler.\n"
+        "Workflow: explore → read → fix → verify. Paths relative to workspace.\n"
+        "Note: Tool results older than 1 turn are truncated for efficiency."
     )
 
     available_functions = [
