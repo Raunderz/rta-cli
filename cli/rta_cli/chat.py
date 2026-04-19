@@ -19,7 +19,7 @@ from rich.markdown import Markdown
 
 console = Console()
 
-ASCII_ART = """ _  .-')   .-') _      ('-.     
+ASCII_ART = r""" _  .-')   .-') _      ('-.     
 ( \( -O ) (  OO) )    ( OO ).-. 
  ,------. /     '._   / . --. / 
  |   /`. '|'--...__)  | \-.  \  
@@ -52,7 +52,7 @@ class RtaChat:
         self.last_ctrl_c = 0
         self.workspace = os.path.abspath(os.getcwd())
         self.workspace_name = os.path.basename(self.workspace)
-        self.version = "v0.0.1"
+        self.version = "v0.0.2"
         self.ascii_art = ASCII_ART
         self.user = "Guest"
         
@@ -62,8 +62,8 @@ class RtaChat:
             self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
             
         self.model = "gemini-3.1-flash-lite-preview"
-
         self.provider = "google"
+        
         if not os.path.exists(self.config_path):
             try:
                 with open(self.config_path, 'w') as f:
@@ -73,13 +73,12 @@ class RtaChat:
                         "server_url": "http://localhost:8000"
                     }, f, indent=4)
             except:
-                pass # Might be read-only binary pass
+                pass
         else:
             with open(self.config_path, 'r') as f:
                 cfg = json.load(f)
                 self.model = cfg.get("model", self.model)
                 self.provider = cfg.get("provider", self.provider)
-
 
         self.messages = []
         self.rta_dir = os.path.join(self.workspace, ".rta")
@@ -117,7 +116,7 @@ class RtaChat:
         except:
             pass
 
-    def _trim_messages(self, max_msgs=20):
+    def _trim_messages(self, max_msgs=30):
         if len(self.messages) > max_msgs:
             self.messages = self.messages[:2] + self.messages[-(max_msgs-2):]
 
@@ -130,7 +129,7 @@ class RtaChat:
         
         info_text = Text()
         info_text.append(f"\n   Rta Cli {self.version}\n", style="bold #ff3333")
-        info_text.append(f"   User:  ", style="#880000")
+        info_text.append(f"   User:     ", style="#880000")
         info_text.append(f"{self.user}\n", style="#cc0000")
         info_text.append(f"   Provider: ", style="#880000")
         info_text.append(f"{self.provider}\n", style="#cc0000")
@@ -243,6 +242,7 @@ class RtaChat:
         signal.signal(signal.SIGINT, self.handle_sigint)
         os.system('cls' if os.name == 'nt' else 'clear')
         self.print_header()
+        
         while True:
             try:
                 user_input = input(self.get_prompt()).strip()
@@ -260,9 +260,10 @@ class RtaChat:
 
                 from rta_cli.agent import run_agent
                 msg = random.choice(LOADING_MESSAGES)
+                
                 with console.status(f"[bold #ff3333]{msg}[/bold #ff3333]", spinner="dots"):
                     res, usage = run_agent(user_input, self.workspace, self.messages, self.provider, self.model, think=think_mode)
-                
+
                 self._trim_messages()
                 self._save_history()
                 self.session_usage["input"] += usage.get("prompt_tokens", 0)
@@ -270,9 +271,10 @@ class RtaChat:
                 self.session_usage["total"] += usage.get("total_tokens", 0)
 
                 console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
-                console.print(Markdown(res))
+                console.print(Panel(Markdown(res), border_style="#440000", padding=(1, 2)))
 
                 console.print(f"\n[dim #440000]─── {self.workspace_name} ───[/dim #440000]\n")
+                
             except (EOFError, KeyboardInterrupt): break
             except Exception as e: console.print(f"[red]Error: {e}[/red]")
         
