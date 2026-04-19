@@ -28,10 +28,10 @@ schema_run_command = {
     "name": "run_command",
     "description": "Runs a general shell command in the working directory and returns the output",
     "parameters": {
-        "type": "OBJECT",
+        "type": "object",
         "properties": {
             "command": {
-                "type": "STRING",
+                "type": "string",
                 "description": "The shell command to execute",
             },
         },

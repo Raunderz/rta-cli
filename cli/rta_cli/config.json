@@ -1,5 +1,5 @@
 {
-    "model": "gemini-3.1-flash-lite-preview",
-    "server_url": "http://localhost:8000",
-    "provider": "google"
+    "model": "nvidia/nemotron-3-super-120b-a12b:free",
+    "provider": "openrouter",
+    "server_url": "http://localhost:8000"
 }

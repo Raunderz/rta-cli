@@ -61,8 +61,8 @@ class RtaChat:
         else:
             self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
             
-        self.model = "gemini-3.1-flash-lite-preview"
-        self.provider = "google"
+        self.model = "nvidia/nemotron-3-super-120b-a12b:free"
+        self.provider = "openrouter"
         
         if not os.path.exists(self.config_path):
             try:
@@ -86,7 +86,7 @@ class RtaChat:
         self._load_history()
 
         self.start_mem = self._get_memory_usage()
-        self.session_usage = {"input": 0, "output": 0, "total": 0, "start_time": time.time()}
+        self.session_usage = {"input": 0, "output": 0, "total": 0, "cached": 0, "start_time": time.time()}
 
     def _get_memory_usage(self):
         try:
@@ -169,8 +169,9 @@ class RtaChat:
         if cmd_name == "help":
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
             console.print("  /model <name> - Change the model")
-            console.print("  /provider <name> - Switch between google/ollama")
+            console.print("  /provider <name> - Switch between google/ollama/cloudflare")
             console.print("  /clear         - Clear chat history & screen")
+            console.print("  /cclear        - Clear conversation context only")
             console.print("  /exit          - Exit the chat\n")
             return
 
@@ -195,13 +196,21 @@ class RtaChat:
                 console.print(f"[bold #ff3333]Current provider: [/bold #ff3333]{self.provider}")
                 return
             new_prov = args[0].lower()
-            if new_prov not in ["google", "ollama"]:
+            if new_prov not in ["google", "ollama", "cloudflare", "openrouter"]:
                 console.print(f"[bold red]Unsupported provider: {new_prov}[/bold red]")
                 return
             self.provider = new_prov
+            
+            # Set default models for specific providers
+            if new_prov == "cloudflare":
+                self.model = "llama-3-8b-instruct"
+            elif new_prov == "openrouter":
+                self.model = "nvidia/nemotron-3-super-120b-a12b:free"
+            
             with open(self.config_path, 'r+') as f:
                 config = json.load(f)
                 config['provider'] = new_prov
+                config['model'] = self.model
                 f.seek(0)
                 json.dump(config, f, indent=4)
                 f.truncate()
@@ -217,6 +226,13 @@ class RtaChat:
             self.print_header()
             return
 
+        if cmd_name == "cclear":
+            self.messages = []
+            if os.path.exists(self.history_path): os.remove(self.history_path)
+            self._save_history()
+            console.print("[bold green]Conversation context cleared.[/bold green]")
+            return
+
         try:
             orig_argv = sys.argv
             sys.argv = ["rta", cmd_name] + args
@@ -228,10 +244,16 @@ class RtaChat:
     def print_summary(self):
         duration = time.time() - self.session_usage["start_time"]
         mins, secs = divmod(int(duration), 60)
+        
+        cached = self.session_usage.get("cached", 0)
+        total_in = self.session_usage.get("input", 0)
+        saved_pct = (cached / total_in * 100) if total_in > 0 else 0
+        
         summary = Text()
         summary.append("\n ──────────────── Session Summary ────────────────\n", style="dim #440000")
         summary.append(f"   Model:     {self.model}\n   Duration:  {mins}m {secs}s\n", style="#cc0000")
-        summary.append(f"   Tokens:    In: {self.session_usage['input']} | Out: {self.session_usage['output']}\n", style="#cc0000")
+        summary.append(f"   Tokens:    In: {total_in} | Out: {self.session_usage['output']}\n", style="#cc0000")
+        summary.append(f"   Caching:   {cached} tokens ({saved_pct:.1f}% saved)\n", style="#cc0000")
         summary.append(" ─────────────────────────────────────────────────\n", style="dim #440000")
         console.print(Panel(summary, border_style="#440000", box=box.ROUNDED, padding=(1, 2)))
 
@@ -269,6 +291,7 @@ class RtaChat:
                 self.session_usage["input"] += usage.get("prompt_tokens", 0)
                 self.session_usage["output"] += usage.get("candidate_tokens", 0)
                 self.session_usage["total"] += usage.get("total_tokens", 0)
+                self.session_usage["cached"] += usage.get("cached_tokens", 0)
 
                 console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
                 console.print(Panel(Markdown(res), border_style="#440000", padding=(1, 2)))

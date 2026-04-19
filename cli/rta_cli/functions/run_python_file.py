@@ -35,15 +35,15 @@ schema_run_python_file = {
     "name": "run_python_file",
     "description": "Runs a Python file with optional arguments,using python3 interpreter, relative to the working directory",
     "parameters": {
-        "type": "OBJECT",
+        "type": "object",
         "properties": {
             "file_path": {
-                "type": "STRING",
+                "type": "string",
                 "description": "Path to the Python file to run, relative to the working directory",
             },
             "args": {
-                "type": "ARRAY",
-                "items": {"type": "STRING"},
+                "type": "array",
+                "items": {"type": "string"},
                 "description": "Arguments to pass to the Python file",
             },
         },

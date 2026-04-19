@@ -24,10 +24,10 @@ schema_get_file_contents = {
     "name": "get_file_contents",
     "description": "Reads the contents of a specified file relative to the working directory",
     "parameters": {
-        "type": "OBJECT",
+        "type": "object",
         "properties": {
             "file_path": {
-                "type": "STRING",
+                "type": "string",
                 "description": "Path to the file to read, relative to the working directory",
             },
         },
