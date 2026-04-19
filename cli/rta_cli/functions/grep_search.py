@@ -30,14 +30,14 @@ schema_grep_search = {
     "name": "grep_search",
     "description": "Searches for a pattern in files within a specified path (recursive)",
     "parameters": {
-        "type": "OBJECT",
+        "type": "object",
         "properties": {
             "pattern": {
-                "type": "STRING",
+                "type": "string",
                 "description": "The regex or string pattern to search for",
             },
             "path": {
-                "type": "STRING",
+                "type": "string",
                 "description": "The directory or file to search in, relative to the working directory (default is '.')",
             },
         },

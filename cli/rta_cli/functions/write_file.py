@@ -24,14 +24,14 @@ schema_write_file = {
     "name": "write_file",
     "description": "Writes content to a specified file relative to the working directory. (and creates parent directories if needed), overwrites or writes to a new file if it doesn't exist.",
     "parameters": {
-        "type": "OBJECT",
+        "type": "object",
         "properties": {
             "file_path": {
-                "type": "STRING",
+                "type": "string",
                 "description": "Path to the file to write to, relative to the working directory",
             },
             "content": {
-                "type": "STRING",
+                "type": "string",
                 "description": "Content to write to the file",
             },
         },

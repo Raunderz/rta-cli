@@ -29,10 +29,10 @@ schema_get_files_info = {
     "name": "get_files_info",
     "description": "Lists files in a specified directory relative to the working directory, providing file size and directory status",
     "parameters": {
-        "type": "OBJECT",
+        "type": "object",
         "properties": {
             "directory": {
-                "type": "STRING",
+                "type": "string",
                 "description": "Directory path to list files from, relative to the working directory (default is the working directory itself)",
             },
         },

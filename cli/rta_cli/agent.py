@@ -39,9 +39,9 @@ def call_function(function_call, workspace_dir: str):
         }
     }
 
-def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "google", model_name: str = "gemini-2.5-flash-lite", max_iterations: int = 20, think: bool = False) -> Generator[dict, None, None]:
+def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "openrouter", model_name: str = "nvidia/nemotron-3-super-120b-a12b:free", max_iterations: int = 20, think: bool = False) -> Generator[dict, None, None]:
     load_dotenv()
-    usage = {"prompt_tokens": 0, "candidate_tokens": 0, "total_tokens": 0, "start_time": time.time()}
+    usage = {"prompt_tokens": 0, "candidate_tokens": 0, "total_tokens": 0, "cached_tokens": 0, "start_time": time.time()}
     
     system_prompt = (
         "Respond in Caveman Lite mode (no filler/hedging, fragments OK, professional but tight).\n"
@@ -105,6 +105,7 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
             usage["prompt_tokens"] += u_p
             usage["candidate_tokens"] += u_c
             usage["total_tokens"] += (u_p + u_c)
+            usage["cached_tokens"] += usage_data.get("cachedContentTokenCount", 0)
 
             candidate = data.get("candidates", [{}])[0]
             content = candidate.get("content", {})
@@ -204,10 +205,230 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
                 fresps.append(res)
             messages.append({"role": "function", "parts": fresps})
 
+        elif provider == "cloudflare":
+            api_key = os.environ.get("CF_AI_KEY")
+            account_id = os.environ.get("CF_ACCOUNT_ID", "949e65768e0cfe07367790a75a98b98b")
+            if not api_key:
+                yield {"type": "error", "content": "Error: CF_AI_KEY unset in .env"}
+                return
+            
+            current_model = model_name if "/" in model_name else f"@cf/meta/{model_name}"
+            if model_name == "llama-3-8b-instruct":
+                 current_model = "@cf/meta/llama-3-8b-instruct"
+
+            url = f"https://api.cloudflare.com/client/v4/accounts/{account_id}/ai/run/{current_model}"
+            headers = {"Authorization": f"Bearer {api_key}"}
+            
+            cf_messages = [{"role": "system", "content": system_prompt}]
+            for m in messages:
+                role = "assistant" if m["role"] == "model" else m["role"]
+                role = "tool" if m["role"] == "function" else role
+                content = ""
+                for p in m.get("parts", []):
+                    if "text" in p: content += p["text"]
+                    if "functionResponse" in p:
+                        content = str(p["functionResponse"].get("response", {}).get("content", ""))
+                cf_messages.append({"role": role, "content": content})
+            
+            # CF Workers AI Tool support is limited/non-standard in basic run. 
+            # We treat it as text-only for now unless it supports OpenAI-style tools.
+            payload = {"messages": cf_messages}
+            
+            with httpx.Client(timeout=60.0) as client:
+                try:
+                    resp = client.post(url, json=payload, headers=headers)
+                    resp.raise_for_status()
+                    data = resp.json()
+                except Exception as e:
+                    yield {"type": "error", "content": f"Cloudflare Error: {e}"}
+                    return
+            
+            if not data.get("success"):
+                errs = data.get("errors", [])
+                err_msg = errs[0].get("message") if errs else "Unknown error"
+                yield {"type": "error", "content": f"Cloudflare API Error: {err_msg}"}
+                return
+            
+            result = data.get("result", {})
+            text = result.get("response", "")
+            if text:
+                yield {"type": "text", "content": text}
+                messages.append({"role": "model", "parts": [{"text": text}]})
+            
+            yield {"type": "usage", "content": usage}
+            return
+
+        elif provider == "openrouter":
+            import uuid
+            api_key = os.environ.get("OPENROUTER_API_KEY")
+            if not api_key:
+                yield {"type": "error", "content": "Error: OPENROUTER_API_KEY unset in .env"}
+                return
+            
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "HTTP-Referer": "https://github.com/schallten/Rta",
+                "X-OpenRouter-Title": "Rta CLI",
+                "X-Title": "Rta CLI"
+            }
+            
+            # All models get tools; only legacy openrouter/free (no model path) is text-only
+            supports_tools = model_name != "openrouter/free"
+            
+            # Build message list in strict OpenAI format
+            openrouter_messages = [{"role": "system", "content": system_prompt}]
+            for m in messages:
+                if m["role"] == "function":
+                    if not supports_tools:
+                        # For no-tool models, flatten tool results as user messages
+                        for p in m.get("parts", []):
+                            if "functionResponse" in p:
+                                fr = p["functionResponse"]
+                                content = str(fr.get("response", {}).get("content", ""))
+                                openrouter_messages.append({"role": "user", "content": f"[Tool result for {fr.get('name', '?')}]: {content}"})
+                        continue
+                    # Tool responses: each its own message with a valid tool_call_id
+                    for p in m.get("parts", []):
+                        if "functionResponse" in p:
+                            fr = p["functionResponse"]
+                            call_id = fr.get("call_id") or "call_unknown"
+                            openrouter_messages.append({
+                                "role": "tool",
+                                "tool_call_id": call_id,
+                                "name": fr.get("name", "unknown"),
+                                "content": str(fr.get("response", {}).get("content", ""))
+                            })
+                    continue
+
+                role = "assistant" if m["role"] == "model" else m["role"]
+                content = ""
+                tcalls = []
+                for p in m.get("parts", []):
+                    if "text" in p:
+                        content += p["text"]
+                    if "functionCall" in p and supports_tools:
+                        fc = p["functionCall"]
+                        call_id = fc.get("id") or f"call_{uuid.uuid4().hex[:8]}"
+                        tcalls.append({
+                            "id": call_id,
+                            "type": "function",
+                            "function": {
+                                "name": fc["name"],
+                                "arguments": json.dumps(fc.get("args", {}))
+                            }
+                        })
+                msg = {"role": role}
+                if content or not tcalls:
+                    msg["content"] = content
+                if tcalls:
+                    msg["tool_calls"] = tcalls
+                openrouter_messages.append(msg)
+            
+            models_to_try = [model_name]
+            fallbacks = ["nvidia/nemotron-3-super-120b-a12b:free", "openrouter/elephant-alpha", "google/gemma-4-26b-a4b-it:free", "z-ai/glm-4.5-air:free", "openai/gpt-oss-120b:free", "openrouter/free"]
+            for f in fallbacks:
+                if f not in models_to_try: models_to_try.append(f)
+            
+            payload = {"messages": openrouter_messages}
+            
+            data = None
+            success = False
+            with httpx.Client(timeout=60.0) as client:
+                for current_m in models_to_try:
+                    payload["model"] = current_m
+                    # Re-check tool support for fallback models
+                    if current_m == "openrouter/free":
+                        if "tools" in payload: del payload["tools"]
+                    elif "tools" not in payload and supports_tools:
+                        payload["tools"] = ollama_tools
+
+                    for attempt in range(2):
+                        try:
+                            resp = client.post(url, json=payload, headers=headers)
+                            if resp.status_code == 429:
+                                time.sleep(2 ** attempt)
+                                continue
+                            if resp.status_code == 400:
+                                # If 400, might be model-specific payload issues, try next model
+                                break 
+                            resp.raise_for_status()
+                            data = resp.json()
+                            success = True
+                            break
+                        except Exception:
+                            if attempt < 1: time.sleep(1)
+                            continue
+                    if success: break
+                    yield {"type": "text", "content": f"*(Model `{current_m}` failed/busy, trying fallback...)*"}
+                
+                if not success:
+                    yield {"type": "error", "content": "All OpenRouter models failed/busy."}
+                    return
+            
+            usage_data = data.get("usage", {})
+            u_p = usage_data.get("prompt_tokens", 0)
+            u_c = usage_data.get("completion_tokens", 0)
+            # OpenRouter / OpenAI format caching
+            u_cached = usage_data.get("prompt_tokens_details", {}).get("cached_tokens", 0)
+            # Some providers might use different fields in OpenRouter
+            if not u_cached:
+                u_cached = data.get("extra_fields", {}).get("native_tokens_prompt_cached", 0)
+
+            usage["prompt_tokens"] += u_p
+            usage["candidate_tokens"] += u_c
+            usage["total_tokens"] += (u_p + u_c)
+            usage["cached_tokens"] += u_cached
+
+            choice = data.get("choices", [{}])[0]
+            msg = choice.get("message", {})
+            text = msg.get("content") or ""
+            # Free models don't return structured tool_calls
+            fcalls = msg.get("tool_calls") or [] if supports_tools else []
+            
+            parts = []
+            if text:
+                parts.append({"text": text})
+                yield {"type": "text", "content": text}
+            
+            for tc in fcalls:
+                fn = tc.get("function", {})
+                name = fn.get("name")
+                # Always guarantee a valid string ID
+                call_id = tc.get("id") or f"call_{uuid.uuid4().hex[:8]}"
+                args = {}
+                try:
+                    args = json.loads(fn.get("arguments", "{}"))
+                except Exception:
+                    pass
+                parts.append({"functionCall": {"name": name, "args": args, "id": call_id}})
+            
+            messages.append({"role": "model", "parts": parts})
+            
+            if not fcalls:
+                yield {"type": "usage", "content": usage}
+                return
+
+            fresps = []
+            for tc in fcalls:
+                fn = tc.get("function", {})
+                name = fn.get("name")
+                call_id = tc.get("id") or f"call_{uuid.uuid4().hex[:8]}"
+                args = {}
+                try:
+                    args = json.loads(fn.get("arguments", "{}"))
+                except Exception:
+                    pass
+                yield {"type": "tool_start", "content": name}
+                res = call_function({"name": name, "args": args}, workspace_dir)
+                res["functionResponse"]["call_id"] = call_id
+                fresps.append(res)
+            messages.append({"role": "function", "parts": fresps})
+
     yield {"type": "error", "content": "Max iterations reached."}
     yield {"type": "usage", "content": usage}
 
-def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "google", model_name: str = "gemini-2.5-flash-lite", max_iterations: int = 20, think: bool = False) -> tuple[str, dict]:
+def run_agent(prompt: str, workspace_dir: str, messages: list[dict], provider: str = "openrouter", model_name: str = "nvidia/nemotron-3-super-120b-a12b:free", max_iterations: int = 20, think: bool = False) -> tuple[str, dict]:
     # Compatibility wrapper
     final_text = ""
     last_usage = {}
