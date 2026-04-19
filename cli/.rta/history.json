@@ -6,43 +6,5 @@
         "text": "hey"
       }
     ]
-  },
-  {
-    "parts": [
-      {
-        "functionCall": {
-          "name": "get_files_info",
-          "args": {
-            "directory": "."
-          },
-          "id": "sfrsk0cc"
-        },
-        "thoughtSignature": "EjQKMgEMOdbHV94YLOz/+r6SKi8Xi9CvXARktpx46bqKUdWsmsu8fDXpgEvxxuGROEOA9Ki/"
-      }
-    ],
-    "role": "model"
-  },
-  {
-    "role": "function",
-    "parts": [
-      {
-        "functionResponse": {
-          "name": "get_files_info",
-          "response": {
-            "name": "get_files_info",
-            "content": " - pyproject.toml : file_size = 542 bytes, is_dir=False\n - .python-version : file_size = 5 bytes, is_dir=False\n - rta_cli : file_size = 222 bytes, is_dir=True\n - .gitignore : file_size = 102 bytes, is_dir=False\n - .venv : file_size = 96 bytes, is_dir=True\n - uv.lock : file_size = 24724 bytes, is_dir=False\n - rta_cli.egg-info : file_size = 160 bytes, is_dir=True\n - .env : file_size = 54 bytes, is_dir=False\n - buggy_script.py : file_size = 154 bytes, is_dir=False\n"
-          }
-        }
-      }
-    ]
-  },
-  {
-    "parts": [
-      {
-        "text": "Ready. Explore files. State task.",
-        "thoughtSignature": "EjQKMgEMOdbHdf+/GIEWRAg6roQ6TiBhnnM81rTJiNJmjHNINBNTMti3qMssP61GaN54meE4"
-      }
-    ],
-    "role": "model"
   }
 ]
