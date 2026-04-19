@@ -83,7 +83,7 @@ class RtaChat:
         self.messages = []
         self.rta_dir = os.path.join(self.workspace, ".rta")
         self.history_path = os.path.join(self.rta_dir, "history.json")
-        self._load_history()
+        # self._load_history() # History loading is now manual via /load_history
 
         self.start_mem = self._get_memory_usage()
         self.session_usage = {"input": 0, "output": 0, "total": 0, "cached": 0, "start_time": time.time()}
@@ -184,6 +184,7 @@ class RtaChat:
             console.print("  /provider <name> - Switch between google/ollama/cloudflare")
             console.print("  /clear         - Clear chat history & screen")
             console.print("  /cclear        - Clear conversation context only")
+            console.print("  /load_history  - Load history from .rta/history.json")
             console.print("  /exit          - Exit the chat\n")
             return
 
@@ -243,6 +244,11 @@ class RtaChat:
             if os.path.exists(self.history_path): os.remove(self.history_path)
             self._save_history()
             console.print("[bold green]Conversation context cleared.[/bold green]")
+            return
+
+        if cmd_name == "load_history":
+            self._load_history()
+            console.print(f"[bold green]Loaded {len(self.messages)} messages from history.[/bold green]")
             return
 
         try:
