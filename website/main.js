@@ -579,7 +579,7 @@ const App = () => {
                 const link = document.createElement("link")
                 link.id = "dash-styles"
                 link.rel = "stylesheet"
-                link.href = "/dashboard.css"
+                link.href = "./dashboard.css"
                 document.head.appendChild(link)
             }
         } else {
