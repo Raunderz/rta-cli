@@ -1,17 +1,77 @@
 import van from "vanjs-core"
 
-const { div, h1, h2, h3, p, img, main, section, a, button, pre, li } = van.tags
+const { div, h1, h2, h3, p, img, main, section, a, button, pre, li, span, form, input } = van.tags
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8008"
-
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
 // State for current page
 const currentPage = van.state("home")
 const currency = van.state("INR")
+const authMode = van.state("login") // "login" or "signup"
+const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
+const authError = van.state("")
+const isLoading = van.state(false)
 
 const priceMap = {
     INR: { basic: "₹75", pro: "₹299" },
     USD: { basic: "$1.49", pro: "$4.49" }
+}
+
+// Auth Helpers
+const saveUser = (userData) => {
+    user.val = userData
+    localStorage.setItem("rta_user", JSON.stringify(userData))
+    currentPage.val = "dashboard"
+}
+
+const logout = () => {
+    user.val = null
+    localStorage.removeItem("rta_user")
+    currentPage.val = "home"
+    window.history.pushState({ page: "home" }, "", "/")
+}
+
+const handleAuth = async (e, type) => {
+    e.preventDefault()
+    authError.val = ""
+    isLoading.val = true
+
+    const formData = new FormData(e.target)
+    const data = Object.fromEntries(formData.entries())
+
+    // Get hCaptcha token
+    const captchaToken = window.hcaptcha ? window.hcaptcha.getResponse() : "test_token"
+    if (!captchaToken && import.meta.env.PROD) {
+        authError.val = "Please complete the captcha."
+        isLoading.val = false
+        return
+    }
+
+    data.captcha_token = captchaToken
+
+    try {
+        const endpoint = type === "signup" ? "/v1/auth/signup" : "/v1/auth/login"
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        })
+
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.detail || "Authentication failed")
+
+        if (type === "signup") {
+            authMode.val = "login"
+            authError.val = "Signup successful! Please log in."
+        } else {
+            saveUser(result)
+        }
+    } catch (err) {
+        authError.val = err.message
+    } finally {
+        isLoading.val = false
+        if (window.hcaptcha) window.hcaptcha.reset()
+    }
 }
 
 // Parallax logic
@@ -47,7 +107,7 @@ const Footer = () => div({ class: "footer-links" },
     NavLink("roadmap", "roadmap"),
     NavLink("privacy", "privacy"),
     NavLink("terms", "terms"),
-    NavLink("sign in", "auth"),
+    () => user.val ? NavLink("dashboard", "dashboard") : NavLink("sign in", "auth"),
     p({ class: "footer-line" }, "Coming Soon — October 2026")
 )
 
@@ -60,15 +120,23 @@ const HomePage = () => {
                     "a mobile-first, ai-assisted code editor for android. built for speed, precision, and surgical development on the go."
                 ),
                 div({ class: "cta-container" },
-                    a({
+                    () => !user.val ? a({
                         class: "waitlist-btn",
-                        href: "#/waitlist",
+                        href: "#/auth",
                         onclick: (e) => {
                             e.preventDefault()
-                            currentPage.val = "waitlist"
-                            window.history.pushState({ page: "waitlist" }, "", "/waitlist")
+                            currentPage.val = "auth"
+                            window.history.pushState({ page: "auth" }, "", "/auth")
                         }
-                    }, "join waitlist"),
+                    }, "get started") : a({
+                        class: "waitlist-btn",
+                        href: "#/dashboard",
+                        onclick: (e) => {
+                            e.preventDefault()
+                            currentPage.val = "dashboard"
+                            window.history.pushState({ page: "dashboard" }, "", "/dashboard")
+                        }
+                    }, "open dashboard"),
                     a({
                         class: "release-link-btn",
                         href: "#/releases",
@@ -254,15 +322,106 @@ const TermsPage = () => {
 }
 
 const AuthPage = () => {
+    const isLogin = () => authMode.val === "login"
+
     return div({ class: "content-page auth-page" },
         NavLink("← back to home", "home"),
         div({ class: "auth-card" },
-            h1({ class: "page-title" }, "Welcome"),
-            p({ class: "page-subtitle" }, "Sign in or create an account. (Coming Soon)"),
-            div({ class: "hcaptcha-placeholder" },
-                div({ class: "h-captcha", "data-sitekey": "51b06ce2-0f58-4148-8fec-b2944c54e718" })
+            h1({ class: "page-title" }, () => isLogin() ? "Login" : "Sign Up"),
+            p({ class: "page-subtitle" }, () => isLogin() ? "Welcome back, developer." : "Join the medical-grade coding era."),
+
+            () => authError.val ? p({ class: "error-msg" }, authError.val) : "",
+
+            form({ onsubmit: (e) => handleAuth(e, authMode.val) },
+                () => !isLogin() ? div({ class: "input-group" },
+                    input({ name: "username", placeholder: "Username", required: true, class: "auth-input" })
+                ) : "",
+                div({ class: "input-group" },
+                    input({ name: "email", type: "email", placeholder: "Email", required: true, class: "auth-input" })
+                ),
+                div({ class: "input-group" },
+                    input({ name: "password", type: "password", placeholder: "Password", required: true, class: "auth-input" })
+                ),
+                div({ class: "hcaptcha-container" },
+                    div({ class: "h-captcha", "data-sitekey": "51b06ce2-0f58-4148-8fec-b2944c54e718" })
+                ),
+                button({
+                    type: "submit",
+                    class: "auth-btn",
+                    disabled: isLoading
+                }, () => isLoading.val ? "Processing..." : (isLogin() ? "Login" : "Sign Up"))
             ),
-            button({ class: "auth-btn", disabled: true }, "Continue")
+
+            p({ class: "auth-toggle" },
+                () => isLogin() ? "New to Rta?" : "Already have an account?",
+                button({
+                    class: "toggle-btn",
+                    onclick: () => {
+                        authMode.val = isLogin() ? "signup" : "login"
+                        authError.val = ""
+                    }
+                }, () => isLogin() ? " Create an account" : " Login")
+            )
+        ),
+        Footer()
+    )
+}
+
+const DashboardPage = () => {
+    if (!user.val) {
+        currentPage.val = "auth"
+        return div()
+    }
+
+    const { user: userData, api_key } = user.val
+
+    return div({ class: "content-page dashboard-page" },
+        div({ class: "dashboard-header" },
+            h1({ class: "page-title" }, `Welcome, ${userData.user_metadata?.username || userData.email}`),
+            button({ class: "logout-btn", onclick: logout }, "Logout")
+        ),
+        div({ class: "dashboard-grid" },
+            div({ class: "dashboard-card profile-card" },
+                h3({}, "Account Information"),
+                p({}, `Email: ${userData.email}`),
+                p({}, `Tier: ${userData.user_metadata?.tier || "Free"}`),
+                p({}, `Status: Active`)
+            ),
+            div({ class: "dashboard-card key-card" },
+                h3({}, "Root API Key"),
+                p({ class: "key-warning" }, "Never share your root key. Use it to authenticate the Rta CLI."),
+                div({ class: "key-display" },
+                    pre({ class: "api-key" }, api_key || "********-****-****-****-************"),
+                    button({
+                        class: "copy-btn",
+                        onclick: (e) => {
+                            if (api_key) {
+                                navigator.clipboard.writeText(api_key)
+                                e.target.innerText = "Copied!"
+                                setTimeout(() => e.target.innerText = "Copy", 2000)
+                            }
+                        }
+                    }, "Copy")
+                ),
+                button({ class: "refresh-key-btn", disabled: true }, "Refresh Key (Coming Soon)")
+            ),
+            div({ class: "dashboard-card usage-card" },
+                h3({}, "Usage Metrics"),
+                div({ class: "usage-stats" },
+                    div({ class: "stat" },
+                        span({ class: "stat-label" }, "Tokens Used (30d)"),
+                        span({ class: "stat-value" }, "0")
+                    ),
+                    div({ class: "stat" },
+                        span({ class: "stat-label" }, "API Requests"),
+                        span({ class: "stat-value" }, "0")
+                    )
+                ),
+                div({ class: "usage-bar" },
+                    div({ class: "usage-progress", style: "width: 0%" })
+                ),
+                p({ class: "usage-limit" }, "0 / 25,000 monthly tokens")
+            )
         ),
         Footer()
     )
@@ -351,6 +510,7 @@ const App = () => {
                     }
                 }, 200);
                 return AuthPage();
+            case "dashboard": return DashboardPage()
             default: return HomePage()
         }
     }
@@ -364,15 +524,8 @@ window.addEventListener('popstate', (e) => {
 
 // Parse URL on initial load
 const initRoute = () => {
-    const path = window.location.pathname
-    if (path === "/waitlist") currentPage.val = "waitlist"
-    else if (path === "/releases") currentPage.val = "releases"
-    else if (path === "/pricing") currentPage.val = "pricing"
-    else if (path === "/roadmap") currentPage.val = "roadmap"
-    else if (path === "/privacy") currentPage.val = "privacy"
-    else if (path === "/terms") currentPage.val = "terms"
-    else if (path === "/auth") currentPage.val = "auth"
-    else currentPage.val = "home"
+    const path = window.location.pathname.slice(1) || "home"
+    currentPage.val = path
 }
 
 const root = document.getElementById("app")

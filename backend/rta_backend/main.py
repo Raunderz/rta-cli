@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Request, Header, BackgroundTasks, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -18,6 +19,20 @@ app = FastAPI(
     title="Rta Backend API",
     description="Backend API for Rta - Securing Auth & Threaded Telemetry",
     version="0.1.0",
+)
+
+# CORS setup
+origins = [
+    "http://localhost:5173",
+    "https://rta-three.vercel.app",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # SlowAPI setup

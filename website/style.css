@@ -1,9 +1,9 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
+
 @font-face {
     font-family: 'Artemis';
     src: url('/assets/Artemis_Inter_041621.otf') format('opentype');
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap');
 
 :root {
     --primary: #a8292a;
@@ -370,6 +370,75 @@ h1.app-name {
     color: var(--accent);
 }
 
+.auth-btn {
+    width: 100%;
+    background: var(--gold) !important;
+    color: #000 !important;
+    border: none !important;
+    padding: 1.2rem !important;
+    font-family: 'Cormorant Garamond', serif !important;
+    font-size: 1.3rem !important;
+    font-weight: 600 !important;
+    font-style: italic !important;
+    border-radius: 8px !important;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.15rem;
+    margin-top: 1rem;
+    display: block;
+}
+
+.auth-btn:hover:not(:disabled) {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(201, 168, 76, 0.4);
+    filter: brightness(1.1);
+}
+
+.auth-btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    background: var(--gold-dim) !important;
+}
+
+.toggle-btn {
+    background: none !important;
+    border: none !important;
+    color: var(--gold) !important;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: 600;
+    padding: 0 0.4rem;
+    transition: color 0.3s;
+    text-decoration: none;
+}
+
+.toggle-btn:hover {
+    color: var(--accent) !important;
+    text-shadow: 0 0 10px var(--gold-dim);
+}
+
+.error-msg {
+    color: #ff5e5e;
+    background: rgba(255, 94, 94, 0.1);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    font-size: 1rem;
+    border: 1px solid rgba(255, 94, 94, 0.2);
+    font-style: italic;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.hcaptcha-container {
+    margin: 1rem 0;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+}
+
 .price {
     font-size: 2.8rem;
     font-weight: 300;
@@ -396,55 +465,66 @@ h1.app-name {
     margin-top: auto;
 }
 
-/* Auth Page */
-.auth-page .page-title {
-    font-size: 2.5rem;
+/* Auth Enhancements */
+.auth-page {
+    justify-content: center;
+    padding-top: 5vh;
 }
 
 .auth-card {
-    background: rgba(10, 8, 4, 0.6);
-    backdrop-filter: blur(16px);
+    background: rgba(10, 8, 4, 0.85);
+    backdrop-filter: blur(25px);
     border: 1px solid var(--gold-dim);
-    padding: 3.5rem 3rem;
-    border-radius: 16px;
+    padding: 4rem 3rem;
+    border-radius: 20px;
     text-align: center;
-    max-width: 450px;
-    width: 100%;
-    margin-top: 2rem;
-    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8);
-}
-
-.hcaptcha-placeholder {
-    margin: 2.5rem 0;
-    min-height: 78px;
+    max-width: 480px;
+    width: 95%;
+    margin: 0 auto;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.9), 0 0 50px rgba(201, 168, 76, 0.05);
     display: flex;
-    justify-content: center;
-    align-items: center;
-    background: rgba(0, 0, 0, 0.4);
-    border: 1px dashed var(--gold-dim);
-    border-radius: 8px;
+    flex-direction: column;
+    gap: 1.2rem;
 }
 
-.auth-btn {
+.auth-card .page-title {
+    font-size: 3.8rem;
+    margin-bottom: 0.8rem;
+    letter-spacing: 0.25rem;
+}
+
+.auth-card .page-subtitle {
+    font-size: 1.4rem;
+    margin-bottom: 3rem;
+}
+
+.input-group {
     width: 100%;
-    background: var(--gold-dim);
-    color: var(--gold);
-    border: 1px solid var(--gold-dim);
-    padding: 1rem;
-    font-family: 'Cormorant Garamond', serif;
-    font-size: 1.3rem;
-    font-style: italic;
-    border-radius: 6px;
-    cursor: not-allowed;
-    opacity: 0.5;
-    transition: all 0.3s;
+    margin-bottom: 1.2rem;
 }
 
-.auth-btn:hover:not(:disabled) {
-    background: var(--gold);
-    color: var(--bg-dark);
-    cursor: pointer;
-    box-shadow: 0 5px 15px rgba(201, 168, 76, 0.4);
+.auth-input {
+    width: 100%;
+    background: #000 !important;
+    border: 1px solid rgba(201, 168, 76, 0.3) !important;
+    color: #fff !important;
+    padding: 1.4rem 1.6rem !important;
+    border-radius: 10px !important;
+    font-family: 'Cormorant Garamond', serif !important;
+    font-size: 1.3rem !important;
+    font-style: italic !important;
+    outline: none !important;
+    transition: all 0.3s ease;
+}
+
+.auth-input:focus {
+    border-color: var(--gold) !important;
+    background: #050505 !important;
+    box-shadow: 0 0 20px rgba(201, 168, 76, 0.1) !important;
+}
+
+.auth-input::placeholder {
+    color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Docs & Releases */
@@ -770,12 +850,15 @@ pre {
     .roadmap-timeline::before {
         left: 10px;
     }
+
     .phase-marker {
         left: 1px;
     }
+
     .roadmap-phase {
         padding-left: 40px;
     }
+
     .phase-title {
         font-size: 1.8rem;
     }
