@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "lucide-static": "^1.9.0",
     "vanjs-core": "^1.6.0"
   },
   "devDependencies": {
