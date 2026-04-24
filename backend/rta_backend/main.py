@@ -10,6 +10,10 @@ from rta_backend.proxy import ChatRequest, ProxyResult, route_chat_request, AllP
 from rta_backend.security import require_api_key
 from rta_backend.db import get_user_tier
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 app = FastAPI(
     title="Rta Backend API",
     description="Backend API for Rta - Securing Auth & Threaded Telemetry",
@@ -18,6 +22,7 @@ app = FastAPI(
 
 # SlowAPI setup
 app.state.limiter = limiter
+# Limiter stays enabled in TEST_MODE to allow rate limit testing.
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Tier caps for token limits
@@ -35,7 +40,8 @@ def get_user_id_key(request: Request):
 @app.post("/v1/chat")
 @limiter.limit("10/day", key_func=get_user_id_key)
 async def chat_endpoint(
-    request: ChatRequest,
+    request: Request,
+    payload: ChatRequest,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(require_api_key)
 ):
@@ -48,11 +54,11 @@ async def chat_endpoint(
         cap = TIER_CAPS.get(user_tier.lower(), 2000)
         
         # Silently cap max_tokens
-        request.max_tokens = min(request.max_tokens, cap)
+        payload.max_tokens = min(payload.max_tokens, cap)
         
         # Step 4: Call proxy router
         result = await route_chat_request(
-            request=request,
+            request=payload,
             user_id=user_id,
             user_tier=user_tier
         )
@@ -61,7 +67,7 @@ async def chat_endpoint(
         background_tasks.add_task(
             log_telemetry_task,
             user_id=user_id,
-            request=request,
+            request=payload,
             result=result
         )
         
@@ -72,8 +78,9 @@ async def chat_endpoint(
             status_code=502, 
             detail="AI service temporarily unavailable"
         )
-    except Exception as e:
-        # Generic error for any unexpected failure
+    except HTTPException:
+        raise  # pass auth 401/429 through untouched
+    except Exception:
         raise HTTPException(
             status_code=500,
             detail="Internal server error"

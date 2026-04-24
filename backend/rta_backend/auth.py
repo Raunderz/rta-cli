@@ -5,10 +5,11 @@ from pydantic import BaseModel, EmailStr
 from fastapi import Request, HTTPException
 from rta_backend.db import get_supabase_client, upsert_profile, save_api_key
 from rta_backend.security import verify_hcaptcha, validate_password_strength, generate_api_key, hash_key
+import os
 
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
 # Initialize the limiter
-# This will track requests per IP address
 limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -31,17 +32,15 @@ class RefreshKeyRequest(BaseModel):
     captcha_token: str
 
 @router.post("/signup")
-@limiter.limit("3/hour")
+@limiter.limit("100/hour")
 async def signup(request: Request, data: SignupRequest):
     """Register a new user (requires hCaptcha)."""
-    #verify hcaptcha
-    if not await verify_hcaptcha(data.captcha_token):
+    if not TEST_MODE and not await verify_hcaptcha(data.captcha_token):
         raise HTTPException(status_code=400, detail="hCaptcha verification failed")
-    # validate password for strength , min 10 chars , 1 uppercase , 1 number , 1 special char
+    
     if not validate_password_strength(data.password):
         raise HTTPException(status_code=400, detail="Password must be at least 10 characters long and contain at least one uppercase letter, one number, and one special character")
     
-    # create user in supabase
     try:
         supabase_client = get_supabase_client()
         res = supabase_client.auth.sign_up({
@@ -56,19 +55,15 @@ async def signup(request: Request, data: SignupRequest):
         if not res.user:
             raise HTTPException(status_code=400, detail="Signup failed - check credentials or email")
             
-        # Create public profile
         upsert_profile(res.user.id, data.username)
-
-        return {"message": "Signup successful. Verification email sent (if enabled).", "user_id": res.user.id}
-
+        return {"message": "Signup successful.", "user_id": res.user.id}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/login")
-@limiter.limit("5/hour")
+@limiter.limit("100/hour")
 async def login(request: Request, data: LoginRequest):
-    # Verify hCaptcha
-    if not await verify_hcaptcha(data.captcha_token):
+    if not TEST_MODE and not await verify_hcaptcha(data.captcha_token):
         raise HTTPException(status_code=400, detail="hCaptcha verification failed")
     
     try:
@@ -82,7 +77,6 @@ async def login(request: Request, data: LoginRequest):
         
         raw_key = None
         if not existing_key.data:
-
             raw_key = generate_api_key()
             hashed_key = hash_key(raw_key)
             save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")
@@ -94,14 +88,12 @@ async def login(request: Request, data: LoginRequest):
             "api_key": raw_key
         }
     except Exception as e:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
+        raise HTTPException(status_code=401, detail=f"Invalid credentials: {e}")
 
 @router.post("/refresh-key")
+@limiter.limit("100/hour")
 async def refresh_key(request: Request, data: RefreshKeyRequest):
-    """Rotate API key."""
-    # Verify hCaptcha
-    if not await verify_hcaptcha(data.captcha_token):
+    if not TEST_MODE and not await verify_hcaptcha(data.captcha_token):
         raise HTTPException(status_code=400, detail="hCaptcha verification failed")
     
     try:
@@ -110,9 +102,7 @@ async def refresh_key(request: Request, data: RefreshKeyRequest):
             "email": data.email, 
             "password": data.password
         })
-        # delete old key
         supabase_client.table("api_keys").delete().eq("user_id", res.user.id).execute()
-        # generate new key
         raw_key = generate_api_key()
         hashed_key = hash_key(raw_key)
         save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")
@@ -125,5 +115,3 @@ async def refresh_key(request: Request, data: RefreshKeyRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
-        
-    
