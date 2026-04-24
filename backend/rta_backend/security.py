@@ -31,7 +31,7 @@ async def verify_hcaptcha(token: str) -> bool:
         return False
 
 def validate_password_strength(password: str) -> bool:
-    return bool(re.match(r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{10,}$', password))
+    return bool(re.match(r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])\S{10,}$', password))
 
 def generate_api_key() -> str:
     return f"rta_{secrets.token_urlsafe(32)}"
