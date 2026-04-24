@@ -8,3 +8,4 @@ venv/
 .venv/
 rta_cli.egg-info/
 rta_cli/config.json
+.rta/
