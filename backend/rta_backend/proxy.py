@@ -95,6 +95,16 @@ def get_provider_keys() -> Dict[str, str]:
 
 async def call_provider(name: str, **kwargs) -> dict:
     """Dispatcher for provider modules."""
+    if os.getenv("TEST_MODE", "false").lower() == "true":
+        # Check if we should actually call the provider or just mock it
+        if not kwargs.get("api_key") or kwargs.get("api_key").endswith("..."):
+            return {
+                "choices": [{"message": {"role": "assistant", "content": f"Test response from {name}"}}],
+                "usage": {"prompt_tokens": 10, "completion_tokens": 10, "cached_tokens": 0},
+                "model": kwargs.get("model", "mock-model"),
+                "tool_calls_log": []
+            }
+
     dispatch = {
         "groq": call_groq,
         "cerebras": call_cerebras,
@@ -119,7 +129,7 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
     
     for provider_name in chain:
         api_key = keys.get(provider_name)
-        if not api_key:
+        if not api_key and os.getenv("TEST_MODE", "false").lower() != "true":
             logging.warning(f"Skipping {provider_name}: API key missing")
             continue
             
