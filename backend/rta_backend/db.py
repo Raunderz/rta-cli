@@ -48,6 +48,19 @@ def log_telemetry(user_id: str, data: dict):
         **data
     }).execute()
 
+def get_user_tier(user_id: str) -> str:
+    """Fetch user subscription tier."""
+    client = get_supabase_client()
+    res = client.table("profiles").select("subscription_tier").eq("id", user_id).execute()
+    if res.data:
+        return res.data[0].get("subscription_tier", "free")
+    return "free"
+
+def insert_telemetry(data: dict):
+    """Direct insert into telemetry table."""
+    client = get_supabase_client()
+    return client.table("telemetry").insert(data).execute()
+
 
 """
 DB Schema Reference:
