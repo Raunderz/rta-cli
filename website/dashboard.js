@@ -1,149 +1,106 @@
 import van from "vanjs-core"
 
-const { div, h1, h2, h3, p, img, main, span, button } = van.tags
+const { div, h2, p, main, span, button, svg, path, rect, nav } = van.tags
 
 // State
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
-const dashboardTheme = van.state(localStorage.getItem("rta_dash_theme") || "light")
 const keyVisible = van.state(false)
 
-// Redirect if not logged in
-if (!user.val) {
-    window.location.href = "/"
-}
-
-// MD5 implementation for Gravatar (Tiny)
-function getMD5(string) {
-    function rotateLeft(lValue, iShiftBits) { return (lValue << iShiftBits) | (lValue >>> (32 - iShiftBits)); }
-    function addUnsigned(lX, lY) {
-        var lX4, lY4, lX8, lY8, lResult;
-        lX8 = (lX & 0x80000000); lY8 = (lY & 0x80000000); lX4 = (lX & 0x40000000); lY4 = (lY & 0x40000000);
-        lResult = (lX & 0x3FFFFFFF) + (lY & 0x3FFFFFFF);
-        if (lX4 & lY4) return (lResult ^ 0x80000000 ^ lX8 ^ lY8);
-        if (lX4 | lY4) { if (lResult & 0x40000000) return (lResult ^ 0xC0000000 ^ lX8 ^ lY8); else return (lResult ^ 0x40000000 ^ lX8 ^ lY8); }
-        return (lResult ^ lX8 ^ lY8);
-    }
-    function F(x, y, z) { return (x & y) | ((~x) & z); }
-    function G(x, y, z) { return (x & z) | (y & (~z)); }
-    function H(x, y, z) { return (x ^ y ^ z); }
-    function I(x, y, z) { return (y ^ (x | (~z))); }
-    function FF(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(F(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); };
-    function GG(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(G(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); };
-    function HH(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(H(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); };
-    function II(a, b, c, d, x, s, ac) { a = addUnsigned(a, addUnsigned(addUnsigned(I(b, c, d), x), ac)); return addUnsigned(rotateLeft(a, s), b); };
-    function convertToWordArray(string) {
-        var lWordCount; var lMessageLength = string.length; var lNumberOfWords_temp1 = lMessageLength + 8; var lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64; var lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16; var lWordArray = Array(lNumberOfWords - 1); var lBytePosition = 0; var lByteCount = 0;
-        while (lByteCount < lMessageLength) { lWordCount = (lByteCount - (lByteCount % 4)) / 4; lBytePosition = (lByteCount % 4) * 8; lWordArray[lWordCount] = (lWordArray[lWordCount] | (string.charCodeAt(lByteCount) << lBytePosition)); lByteCount++; }
-        lWordCount = (lByteCount - (lByteCount % 4)) / 4; lBytePosition = (lByteCount % 4) * 8; lWordArray[lWordCount] = lWordArray[lWordCount] | (0x80 << lBytePosition); lWordArray[lNumberOfWords - 2] = lMessageLength << 3; lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29; return lWordArray;
-    };
-    function wordToHex(lValue) { var WordToHexValue = "", WordToHexValue_temp = "", lByte, lCount; for (lCount = 0; lCount <= 3; lCount++) { lByte = (lValue >>> (lCount * 8)) & 255; WordToHexValue_temp = "0" + lByte.toString(16); WordToHexValue = WordToHexValue + WordToHexValue_temp.substr(WordToHexValue_temp.length - 2, 2); } return WordToHexValue; };
-    var x = Array(); var k, AA, BB, CC, DD, a, b, c, d; var S11 = 7, S12 = 12, S13 = 17, S14 = 22; var S21 = 5, S22 = 9, S23 = 14, S24 = 20; var S31 = 4, S32 = 11, S33 = 16, S34 = 23; var S41 = 6, S42 = 10, S43 = 15, S44 = 21;
-    string = unescape(encodeURIComponent(string)); x = convertToWordArray(string); a = 0x67452301; b = 0xEFCDAB89; c = 0x98BADCFE; d = 0x10325476;
-    for (k = 0; k < x.length; k += 16) {
-        AA = a; BB = b; CC = c; DD = d;
-        a = FF(a, b, c, d, x[k + 0], S11, 0xD76AA478); d = FF(d, a, b, c, x[k + 1], S12, 0xE8C7B756); c = FF(c, d, a, b, x[k + 2], S13, 0x242070DB); b = FF(b, c, d, a, x[k + 3], S14, 0xC1BDCEEE); a = FF(a, b, c, d, x[k + 4], S11, 0xF57C0FAF); d = FF(d, a, b, c, x[k + 5], S12, 0x4787C62A); c = FF(c, d, a, b, x[k + 6], S13, 0xA8304613); b = FF(b, c, d, a, x[k + 7], S14, 0xFD469501); a = FF(a, b, c, d, x[k + 8], S11, 0x698098D8); d = FF(d, a, b, c, x[k + 9], S12, 0x8B44F7AF); c = FF(c, d, a, b, x[k + 10], S13, 0xFFFF5BB1); b = FF(b, c, d, a, x[k + 11], S14, 0x895CD7BE); a = FF(a, b, c, d, x[k + 12], S11, 0x6B901122); d = FF(d, a, b, c, x[k + 13], S12, 0xFD987193); c = FF(c, d, a, b, x[k + 14], S13, 0xA679438E); b = FF(b, c, d, a, x[k + 15], S14, 0x49B40821);
-        a = GG(a, b, c, d, x[k + 1], S21, 0xF61E2562); d = GG(d, a, b, c, x[k + 6], S22, 0xC040B340); c = GG(c, d, a, b, x[k + 11], S23, 0x265E5A51); b = GG(b, c, d, a, x[k + 0], S24, 0xE9B6C7AA); a = GG(a, b, c, d, x[k + 5], S21, 0xD62F105D); d = GG(d, a, b, c, x[k + 10], S22, 0x02441453); c = GG(c, d, a, b, x[k + 15], S23, 0xD8A1E681); b = GG(b, c, d, a, x[k + 4], S24, 0xE7D3FBC8); a = GG(a, b, c, d, x[k + 9], S21, 0x21E1CDE6); d = GG(d, a, b, c, x[k + 14], S22, 0xC33707D6); c = GG(c, d, a, b, x[k + 3], S23, 0xF4D50D87); b = GG(b, c, d, a, x[k + 8], S24, 0x455A14ED); a = GG(a, b, c, d, x[k + 13], S21, 0xA9E3E905); d = GG(d, a, b, c, x[k + 2], S22, 0xFCEFA3F8); c = GG(c, d, a, b, x[k + 7], S23, 0x676F02D9); b = GG(b, c, d, a, x[k + 12], S24, 0x8D2A4C8A);
-        a = HH(a, b, c, d, x[k + 5], S31, 0xFFFA3942); d = HH(d, a, b, c, x[k + 8], S32, 0x8771F681); c = HH(c, d, a, b, x[k + 11], S33, 0x6D9D6122); b = HH(b, c, d, a, x[k + 14], S34, 0xFDE5380C); a = HH(a, b, c, d, x[k + 1], S31, 0xA4BEEA44); d = HH(d, a, b, c, x[k + 4], S32, 0x4BDECFA9); c = HH(c, d, a, b, x[k + 7], S33, 0xF6BB4B60); b = HH(b, c, d, a, x[k + 10], S34, 0xBEBFBC70); a = HH(a, b, c, d, x[k + 13], S31, 0x289B7EC6); d = HH(d, a, b, c, x[k + 0], S32, 0xEAA127FA); c = HH(c, d, a, b, x[k + 3], S33, 0xD4EF3085); b = HH(b, c, d, a, x[k + 6], S34, 0x04881D05); a = HH(a, b, c, d, x[k + 9], S31, 0xD9D4D039); d = HH(d, a, b, c, x[k + 12], S32, 0xE6DB99E5); c = HH(c, d, a, b, x[k + 15], S33, 0x1FA27CF8); b = HH(b, c, d, a, x[k + 2], S34, 0xC4AC5665);
-        a = II(a, b, c, d, x[k + 0], S41, 0xF4292244); d = II(d, a, b, c, x[k + 7], S42, 0x432AFF97); c = II(c, d, a, b, x[k + 14], S43, 0xAB9423A7); b = II(b, c, d, a, x[k + 5], S44, 0xFC93A039); a = II(a, b, c, d, x[k + 12], S41, 0x655B59C3); d = II(d, a, b, c, x[k + 3], S42, 0x8F0CCC92); c = II(c, d, a, b, x[k + 10], S43, 0xFFEFF47D); b = II(b, c, d, a, x[k + 1], S44, 0x85845DD1); a = II(a, b, c, d, x[k + 8], S41, 0x6FA87E4F); d = II(d, a, b, c, x[k + 15], S42, 0xFE2CE6E0); c = II(c, d, a, b, x[k + 6], S43, 0xA3014314); b = II(b, c, d, a, x[k + 13], S44, 0x4E0811A1); a = II(a, b, c, d, x[k + 4], S41, 0xF7537E82); d = II(d, a, b, c, x[k + 11], S42, 0xBD3AF235); c = II(c, d, a, b, x[k + 2], S43, 0x2AD7D2BB); b = II(b, c, d, a, x[k + 9], S44, 0xEB86D391);
-        a = addUnsigned(a, AA); b = addUnsigned(b, BB); c = addUnsigned(c, CC); d = addUnsigned(d, DD);
-    }
-    var temp = wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d); return temp.toLowerCase();
-}
+if (!user.val) { window.location.href = "/" }
 
 const logout = () => {
     localStorage.removeItem("rta_user")
     window.location.href = "/"
 }
 
+// Icons
+const Icon = (d) => svg({ width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }, path({ d }))
+
 const Dashboard = () => {
     const { user: userData, api_key } = user.val
-    const emailHash = getMD5(userData.email.trim().toLowerCase())
-    const gravatarUrl = `https://www.gravatar.com/avatar/${emailHash}?s=128&d=identicon`
 
-    const tier = userData.user_metadata?.tier || "Free"
+    const metrics = [
+        { label: "Total Requests", value: "42", trend: "+12.4%", color: "var(--accent-emerald)" },
+        { label: "Token Usage", value: "1,402", trend: "+2.1%", color: "var(--accent-blue)" },
+        { label: "Avg Latency", value: "142ms", trend: "-14ms", color: "var(--status-warning)" },
+        { label: "System Uptime", value: "99.9%", trend: "Stable", color: "var(--accent-emerald)" }
+    ]
 
-    const toggleTheme = () => {
-        const next = dashboardTheme.val === "light" ? "dark" : "light"
-        dashboardTheme.val = next
-        document.body.setAttribute("data-theme", next)
-        localStorage.setItem("rta_dash_theme", next)
-    }
+    const graphBars = [30, 45, 25, 60, 80, 45, 90, 70, 40, 55, 30, 65, 50, 40, 75, 85, 40, 60]
 
-    // Set initial theme
-    document.body.setAttribute("data-theme", dashboardTheme.val)
+    const activities = [
+        { time: "14:30:01", event: "CLI_INIT", status: "success", color: "var(--accent-emerald)" },
+        { time: "14:28:45", event: "PROJECT_PUSH", status: "success", color: "var(--accent-emerald)" },
+        { time: "14:22:12", event: "API_AUTH_FAILURE", status: "error", color: "var(--status-error)" },
+        { time: "14:20:05", event: "LOG_STREAM_CONNECT", status: "active", color: "var(--accent-blue)" },
+        { time: "14:15:33", event: "VULN_SCAN_COMPLETE", status: "success", color: "var(--accent-emerald)" }
+    ]
 
-    return main({ class: "dashboard-container" },
-        div({ class: "dash-header" },
-            div({ class: "dash-logo-text" }, "rta"),
-            div({ class: "dash-nav-actions" },
-                button({ class: "theme-toggle", onclick: toggleTheme },
-                    () => dashboardTheme.val === "light" ? "🌙 Dark" : "☀️ Light"
-                ),
-                button({ class: "btn-secondary-dash", onclick: logout }, "Logout")
+    return div({ class: "app-shell" },
+        // Sidebar
+        nav({ class: "sidebar" },
+            div({ class: "sidebar-logo" }, "rta"),
+            
+            div({ class: "nav-group" },
+                div({ class: "nav-label" }, "Management"),
+                div({ class: "nav-item active" }, Icon("M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"), "Dashboard"),
+                div({ class: "nav-item" }, Icon("M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"), "Projects"),
+                div({ class: "nav-item" }, Icon("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"), "Security")
+            ),
+
+            div({ class: "nav-group" },
+                div({ class: "nav-label" }, "Account"),
+                div({ class: "nav-item" }, Icon("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"), "Profile"),
+                div({ class: "nav-item" }, Icon("M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"), "Alerts")
+            ),
+
+            div({ style: "margin-top: auto;" },
+                div({ class: "nav-item", onclick: logout }, Icon("M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"), "Sign Out")
             )
         ),
 
-        div({ class: "stat-grid-dash", style: "margin-bottom: 2rem;" },
-            div({ class: "dash-card profile-row" },
-                div({ class: "avatar-wrapper" },
-                    img({ class: "avatar-dash", src: gravatarUrl })
+        // Main
+        main({ class: "main-canvas" },
+            div({ class: "content-grid" },
+                // Metrics
+                metrics.map(m => div({ class: "card" },
+                    div({ class: "card-header" },
+                        span({ class: "card-title" }, m.label),
+                        Icon("M22 12h-4l-3 9L9 3l-3 9H2")
+                    ),
+                    div({ class: "metric-value" }, m.value),
+                    div({ class: "metric-trend", style: `color: ${m.color}` }, m.trend)
+                )),
+
+                // Activity Viz
+                div({ class: "viz-section" },
+                    div({ class: "viz-title" }, "Request Flow Activity"),
+                    div({ class: "bar-container" },
+                        graphBars.map(h => div({ class: "data-bar", style: `height: ${h}%` }))
+                    )
                 ),
-                div({ class: "profile-info-group" },
-                    h2({}, userData.user_metadata?.username || "Developer"),
-                    p({}, userData.email),
-                    span({ class: `tier-badge tier-${tier.toLowerCase().slice(0, 3)}` }, tier)
-                )
-            ),
-            div({ class: "dash-card" },
-                div({ class: "stat-card-inner" },
-                    span({ class: "stat-label-modern" }, "Tokens Consumed"),
-                    span({ class: "stat-value-modern" }, "1.4k"),
-                    div({ class: "usage-track" },
-                        div({ class: "usage-bar-fill", style: "width: 5.6%" })
-                    )
-                )
-            ),
-            div({ class: "dash-card" },
-                div({ class: "stat-card-inner" },
-                    span({ class: "stat-label-modern" }, "Total Requests"),
-                    span({ class: "stat-value-modern" }, "42")
-                )
-            )
-        ),
 
-        div({ class: "dash-grid" },
-            div({ class: "dash-card" },
-                h3({ class: "dash-section-title" }, "API Key Management"),
-                p({ style: "font-size: 0.875rem; color: var(--dash-text-sec); margin-bottom: 1rem;" },
-                    "Your root key is required to use Rta via CLI. Do not share it."),
-                div({ class: "api-key-box" },
-                    span({ class: "key-text" }, () => keyVisible.val ? (api_key || "No key found") : "••••••••••••••••••••••••••••••••"),
-                    div({ class: "key-actions" },
-                        button({ class: "btn-icon-dash", onclick: () => keyVisible.val = !keyVisible.val },
-                            () => keyVisible.val ? "🙈" : "👁️"
-                        ),
-                        button({
-                            class: "btn-icon-dash",
-                            onclick: (e) => {
-                                if (api_key) {
-                                    navigator.clipboard.writeText(api_key)
-                                    const orig = e.target.innerText
-                                    e.target.innerText = "✅"
-                                    setTimeout(() => e.target.innerText = orig, 1500)
-                                }
-                            }
-                        }, "📋")
+                // API Key
+                div({ class: "card api-well" },
+                    span({ class: "card-title" }, "System Authentication"),
+                    p({ style: "font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.5rem;" }, "Primary root key for CLI operations."),
+                    span({ class: "mono-key" }, () => keyVisible.val ? (api_key || "No key defined") : "••••••••••••••••••••••••••••••••"),
+                    div({ style: "display: flex; gap: 0.75rem;" },
+                        button({ class: "btn-ghost", onclick: () => keyVisible.val = !keyVisible.val }, "Toggle Visibility"),
+                        button({ class: "btn-ghost", onclick: () => api_key && navigator.clipboard.writeText(api_key) }, "Copy Secret")
                     )
-                )
-            ),
+                ),
 
-            div({ class: "dash-card" },
-                h3({ class: "dash-section-title" }, "Request Activity"),
-                div({ class: "mock-activity" },
-                    [40, 70, 45, 90, 60, 85, 30, 55, 75, 40].map(h => div({
-                        class: "mock-bar",
-                        style: `height: ${h}%`
-                    }))
+                // Recent Events
+                div({ class: "card activity-section" },
+                    span({ class: "card-title" }, "System Event Log"),
+                    div({ style: "margin-top: 1rem;" },
+                        activities.map(a => div({ class: "activity-row" },
+                            div({ class: "status-indicator", style: `background: ${a.color};` }),
+                            span({ style: "color: var(--text-primary); font-family: var(--font-mono);" }, a.event),
+                            span({ style: "color: var(--text-muted); font-size: 0.75rem;" }, a.time)
+                        ))
+                    )
                 )
             )
         )
