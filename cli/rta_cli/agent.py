@@ -13,6 +13,11 @@ from rta_cli.functions.run_python_file import run_python_file, schema_run_python
 from rta_cli.functions.write_file import write_file, schema_write_file
 from rta_cli.functions.run_command import run_command, schema_run_command
 from rta_cli.functions.grep_search import grep_search, schema_grep_search
+from rta_cli.functions.glob_search import glob_search, schema_glob_search
+from rta_cli.functions.edit_file import edit_file, schema_edit_file
+from rta_cli.functions.delete_file import delete_file, schema_delete_file
+from rta_cli.functions.create_dir import create_dir, schema_create_dir
+from rta_cli.functions.list_directory import list_directory, schema_list_directory
 
 def call_function(function_call, workspace_dir: str):
     name = function_call.get("name")
@@ -29,6 +34,16 @@ def call_function(function_call, workspace_dir: str):
         result = run_command(workspace_dir, **args)
     elif name == "grep_search":
         result = grep_search(workspace_dir, **args)
+    elif name == "glob_search":
+        result = glob_search(workspace_dir, **args)
+    elif name == "edit_file":
+        result = edit_file(workspace_dir, **args)
+    elif name == "delete_file":
+        result = delete_file(workspace_dir, **args)
+    elif name == "create_dir":
+        result = create_dir(workspace_dir, **args)
+    elif name == "list_directory":
+        result = list_directory(workspace_dir, **args)
     else:
         result = f"Error: function {name} not found"
 
@@ -56,6 +71,11 @@ def stream_agent(prompt: str, workspace_dir: str, messages: list[dict], provider
         schema_write_file,
         schema_run_command,
         schema_grep_search,
+        schema_glob_search,
+        schema_edit_file,
+        schema_delete_file,
+        schema_create_dir,
+        schema_list_directory,
     ]
 
     ollama_tools = [{"type": "function", "function": f} for f in available_functions]
