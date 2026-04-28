@@ -4,8 +4,7 @@ from typing import Generator
 
 import httpx
 
-from rta_cli.config import get_server_url
-from rta_cli.utils import load_credential, get_device_id
+from rta_cli.utils import load_credential, get_device_id, get_server_url
 from rta_cli.functions.get_file_content import get_file_contents, schema_get_file_contents
 from rta_cli.functions.get_files_info import get_files_info, schema_get_files_info
 from rta_cli.functions.run_python_file import run_python_file, schema_run_python_file

@@ -161,6 +161,91 @@ async def usage_endpoint(
     }
 
 
+@app.get("/v1/dashboard")
+async def dashboard_endpoint(
+    request: Request,
+    user_id: str = Depends(require_api_key)
+):
+    """
+    Full dashboard data for the authenticated user in a single call.
+    Returns: profile, usage (today + month), recent history, key hint.
+    Powers web/desktop dashboard UI.
+    """
+    from datetime import datetime, timezone
+    from rta_backend.db import get_supabase_client
+
+    supabase = get_supabase_client()
+    tier = get_user_tier(user_id)
+    now = datetime.now(timezone.utc)
+    today = now.date().isoformat()
+    month_start = now.replace(day=1).date().isoformat()
+
+    tier_caps = {
+        "free":       {"calls_day": 10,   "tokens_req": 2000,  "tokens_month": 25000},
+        "basic":      {"calls_day": 50,   "tokens_req": 4000,  "tokens_month": 100000},
+        "pro":        {"calls_day": 500,  "tokens_req": 10000, "tokens_month": 1000000},
+        "enterprise": {"calls_day": 9999, "tokens_req": 32000, "tokens_month": 10000000},
+    }
+    caps = tier_caps.get(tier.lower(), tier_caps["free"])
+
+    # Profile
+    profile_res = supabase.table("profiles").select("username, created_at").eq("id", user_id).execute()
+    profile = profile_res.data[0] if profile_res.data else {}
+
+    # Key hint
+    key_res = supabase.table("api_keys").select("key_hint, created_at").eq("user_id", user_id).execute()
+    key_hint = key_res.data[0].get("key_hint", "") if key_res.data else ""
+
+    # Calls today
+    calls_today_res = (
+        supabase.table("telemetry")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .gte("created_at", today)
+        .execute()
+    )
+    calls_today = calls_today_res.count or 0
+
+    # Tokens this month
+    tokens_res = (
+        supabase.table("telemetry")
+        .select("tokens_in, tokens_out")
+        .eq("user_id", user_id)
+        .gte("created_at", month_start)
+        .execute()
+    )
+    tokens_month = sum(
+        (r.get("tokens_in") or 0) + (r.get("tokens_out") or 0)
+        for r in (tokens_res.data or [])
+    )
+
+    # Recent 10 calls
+    recent_res = (
+        supabase.table("telemetry")
+        .select("created_at, model_used, provider, tokens_in, tokens_out, latency_ms")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .limit(10)
+        .execute()
+    )
+
+    return {
+        "user_id": user_id,
+        "username": profile.get("username", ""),
+        "member_since": profile.get("created_at", ""),
+        "tier": tier,
+        "api_key_hint": key_hint,
+        "limits": caps,
+        "usage": {
+            "calls_today": calls_today,
+            "calls_limit_day": caps["calls_day"],
+            "tokens_used_month": tokens_month,
+            "tokens_limit_month": caps["tokens_month"],
+        },
+        "recent_calls": recent_res.data or [],
+    }
+
+
 @app.get("/")
 async def root():
     return {"message": "Rta Backend API", "version": "0.1.0"}

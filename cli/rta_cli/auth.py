@@ -5,8 +5,7 @@ import sys
 import httpx
 from rich.console import Console
 
-from rta_cli.config import get_server_url
-from rta_cli.utils import save_credential, load_credential, delete_credential, get_device_id
+from rta_cli.utils import save_credential, load_credential, delete_credential, get_device_id, get_server_url
 
 console = Console()
 
