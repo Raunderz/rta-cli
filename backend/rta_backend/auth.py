@@ -1,10 +1,10 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from pydantic import BaseModel, EmailStr
 from fastapi import Request, HTTPException
-from rta_backend.db import get_supabase_client, upsert_profile, save_api_key
-from rta_backend.security import verify_hcaptcha, validate_password_strength, generate_api_key, hash_key
+from rta_backend.db import get_supabase_client, upsert_profile, save_api_key, get_user_tier
+from rta_backend.security import verify_hcaptcha, validate_password_strength, generate_api_key, hash_key, require_api_key
 import os
 
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
@@ -115,3 +115,28 @@ async def refresh_key(request: Request, data: RefreshKeyRequest):
         }
     except Exception as e:
         raise HTTPException(status_code=401, detail="Invalid credentials")
+
+
+@router.get("/me")
+async def get_me(request: Request, user_id: str = Depends(require_api_key)):
+    """
+    Validate API key and return user profile.
+    Used by 'rta login' to confirm key without consuming AI tokens.
+    """
+    try:
+        supabase = get_supabase_client()
+        profile = supabase.table("profiles").select("username, subscription_tier, created_at").eq("id", user_id).execute()
+        email_res = supabase.auth.admin.get_user_by_id(user_id)
+
+        data = profile.data[0] if profile.data else {}
+        email = getattr(email_res.user, "email", "unknown") if email_res and email_res.user else "unknown"
+
+        return {
+            "user_id": user_id,
+            "email": email,
+            "username": data.get("username", ""),
+            "tier": data.get("subscription_tier", "free"),
+            "created_at": data.get("created_at", ""),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Profile lookup failed: {e}")

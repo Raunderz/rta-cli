@@ -44,7 +44,8 @@ LOADING_MESSAGES = [
     "Rewriting the future...",
     "Chasing bugs in the dark...",
     "Parsing complexity...",
-    "Thinking in TOON..."
+    "Thinking in 4 Dimensions...",
+    "Looks stuck ? It probably isn't"
 ]
 
 class RtaChat:
@@ -52,38 +53,27 @@ class RtaChat:
         self.last_ctrl_c = 0
         self.workspace = os.path.abspath(os.getcwd())
         self.workspace_name = os.path.basename(self.workspace)
-        self.version = "v0.0.2"
+        self.version = "v0.2.0"
         self.ascii_art = ASCII_ART
-        self.user = "Guest"
-        
+
+        from rta_cli.utils import load_credential
+        api_key = load_credential("rta_api_key")
+        if not api_key:
+            console.print("[bold red]No API key found. Run: rta login[/bold red]")
+            sys.exit(1)
+        self.user = "authenticated"
+
         if hasattr(sys, '_MEIPASS'):
             self.config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
         else:
             self.config_path = os.path.join(os.path.dirname(__file__), 'config.json')
-            
-        self.model = "nvidia/nemotron-3-super-120b-a12b:free"
-        self.provider = "openrouter"
-        
-        if not os.path.exists(self.config_path):
-            try:
-                with open(self.config_path, 'w') as f:
-                    json.dump({
-                        "model": self.model,
-                        "provider": self.provider,
-                        "server_url": "http://localhost:8000"
-                    }, f, indent=4)
-            except:
-                pass
-        else:
-            with open(self.config_path, 'r') as f:
-                cfg = json.load(f)
-                self.model = cfg.get("model", self.model)
-                self.provider = cfg.get("provider", self.provider)
+
+        self.provider = "rta"
+        self.model = "auto"
 
         self.messages = []
         self.rta_dir = os.path.join(self.workspace, ".rta")
         self.history_path = os.path.join(self.rta_dir, "history.json")
-        # self._load_history() # History loading is now manual via /load_history
 
         self.start_mem = self._get_memory_usage()
         self.session_usage = {"input": 0, "output": 0, "total": 0, "cached": 0, "start_time": time.time()}
@@ -180,55 +170,10 @@ class RtaChat:
 
         if cmd_name == "help":
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
-            console.print("  /model <name> - Change the model")
-            console.print("  /provider <name> - Switch between google/ollama/cloudflare")
             console.print("  /clear         - Clear chat history & screen")
             console.print("  /cclear        - Clear conversation context only")
             console.print("  /load_history  - Load history from .rta/history.json")
             console.print("  /exit          - Exit the chat\n")
-            return
-
-        if cmd_name == "model":
-            if not args:
-                console.print(f"[bold #ff3333]Current model: [/bold #ff3333]{self.model}")
-                return
-            new_model = args[0]
-            self.model = new_model
-            with open(self.config_path, 'r+') as f:
-                config = json.load(f)
-                config['model'] = new_model
-                f.seek(0)
-                json.dump(config, f, indent=4)
-                f.truncate()
-            console.print(f"[bold green]Model updated to: {new_model}[/bold green]")
-            self.print_header()
-            return
-
-        if cmd_name in ["provider", "providers"]:
-            if not args:
-                console.print(f"[bold #ff3333]Current provider: [/bold #ff3333]{self.provider}")
-                return
-            new_prov = args[0].lower()
-            if new_prov not in ["google", "ollama", "cloudflare", "openrouter"]:
-                console.print(f"[bold red]Unsupported provider: {new_prov}[/bold red]")
-                return
-            self.provider = new_prov
-            
-            # Set default models for specific providers
-            if new_prov == "cloudflare":
-                self.model = "llama-3-8b-instruct"
-            elif new_prov == "openrouter":
-                self.model = "nvidia/nemotron-3-super-120b-a12b:free"
-            
-            with open(self.config_path, 'r+') as f:
-                config = json.load(f)
-                config['provider'] = new_prov
-                config['model'] = self.model
-                f.seek(0)
-                json.dump(config, f, indent=4)
-                f.truncate()
-            console.print(f"[bold green]Provider updated to: {new_prov}[/bold green]")
-            self.print_header()
             return
 
         if cmd_name in ["clear", "cls"]:

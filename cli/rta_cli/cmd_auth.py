@@ -1,31 +1,27 @@
-"""Auth command - login/logout with Rta backend."""
-import sys
+"""cmd_auth.py — deprecated stub. Real auth lives in rta_cli.auth."""
+# login/logout/whoami/status are top-level `rta` commands now.
+# This file kept for backward compat imports only.
+
+from rta_cli.auth import do_login, do_logout, do_whoami, do_status
 
 
 def auth(args):
+    """Legacy dispatcher — prefer 'rta login/logout/whoami/status'."""
+    import sys
     if not args:
-        print("Usage: rta auth <login|logout|status>", file=sys.stderr)
+        print("Usage: rta login | logout | whoami | status", file=sys.stderr)
         sys.exit(1)
 
     subcmd = args[0]
-    if subcmd == "login":
-        _login(args[1:])
-    elif subcmd == "logout":
-        _logout()
-    elif subcmd == "status":
-        _status()
+    dispatch = {
+        "login":  do_login,
+        "logout": do_logout,
+        "whoami": do_whoami,
+        "status": do_status,
+    }
+    fn = dispatch.get(subcmd)
+    if fn:
+        fn()
     else:
-        print(f"error: unknown auth subcommand '{subcmd}'", file=sys.stderr)
+        print(f"Unknown subcommand: {subcmd}", file=sys.stderr)
         sys.exit(1)
-
-
-def _login(args):
-    print("Auth login - to be implemented")
-
-
-def _logout():
-    print("Auth logout - to be implemented")
-
-
-def _status():
-    print("Auth status - to be implemented")

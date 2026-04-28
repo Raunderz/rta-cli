@@ -47,6 +47,7 @@ async def require_api_key(request: Request, api_key: str = Security(api_key_head
     """
     Dependency to validate API key and return user_id.
     Sets user_id in request state for limiter.
+    Logs X-Device-ID and X-CLI-Version for passive anti-abuse tracking.
     """
     hashed = hash_key(api_key)
     supabase = get_supabase_client()
@@ -58,4 +59,11 @@ async def require_api_key(request: Request, api_key: str = Security(api_key_head
         
     user_id = res.data[0]["user_id"]
     request.state.user_id = user_id
+
+    # Passive anti-abuse: log device fingerprint, not enforced
+    device_id = request.headers.get("X-Device-ID", "unknown")
+    cli_version = request.headers.get("X-CLI-Version", "unknown")
+    import logging
+    logging.info("auth|user=%s|device=%s|cli=%s", user_id[:8], device_id, cli_version)
+
     return user_id

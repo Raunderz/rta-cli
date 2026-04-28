@@ -106,6 +106,61 @@ app.include_router(auth_router, prefix="/v1")
 app.include_router(data_router, prefix="/v1")
 app.include_router(billing_router, prefix="/v1")
 
+@app.get("/v1/usage")
+async def usage_endpoint(
+    request: Request,
+    user_id: str = Depends(require_api_key)
+):
+    """
+    Return call counts and token usage for the authenticated user.
+    Powers `rta status`.
+    """
+    from datetime import datetime, timezone
+    supabase = __import__("rta_backend.db", fromlist=["get_supabase_client"]).get_supabase_client()
+    tier = get_user_tier(user_id)
+
+    # Calls today
+    today = datetime.now(timezone.utc).date().isoformat()
+    calls_today_res = (
+        supabase.table("telemetry")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .gte("created_at", today)
+        .execute()
+    )
+    calls_today = calls_today_res.count or 0
+
+    # Tokens this calendar month
+    month_start = datetime.now(timezone.utc).replace(day=1).date().isoformat()
+    tokens_res = (
+        supabase.table("telemetry")
+        .select("tokens_in, tokens_out")
+        .eq("user_id", user_id)
+        .gte("created_at", month_start)
+        .execute()
+    )
+    tokens_used = sum(
+        (row.get("tokens_in") or 0) + (row.get("tokens_out") or 0)
+        for row in (tokens_res.data or [])
+    )
+
+    tier_caps = {
+        "free": {"calls": 10, "tokens": 25000},
+        "basic": {"calls": 50, "tokens": 100000},
+        "pro": {"calls": 500, "tokens": 1000000},
+        "enterprise": {"calls": 9999, "tokens": 10000000},
+    }
+    caps = tier_caps.get(tier.lower(), tier_caps["free"])
+
+    return {
+        "tier": tier,
+        "calls_today": calls_today,
+        "calls_limit": caps["calls"],
+        "tokens_used_month": tokens_used,
+        "tokens_limit_month": caps["tokens"],
+    }
+
+
 @app.get("/")
 async def root():
     return {"message": "Rta Backend API", "version": "0.1.0"}

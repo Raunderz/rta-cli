@@ -34,17 +34,38 @@ def init():
 
 
 @app.command()
-def auth():
-    """Authenticate with Rta backend"""
-    from rta_cli.cmd_auth import auth
-    auth([])
-
-
-@app.command()
 def clone():
     """Clone a repository"""
     from rta_cli.cmd_clone import clone
     clone([])
+
+
+@app.command()
+def login():
+    """Authenticate with your Rta API key"""
+    from rta_cli.auth import do_login
+    do_login()
+
+
+@app.command()
+def logout():
+    """Remove stored API key"""
+    from rta_cli.auth import do_logout
+    do_logout()
+
+
+@app.command()
+def whoami():
+    """Show logged-in user info"""
+    from rta_cli.auth import do_whoami
+    do_whoami()
+
+
+@app.command()
+def status():
+    """Show usage stats (calls today, quota left)"""
+    from rta_cli.auth import do_status
+    do_status()
 
 
 if __name__ == "__main__":
