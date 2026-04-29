@@ -472,7 +472,9 @@ const StatusPage = () => {
 
     const checkStatus = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/v1/status`)
+            const res = await fetch(`${API_BASE_URL}/v1/status`, {
+                headers: { "ngrok-skip-browser-warning": "true" }
+            })
             if (!res.ok) throw new Error("Backend unreachable")
             const data = await res.json()
             statusData.val = { loading: false, ...data }
