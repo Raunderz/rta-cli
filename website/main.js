@@ -414,20 +414,27 @@ const ReleasesPage = () => {
             ),
 
             div({ class: "guide-section", style: "text-align: left; margin-top: 2rem;" },
-                h2({ style: "margin-bottom: 2rem; border-bottom: 1px solid var(--rule); padding-bottom: 1rem;" }, "Installation Instructions"),
+                h2({ style: "margin-bottom: 2rem; border-bottom: 1px solid var(--rule); padding-bottom: 1rem;" }, "Installation & Global Usage"),
                 
+                div({ class: "global-note", style: "background: rgba(212, 175, 55, 0.1); border-left: 4px solid var(--gold); padding: 1rem; margin-bottom: 2rem; border-radius: 0 8px 8px 0;" },
+                    h3({ style: "margin-top: 0; color: var(--gold);" }, "💡 Pro Tip: Run Anywhere"),
+                    p({ style: "margin-bottom: 0; font-size: 0.95rem;" }, "Once installed globally, typing ", span({style: "color: var(--gold); font-family: monospace;"}, "rta"), " in any folder (like /Documents/project) will automatically open that folder as your workspace. It doesn't matter where the binary is stored; it always works where you are.")
+                ),
+
                 () => selectedOS.val === "linux" ? div({},
                     div({ class: "guide-step" },
                         h3({}, "1. Make Executable"),
                         pre({}, "chmod +x rta")
                     ),
                     div({ class: "guide-step" },
-                        h3({}, "2. Move to Path"),
+                        h3({}, "2. Move to Global Path"),
+                        p({}, "To use rta from any directory:"),
                         pre({}, "sudo mv rta /usr/local/bin/")
                     ),
                     div({ class: "guide-step" },
-                        h3({}, "3. Initialize"),
-                        pre({}, "rta login")
+                        h3({}, "3. Usage"),
+                        p({}, "Navigate to your project and start chatting:"),
+                        pre({}, "cd ~/my-cool-app\nrta login\nrta chat")
                     )
                 ) : 
                 selectedOS.val === "macos" ? div({},
@@ -437,27 +444,29 @@ const ReleasesPage = () => {
                         pre({}, "xattr -d com.apple.quarantine rta\nchmod +x rta")
                     ),
                     div({ class: "guide-step" },
-                        h3({}, "2. Move to Path"),
+                        h3({}, "2. Move to Global Path"),
                         pre({}, "sudo mv rta /usr/local/bin/")
                     ),
                     div({ class: "guide-step" },
                         h3({}, "3. Start"),
-                        pre({}, "rta login")
+                        p({}, "Open your terminal in any folder and run:"),
+                        pre({}, "rta chat")
                     )
                 ) :
                 div({},
                     div({ class: "guide-step" },
-                        h3({}, "1. Powershell Setup"),
-                        p({}, "Move the rta.exe to a folder in your %PATH% (e.g., C:\\Windows\\)"),
+                        h3({}, "1. Setup Global Access"),
+                        p({}, "Move rta.exe to a folder in your System PATH (e.g., C:\\Windows\\) or add your download folder to PATH."),
                         pre({}, "Move-Item .\\rta.exe C:\\Windows\\rta.exe")
                     ),
                     div({ class: "guide-step" },
                         h3({}, "2. Verify"),
+                        p({}, "Open CMD or PowerShell anywhere and type:"),
                         pre({}, "rta --help")
                     ),
                     div({ class: "guide-step" },
-                        h3({}, "3. Authenticate"),
-                        pre({}, "rta login")
+                        h3({}, "3. Start Coding"),
+                        pre({}, "cd C:\\Users\\Name\\Projects\\App\nrta chat")
                     )
                 )
             )
