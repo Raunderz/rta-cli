@@ -401,6 +401,51 @@ h1.app-name {
     background: var(--gold-dim) !important;
 }
 
+.auth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    margin: 1rem 0;
+    color: var(--gold-dim);
+    font-size: 0.9rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-style: italic;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid rgba(212, 175, 55, 0.2);
+}
+
+.auth-divider span {
+    padding: 0 1rem;
+}
+
+.github-btn {
+    width: 100%;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--gold);
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 500;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.github-btn:hover {
+    background: rgba(212, 175, 55, 0.1);
+    border-color: var(--gold);
+    transform: translateY(-2px);
+}
+
 .toggle-btn {
     background: none !important;
     border: none !important;

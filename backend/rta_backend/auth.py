@@ -3,6 +3,7 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from pydantic import BaseModel, EmailStr
 from fastapi import Request, HTTPException
+from fastapi.responses import RedirectResponse
 from rta_backend.db import get_supabase_client, upsert_profile, save_api_key, get_user_tier
 from rta_backend.security import verify_hcaptcha, validate_password_strength, generate_api_key, hash_key, require_api_key
 import os
@@ -30,6 +31,52 @@ class RefreshKeyRequest(BaseModel):
     email: EmailStr
     password: str
     captcha_token: str
+
+@router.get("/github")
+async def github_login():
+    """Initiate GitHub OAuth flow."""
+    supabase_client = get_supabase_client()
+    # Note: frontend_url should be where the app is hosted
+    backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    
+    res = supabase_client.auth.sign_in_with_oauth({
+        "provider": "github",
+        "options": {
+            "redirect_to": f"{backend_url}/v1/auth/callback"
+        }
+    })
+    return RedirectResponse(res.url)
+
+@router.get("/callback")
+async def auth_callback(code: str):
+    """Handle Supabase OAuth callback."""
+    try:
+        supabase_client = get_supabase_client()
+        res = supabase_client.auth.exchange_code_for_session({
+            "auth_code": code
+        })
+        
+        user_id = res.user.id
+        # Extract username from github metadata
+        metadata = res.user.user_metadata or {}
+        username = metadata.get("user_name") or metadata.get("full_name") or res.user.email.split("@")[0]
+        
+        upsert_profile(user_id, username)
+        
+        # Ensure API key exists
+        existing_key = supabase_client.table("api_keys").select("*").eq("user_id", user_id).execute()
+        if not existing_key.data:
+            raw_key = generate_api_key()
+            hashed_key = hash_key(raw_key)
+            save_api_key(user_id, hashed_key, raw_key[:8]+"...")
+        
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        # Pass session to frontend via hash params (secure)
+        redirect_url = f"{frontend_url}/dashboard.html#access_token={res.session.access_token}&refresh_token={res.session.refresh_token}"
+        return RedirectResponse(redirect_url)
+    except Exception as e:
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        return RedirectResponse(f"{frontend_url}/auth?error={str(e)}")
 
 @router.post("/signup")
 @limiter.limit("100/hour")

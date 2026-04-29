@@ -4,6 +4,23 @@ const { div, h2, p, main, span, button, svg, path, nav, a } = van.tags
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
+// Handle OAuth Hash
+const hashParams = new URLSearchParams(window.location.hash.substring(1))
+if (hashParams.has("access_token")) {
+    const oauthUser = {
+        access_token: hashParams.get("access_token"),
+        refresh_token: hashParams.get("refresh_token"),
+        api_key: hashParams.get("api_key") || null
+    }
+    // Merge with existing if available to preserve api_key if not in hash
+    const existing = JSON.parse(localStorage.getItem("rta_user") || "{}")
+    const finalUser = { ...existing, ...oauthUser }
+    if (!finalUser.api_key && existing.api_key) finalUser.api_key = existing.api_key
+    
+    localStorage.setItem("rta_user", JSON.stringify(finalUser))
+    window.location.hash = ""
+}
+
 // State
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
 const keyVisible = van.state(false)
