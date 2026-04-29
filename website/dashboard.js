@@ -24,7 +24,8 @@ const fetchDashboard = async () => {
     try {
         const res = await fetch(`${API_BASE_URL}/v1/dashboard`, {
             headers: {
-                "X-API-KEY": user.val.api_key
+                "X-API-KEY": user.val.api_key,
+                "ngrok-skip-browser-warning": "true"
             }
         })
         if (!res.ok) {
