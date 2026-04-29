@@ -93,12 +93,12 @@ const SupportBot = () => {
                     "ngrok-skip-browser-warning": "true"
                 },
                 body: JSON.stringify({
-                    provider: "gemini",
-                    model: "gemini-1.5-flash",
                     messages: [
                         { role: "system", content: "You are the Rta Support Bot. Rta is a mobile-first, AI-assisted code editor for Android and a powerful CLI for Linux/Win. Installation: 'sudo mv rta /usr/local/bin/' on Linux. Usage: 'rta login', then 'rta chat'. Rta is built for speed and surgical precision. Be concise, helpful, and technical." },
                         ...chatMessages.val
-                    ]
+                    ],
+                    model: "auto",
+                    provider: "auto"
                 })
             })
             const data = await res.json()
