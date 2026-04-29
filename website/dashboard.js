@@ -1,10 +1,15 @@
 import van from "vanjs-core"
 
-const { div, h2, p, main, span, button, svg, path, rect, nav } = van.tags
+const { div, h2, p, main, span, button, svg, path, nav } = van.tags
+
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
 // State
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
 const keyVisible = van.state(false)
+const dashData = van.state(null)
+const error = van.state(null)
+const isLoading = van.state(true)
 
 if (!user.val) { window.location.href = "/" }
 
@@ -13,34 +18,35 @@ const logout = () => {
     window.location.href = "/"
 }
 
-// Icons
 const Icon = (d) => svg({ width: "18", height: "18", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }, path({ d }))
 
+const fetchDashboard = async () => {
+    try {
+        const res = await fetch(`${API_BASE_URL}/v1/dashboard`, {
+            headers: {
+                "X-API-KEY": user.val.api_key
+            }
+        })
+        if (!res.ok) {
+            if (res.status === 401) logout()
+            throw new Error("Failed to load dashboard data")
+        }
+        dashData.val = await res.json()
+    } catch (e) {
+        error.val = e.message
+    } finally {
+        isLoading.val = false
+    }
+}
+
+fetchDashboard()
+
 const Dashboard = () => {
-    const { user: userData, api_key } = user.val
-
-    const metrics = [
-        { label: "Total Requests", value: "42", trend: "+12.4%", color: "var(--accent-emerald)" },
-        { label: "Token Usage", value: "1,402", trend: "+2.1%", color: "var(--accent-blue)" },
-        { label: "Avg Latency", value: "142ms", trend: "-14ms", color: "var(--status-warning)" },
-        { label: "System Uptime", value: "99.9%", trend: "Stable", color: "var(--accent-emerald)" }
-    ]
-
-    const graphBars = [30, 45, 25, 60, 80, 45, 90, 70, 40, 55, 30, 65, 50, 40, 75, 85, 40, 60]
-
-    const activities = [
-        { time: "14:30:01", event: "CLI_INIT", status: "success", color: "var(--accent-emerald)" },
-        { time: "14:28:45", event: "PROJECT_PUSH", status: "success", color: "var(--accent-emerald)" },
-        { time: "14:22:12", event: "API_AUTH_FAILURE", status: "error", color: "var(--status-error)" },
-        { time: "14:20:05", event: "LOG_STREAM_CONNECT", status: "active", color: "var(--accent-blue)" },
-        { time: "14:15:33", event: "VULN_SCAN_COMPLETE", status: "success", color: "var(--accent-emerald)" }
-    ]
-
     return div({ class: "app-shell" },
         // Sidebar
         nav({ class: "sidebar" },
             div({ class: "sidebar-logo" }, "rta"),
-            
+
             div({ class: "nav-group" },
                 div({ class: "nav-label" }, "Management"),
                 div({ class: "nav-item active" }, Icon("M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"), "Dashboard"),
@@ -61,48 +67,74 @@ const Dashboard = () => {
 
         // Main
         main({ class: "main-canvas" },
-            div({ class: "content-grid" },
-                // Metrics
-                metrics.map(m => div({ class: "card" },
-                    div({ class: "card-header" },
-                        span({ class: "card-title" }, m.label),
-                        Icon("M22 12h-4l-3 9L9 3l-3 9H2")
+            () => {
+                if (isLoading.val) return div({ style: "padding: 2rem; color: var(--text-primary);" }, "Loading dashboard...")
+                if (error.val) return div({ style: "padding: 2rem; color: var(--status-error);" }, error.val)
+                const d = dashData.val
+                if (!d) return div()
+
+                const metrics = [
+                    { label: "Today's Calls", value: `${d.usage.calls_today} / ${d.usage.calls_limit_day}`, color: "var(--accent-emerald)" },
+                    { label: "Monthly Tokens", value: `${d.usage.tokens_used_month.toLocaleString()} / ${d.usage.tokens_limit_month.toLocaleString()}`, color: "var(--accent-blue)" },
+                    { label: "Subscription Tier", value: d.tier.toUpperCase(), color: "var(--status-warning)" }
+                ]
+
+                const activities = (d.recent_calls || []).map(c => ({
+                    time: new Date(c.created_at).toLocaleTimeString(),
+                    event: `${c.model_used || "Unknown Model"} via ${c.provider}`,
+                    status: "success",
+                    color: "var(--accent-emerald)"
+                }))
+
+                if (activities.length === 0) {
+                    activities.push({
+                        time: "Now",
+                        event: "No recent AI requests logged.",
+                        status: "active",
+                        color: "var(--accent-blue)"
+                    })
+                }
+
+                return div({ class: "content-grid" },
+                    // Welcome
+                    div({ style: "grid-column: 1 / -1; margin-bottom: 1rem;" },
+                        h2({ style: "color: var(--text-primary); font-size: 1.5rem; letter-spacing: -0.02em;" }, `Welcome, ${d.username || "Developer"}`),
+                        p({ style: "color: var(--text-muted); font-size: 0.875rem;" }, `Member since ${new Date(d.member_since).toLocaleDateString()}`)
                     ),
-                    div({ class: "metric-value" }, m.value),
-                    div({ class: "metric-trend", style: `color: ${m.color}` }, m.trend)
-                )),
 
-                // Activity Viz
-                div({ class: "viz-section" },
-                    div({ class: "viz-title" }, "Request Flow Activity"),
-                    div({ class: "bar-container" },
-                        graphBars.map(h => div({ class: "data-bar", style: `height: ${h}%` }))
-                    )
-                ),
+                    // Metrics
+                    ...metrics.map(m => div({ class: "card" },
+                        div({ class: "card-header" },
+                            span({ class: "card-title" }, m.label),
+                            Icon("M22 12h-4l-3 9L9 3l-3 9H2")
+                        ),
+                        div({ class: "metric-value" }, m.value)
+                    )),
 
-                // API Key
-                div({ class: "card api-well" },
-                    span({ class: "card-title" }, "System Authentication"),
-                    p({ style: "font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.5rem;" }, "Primary root key for CLI operations."),
-                    span({ class: "mono-key" }, () => keyVisible.val ? (api_key || "No key defined") : "••••••••••••••••••••••••••••••••"),
-                    div({ style: "display: flex; gap: 0.75rem;" },
-                        button({ class: "btn-ghost", onclick: () => keyVisible.val = !keyVisible.val }, "Toggle Visibility"),
-                        button({ class: "btn-ghost", onclick: () => api_key && navigator.clipboard.writeText(api_key) }, "Copy Secret")
-                    )
-                ),
+                    // API Key
+                    div({ class: "card api-well", style: "grid-column: 1 / -1;" },
+                        span({ class: "card-title" }, "System Authentication"),
+                        p({ style: "font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.5rem;" }, `Primary root key for CLI operations. (Hint: ${d.api_key_hint})`),
+                        span({ class: "mono-key" }, () => keyVisible.val ? (user.val.api_key || "No key defined") : "••••••••••••••••••••••••••••••••"),
+                        div({ style: "display: flex; gap: 0.75rem;" },
+                            button({ class: "btn-ghost", onclick: () => keyVisible.val = !keyVisible.val }, "Toggle Visibility"),
+                            button({ class: "btn-ghost", onclick: () => user.val.api_key && navigator.clipboard.writeText(user.val.api_key) }, "Copy Secret")
+                        )
+                    ),
 
-                // Recent Events
-                div({ class: "card activity-section" },
-                    span({ class: "card-title" }, "System Event Log"),
-                    div({ style: "margin-top: 1rem;" },
-                        activities.map(a => div({ class: "activity-row" },
-                            div({ class: "status-indicator", style: `background: ${a.color};` }),
-                            span({ style: "color: var(--text-primary); font-family: var(--font-mono);" }, a.event),
-                            span({ style: "color: var(--text-muted); font-size: 0.75rem;" }, a.time)
-                        ))
+                    // Recent Events
+                    div({ class: "card activity-section", style: "grid-column: 1 / -1;" },
+                        span({ class: "card-title" }, "Recent AI Requests"),
+                        div({ style: "margin-top: 1rem;" },
+                            activities.map(a => div({ class: "activity-row" },
+                                div({ class: "status-indicator", style: `background: ${a.color};` }),
+                                span({ style: "color: var(--text-primary); font-family: var(--font-mono);" }, a.event),
+                                span({ style: "color: var(--text-muted); font-size: 0.75rem; margin-left: auto;" }, a.time)
+                            ))
+                        )
                     )
                 )
-            )
+            }
         )
     )
 }

@@ -371,105 +371,6 @@ const AuthPage = () => {
     )
 }
 
-const DashboardPage = () => {
-    if (!user.val) {
-        setTimeout(() => {
-            currentPage.val = "auth"
-            window.history.pushState({ page: "auth" }, "", "/auth")
-        }, 0)
-        return div()
-    }
-
-    const { user: userData, api_key } = user.val
-    const emailHash = getMD5(userData.email.trim().toLowerCase())
-    const gravatarUrl = `https://www.gravatar.com/avatar/${emailHash}?s=128&d=identicon`
-
-    const tier = userData.user_metadata?.tier || "Free"
-    const keyVisible = van.state(false)
-
-    const toggleTheme = () => {
-        const next = dashboardTheme.val === "light" ? "dark" : "light"
-        dashboardTheme.val = next
-        localStorage.setItem("rta_dash_theme", next)
-    }
-
-    return main({ class: "dashboard-container" },
-        div({ class: "dash-header" },
-            div({ class: "dash-logo-text" }, "rta"),
-            div({ class: "dash-nav-actions" },
-                button({ class: "theme-toggle", onclick: toggleTheme },
-                    () => dashboardTheme.val === "light" ? "🌙 Dark" : "☀️ Light"
-                ),
-                button({ class: "btn-secondary-dash", onclick: logout }, "Logout")
-            )
-        ),
-
-        div({ class: "stat-grid-dash", style: "margin-bottom: 2rem;" },
-            div({ class: "dash-card profile-row" },
-                div({ class: "avatar-wrapper" },
-                    img({ class: "avatar-dash", src: gravatarUrl })
-                ),
-                div({ class: "profile-info-group" },
-                    h2({}, userData.user_metadata?.username || "Developer"),
-                    p({}, userData.email),
-                    span({ class: `tier-badge tier-${tier.toLowerCase().slice(0, 3)}` }, tier)
-                )
-            ),
-            div({ class: "dash-card" },
-                div({ class: "stat-card-inner" },
-                    span({ class: "stat-label-modern" }, "Tokens Consumed"),
-                    span({ class: "stat-value-modern" }, "1.4k"),
-                    div({ class: "usage-track" },
-                        div({ class: "usage-bar-fill", style: "width: 5.6%" })
-                    )
-                )
-            ),
-            div({ class: "dash-card" },
-                div({ class: "stat-card-inner" },
-                    span({ class: "stat-label-modern" }, "Total Requests"),
-                    span({ class: "stat-value-modern" }, "42")
-                )
-            )
-        ),
-
-        div({ class: "dash-grid" },
-            div({ class: "dash-card" },
-                h3({ class: "dash-section-title" }, "API Key Management"),
-                p({ style: "font-size: 0.875rem; color: var(--dash-text-sec); margin-bottom: 1rem;" },
-                    "Your root key is required to use Rta via CLI. Do not share it."),
-                div({ class: "api-key-box" },
-                    span({ class: "key-text" }, () => keyVisible.val ? (api_key || "No key found") : "••••••••••••••••••••••••••••••••"),
-                    div({ class: "key-actions" },
-                        button({ class: "btn-icon-dash", onclick: () => keyVisible.val = !keyVisible.val },
-                            () => keyVisible.val ? "🙈" : "👁️"
-                        ),
-                        button({
-                            class: "btn-icon-dash",
-                            onclick: (e) => {
-                                if (api_key) {
-                                    navigator.clipboard.writeText(api_key)
-                                    const orig = e.target.innerText
-                                    e.target.innerText = "✅"
-                                    setTimeout(() => e.target.innerText = orig, 1500)
-                                }
-                            }
-                        }, "📋")
-                    )
-                )
-            ),
-
-            div({ class: "dash-card" },
-                h3({ class: "dash-section-title" }, "Request Activity"),
-                div({ class: "mock-activity" },
-                    [40, 70, 45, 90, 60, 85, 30, 55, 75, 40].map(h => div({
-                        class: "mock-bar",
-                        style: `height: ${h}%`
-                    }))
-                )
-            )
-        )
-    )
-}
 
 const ReleasesPage = () => {
     return div({ class: "releases-page" },
@@ -554,7 +455,6 @@ const App = () => {
                     }
                 }, 200);
                 return AuthPage();
-            case "dashboard": return DashboardPage()
             default: return HomePage()
         }
     }
