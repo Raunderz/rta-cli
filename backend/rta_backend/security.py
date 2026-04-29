@@ -41,29 +41,37 @@ def hash_key(key:str)->str:
 
 # API Key Security
 API_KEY_NAME = "X-API-KEY"
-api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=True)
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 async def require_api_key(request: Request, api_key: str = Security(api_key_header)) -> str:
     """
-    Dependency to validate API key and return user_id.
-    Sets user_id in request state for limiter.
-    Logs X-Device-ID and X-CLI-Version for passive anti-abuse tracking.
+    Dependency to validate API key OR Bearer token and return user_id.
     """
-    hashed = hash_key(api_key)
     supabase = get_supabase_client()
-    
-    res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
-    
-    if not res.data:
-        raise HTTPException(status_code=401, detail="Invalid API key")
+    user_id = None
+
+    # 1. Check for X-API-KEY
+    if api_key:
+        hashed = hash_key(api_key)
+        res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
+        if res.data:
+            user_id = res.data[0]["user_id"]
+
+    # 2. Check for Bearer token if API key failed
+    if not user_id:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            try:
+                # Use supabase.auth.get_user to verify token
+                auth_res = supabase.auth.get_user(token)
+                if auth_res.user:
+                    user_id = auth_res.user.id
+            except Exception:
+                pass
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid API key or token")
         
-    user_id = res.data[0]["user_id"]
     request.state.user_id = user_id
-
-    # Passive anti-abuse: log device fingerprint, not enforced
-    device_id = request.headers.get("X-Device-ID", "unknown")
-    cli_version = request.headers.get("X-CLI-Version", "unknown")
-    import logging
-    logging.info("auth|user=%s|device=%s|cli=%s", user_id[:8], device_id, cli_version)
-
     return user_id

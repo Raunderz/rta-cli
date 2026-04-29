@@ -40,17 +40,28 @@ const Icon = (d) => svg({ width: "18", height: "18", viewBox: "0 0 24 24", fill:
 
 const fetchDashboard = async () => {
     try {
-        const res = await fetch(`${API_BASE_URL}/v1/dashboard`, {
-            headers: {
-                "X-API-KEY": user.val.api_key,
-                "ngrok-skip-browser-warning": "true"
-            }
-        })
+        const headers = {
+            "ngrok-skip-browser-warning": "true"
+        }
+        
+        if (user.val.api_key) {
+            headers["X-API-KEY"] = user.val.api_key
+        } else if (user.val.access_token) {
+            headers["Authorization"] = `Bearer ${user.val.access_token}`
+        }
+
+        const res = await fetch(`${API_BASE_URL}/v1/dashboard`, { headers })
         if (!res.ok) {
             if (res.status === 401) logout()
             throw new Error("Failed to load dashboard data")
         }
         dashData.val = await res.json()
+        
+        // Update user state with the API key returned from the dashboard
+        if (dashData.val.api_key && !user.val.api_key) {
+            user.val = { ...user.val, api_key: dashData.val.api_key }
+            localStorage.setItem("rta_user", JSON.stringify(user.val))
+        }
     } catch (e) {
         error.val = e.message
     } finally {

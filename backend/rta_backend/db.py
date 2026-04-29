@@ -7,6 +7,8 @@ import hashlib
 import logging
 from rta_backend.utils import Sanitizer
 
+from supabase.lib.client_options import ClientOptions
+
 load_dotenv()
 
 def get_supabase_client():

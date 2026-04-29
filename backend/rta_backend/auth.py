@@ -32,28 +32,53 @@ class RefreshKeyRequest(BaseModel):
     password: str
     captcha_token: str
 
+import base64
+import hashlib
+import secrets
+
 @router.get("/github")
 async def github_login():
-    """Initiate GitHub OAuth flow."""
-    supabase_client = get_supabase_client()
-    # Note: frontend_url should be where the app is hosted
+    """Initiate GitHub OAuth flow with manual PKCE."""
+    supabase_url = os.getenv("SUPABASE_URL")
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
+    redirect_to = f"{backend_url}/v1/auth/callback"
     
-    res = supabase_client.auth.sign_in_with_oauth({
-        "provider": "github",
-        "options": {
-            "redirect_to": f"{backend_url}/v1/auth/callback"
-        }
-    })
-    return RedirectResponse(res.url)
+    # Generate PKCE verifier and challenge
+    code_verifier = secrets.token_urlsafe(64)
+    code_challenge = base64.urlsafe_b64encode(
+        hashlib.sha256(code_verifier.encode()).digest()
+    ).decode().replace("=", "")
+    
+    auth_url = f"{supabase_url}/auth/v1/authorize?provider=github&redirect_to={redirect_to}&code_challenge={code_challenge}&code_challenge_method=S256"
+    
+    response = RedirectResponse(auth_url)
+    # Store verifier in a secure, short-lived cookie
+    response.set_cookie(
+        key="pkce_verifier",
+        value=code_verifier,
+        httponly=True,
+        max_age=600,  # 10 minutes
+        samesite="lax",
+        secure=True if "localhost" not in backend_url else False
+    )
+    return response
 
 @router.get("/callback")
-async def auth_callback(code: str):
-    """Handle Supabase OAuth callback."""
+async def auth_callback(request: Request):
+    """Handle Supabase OAuth callback with PKCE verification."""
+    code = request.query_params.get("code")
+    code_verifier = request.cookies.get("pkce_verifier")
+    
+    if not code:
+        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
+        return RedirectResponse(f"{frontend_url}/auth?error=No+auth+code+received")
+
     try:
         supabase_client = get_supabase_client()
+        # Exchange code using the verifier from the cookie
         res = supabase_client.auth.exchange_code_for_session({
-            "auth_code": code
+            "auth_code": code,
+            "code_verifier": code_verifier
         })
         
         user_id = res.user.id
@@ -65,14 +90,18 @@ async def auth_callback(code: str):
         
         # Ensure API key exists
         existing_key = supabase_client.table("api_keys").select("*").eq("user_id", user_id).execute()
+        new_api_key = None
         if not existing_key.data:
-            raw_key = generate_api_key()
-            hashed_key = hash_key(raw_key)
-            save_api_key(user_id, hashed_key, raw_key[:8]+"...")
+            new_api_key = generate_api_key()
+            hashed_key = hash_key(new_api_key)
+            save_api_key(user_id, hashed_key, new_api_key[:8]+"...")
         
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
         # Pass session to frontend via hash params (secure)
         redirect_url = f"{frontend_url}/dashboard.html#access_token={res.session.access_token}&refresh_token={res.session.refresh_token}"
+        if new_api_key:
+            redirect_url += f"&api_key={new_api_key}"
+            
         return RedirectResponse(redirect_url)
     except Exception as e:
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
