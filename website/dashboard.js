@@ -85,11 +85,12 @@ const SupportBot = () => {
         isTyping.val = true
 
         try {
-            const res = await fetch(`${API_BASE_URL}/v1/proxy`, {
+            const res = await fetch(`${API_BASE_URL}/v1/chat`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     "X-API-KEY": user.val.api_key,
+                    "ngrok-skip-browser-warning": "true"
                 },
                 body: JSON.stringify({
                     provider: "gemini",
@@ -101,8 +102,10 @@ const SupportBot = () => {
                 })
             })
             const data = await res.json()
-            if (data.error) throw new Error(data.error)
-            chatMessages.val = [...chatMessages.val, { role: "assistant", content: data.content }]
+            if (!res.ok) throw new Error(data.detail || "Chat failed")
+            
+            const assistantMsg = data.choices[0].message.content
+            chatMessages.val = [...chatMessages.val, { role: "assistant", content: assistantMsg }]
         } catch (e) {
             chatMessages.val = [...chatMessages.val, { role: "assistant", content: "Error: " + e.message }]
         } finally {
