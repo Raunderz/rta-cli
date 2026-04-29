@@ -150,7 +150,7 @@ const HomePage = () => {
                             currentPage.val = "releases"
                             window.history.pushState({ page: "releases" }, "", "/releases")
                         }
-                    }, "get rta cli v0.2.0 (linux)")
+                    }, "get rta cli v0.2.0 (linux/win)")
                 )
             ),
             div({ class: "logo-container" },
@@ -400,11 +400,10 @@ const ReleasesPage = () => {
                     download: "rta"
                 }, "Download for Linux (x64)") : 
                 selectedOS.val === "windows" ? a({
-                    href: "#",
+                    href: "/rta.exe",
                     class: "download-btn",
-                    style: "opacity: 0.6; cursor: not-allowed; background: #444; box-shadow: none;",
-                    onclick: (e) => { e.preventDefault(); alert("Windows executable coming soon!") }
-                }, "Windows (.exe) — Coming Soon") :
+                    download: "rta.exe"
+                }, "Download for Windows (.exe)") : 
                 a({
                     href: "#",
                     class: "download-btn",

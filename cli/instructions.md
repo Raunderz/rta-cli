@@ -35,20 +35,31 @@ The executable will be created at `cli/dist/rta` (Linux executable).
 
 ## Windows Build
 
-On a Windows machine:
+On a Windows machine (using uv - recommended):
 
-1. Open Command Prompt or PowerShell as Administrator
+1. Open PowerShell
 2. Navigate to the project directory
 3. Install dependencies and build:
+
+```powershell
+cd cli
+uv pip install -e .
+uv add --dev pyinstaller
+uv run pyinstaller rta.spec --clean
+```
+
+Alternatively, using standard pip:
 
 ```batch
 cd cli
 pip install -e .
 pip install pyinstaller
-pyinstaller rta.spec
+pyinstaller rta.spec --clean
 ```
 
 The executable will be created at `cli\dist\rta.exe`.
+
+**Note:** The build uses `rta_cli_main.py` as the entry point and bundles `config.json` via the `rta.spec` file.
 
 ## Notes
 
