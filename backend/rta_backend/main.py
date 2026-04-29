@@ -256,13 +256,15 @@ import time
 
 # Simple in-memory cache for status
 _status_cache = {"data": None, "expiry": 0}
-STATUS_CACHE_TTL = 60 # seconds
+STATUS_CACHE_TTL = 300 # 5 minutes
 
 @app.get("/v1/status")
-async def status_endpoint():
+@limiter.limit("30/minute")
+async def status_endpoint(request: Request):
     """
     Public status endpoint for the status page.
-    Checks core service connectivity with 60s caching.
+    Checks core service connectivity with 300s caching.
+    Rate limited to 30 calls per minute.
     """
     now = time.time()
     if _status_cache["data"] and now < _status_cache["expiry"]:
@@ -271,8 +273,9 @@ async def status_endpoint():
     try:
         from rta_backend.db import get_supabase_client
         supabase = get_supabase_client()
-        # Simple query to check DB connectivity
-        supabase.table("profiles").select("count", count="exact").limit(1).execute()
+        # Simple query to check DB connectivity (health check only)
+        # Using a minimal query to avoid heavy load
+        supabase.table("profiles").select("id").limit(1).execute()
         db_status = "operational"
     except Exception as e:
         print(f"Status DB Check Error: {e}")
