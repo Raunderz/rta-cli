@@ -1,12 +1,13 @@
 import van from "vanjs-core"
 
-const { div, h2, p, main, span, button, svg, path, nav } = van.tags
+const { div, h2, p, main, span, button, svg, path, nav, a } = van.tags
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
 // State
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
 const keyVisible = van.state(false)
+const selectedOS = van.state("linux")
 const dashData = van.state(null)
 const error = van.state(null)
 const isLoading = van.state(true)
@@ -41,6 +42,11 @@ const fetchDashboard = async () => {
 }
 
 fetchDashboard()
+
+const OSButton = (os, label) => button({
+    class: selectedOS.val === os ? "btn-ghost active" : "btn-ghost",
+    onclick: () => selectedOS.val = os
+}, label)
 
 const Dashboard = () => {
     return div({ class: "app-shell" },
@@ -120,6 +126,38 @@ const Dashboard = () => {
                         div({ style: "display: flex; gap: 0.75rem;" },
                             button({ class: "btn-ghost", onclick: () => keyVisible.val = !keyVisible.val }, "Toggle Visibility"),
                             button({ class: "btn-ghost", onclick: () => user.val.api_key && navigator.clipboard.writeText(user.val.api_key) }, "Copy Secret")
+                        )
+                    ),
+
+                    // Downloads
+                    div({ class: "card", style: "grid-column: 1 / -1; border: 1px solid var(--accent-purple);" },
+                        div({ class: "card-header" },
+                            span({ class: "card-title", style: "color: var(--accent-purple);" }, "CLI Downloads"),
+                            Icon("M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4")
+                        ),
+                        div({ style: "display: flex; gap: 0.75rem; margin-top: 1rem;" },
+                            OSButton("linux", "Linux"),
+                            OSButton("macos", "macOS"),
+                            OSButton("windows", "Windows")
+                        ),
+                        div({ style: "margin-top: 1rem;" },
+                            () => selectedOS.val === "linux" ? a({
+                                href: "/rta",
+                                class: "download-btn",
+                                download: "rta"
+                            }, "Download for Linux (x64)") : 
+                            selectedOS.val === "windows" ? a({
+                                href: "/rta.exe",
+                                class: "download-btn",
+                                download: "rta.exe"
+                            }, "Download for Windows (.exe)") : 
+                            a({
+                                href: "#",
+                                class: "download-btn",
+                                style: "opacity: 0.6; cursor: not-allowed; background: #444; box-shadow: none;",
+                                onclick: (e) => { e.preventDefault(); alert("macOS binary coming soon!") }
+                            }, "macOS — Coming Soon"),
+                            p({ style: "color: var(--text-muted); font-size: 0.8125rem; margin-top: 0.5rem;" }, () => `v0.2.0 stable release for ${selectedOS.val}.`)
                         )
                     ),
 
