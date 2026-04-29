@@ -1,4 +1,4 @@
-"""
+r"""
 Credential storage, device fingerprint, and server URL helpers.
 
 Single source of truth for:
