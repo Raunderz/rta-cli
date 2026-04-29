@@ -17,6 +17,8 @@ def _headers(api_key: str) -> dict:
         "X-API-KEY": api_key,
         "X-Device-ID": get_device_id(),
         "X-CLI-Version": CLI_VERSION,
+        "ngrok-skip-browser-warning": "69420",
+        "User-Agent": f"rta-cli/1.0",
     }
 
 
@@ -41,6 +43,8 @@ def do_login():
             console.print("[red]Cannot reach Rta server. Check your connection.[/red]")
             sys.exit(1)
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             console.print(f"[red]Network error: {e}[/red]")
             sys.exit(1)
 
