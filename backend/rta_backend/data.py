@@ -37,16 +37,42 @@ async def collect_telemetry(
 async def log_telemetry_task(user_id: str, request, result):
     """Background task to log enriched AI interaction telemetry."""
     try:
-        # Sanitize prompt
+        # Sanitize prompt - find last non-empty user message
         prompt = ""
         if request.messages:
-            last_msg = request.messages[-1]
-            prompt = Sanitizer.strip_secrets(last_msg.get("content", ""))
+            # Try to find the last user message with content
+            user_msgs = [m for m in request.messages if m.get("role") == "user" and m.get("content")]
+            if user_msgs:
+                prompt = Sanitizer.strip_secrets(user_msgs[-1]["content"])
+            else:
+                # Fallback to last message if no non-empty user message found
+                last_msg = request.messages[-1]
+                prompt = Sanitizer.strip_secrets(last_msg.get("content", ""))
             
         # Extract response text
         response_text = ""
         if result.choices:
-            response_text = result.choices[0].get("message", {}).get("content", "")
+            msg = result.choices[0].get("message", {})
+            content = msg.get("content")
+            
+            if content:
+                response_text = content
+            
+            # If there are tool calls, append/use them for response_text visibility
+            tool_calls = msg.get("tool_calls")
+            if tool_calls:
+                tool_summaries = []
+                for tc in tool_calls:
+                    fn = tc.get("function", {})
+                    name = fn.get("name", "unknown")
+                    args = fn.get("arguments", "{}")
+                    tool_summaries.append(f"[Tool Call: {name}({args})]")
+                
+                tool_str = "\n".join(tool_summaries)
+                if response_text:
+                    response_text = f"{response_text}\n\n{tool_str}"
+                else:
+                    response_text = tool_str
             
         data = {
             "user_id": user_id,
