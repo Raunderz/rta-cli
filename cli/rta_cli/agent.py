@@ -38,9 +38,9 @@ AVAILABLE_TOOLS = [
 
 ERROR_MESSAGES = {
     401: "Invalid or expired API key. Run: rta login",
-    429: "Daily limit reached. Upgrade at https://rta.sh/pricing",
-    502: "Rta service temporarily unavailable. Check https://status.rta.sh",
-    503: "Rta service unavailable. Check https://status.rta.sh",
+    429: "Daily limit reached. Upgrade at https://rta-three.vercel.app/#/pricing",
+    502: "Rta service temporarily unavailable. Check https://rta-three.vercel.app",
+    503: "Rta service unavailable. Check https://rta-three.vercel.app",
 }
 
 
@@ -48,7 +48,7 @@ def _require_key() -> str:
     key = load_credential("rta_api_key")
     if not key:
         print(
-            "\nNo API key found. Get one at https://rta.sh/dashboard and run: rta login",
+            "\nNo API key found. Get one at https://rta-three.vercel.app/dashboard.html and run: rta login",
             file=sys.stderr,
         )
         sys.exit(1)

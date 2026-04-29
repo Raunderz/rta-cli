@@ -1,7 +1,7 @@
 import time
 import os
 import logging
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 from pydantic import BaseModel
 
 from rta_backend.providers import (
@@ -24,7 +24,7 @@ TIER_TOKEN_CAPS = {
 
 # Models
 class ChatRequest(BaseModel):
-    messages: List[Dict[str, str]]
+    messages: List[Dict[str, Any]]
     model: str
     provider: str = "auto"
     tools: Optional[List[Dict]] = None
@@ -64,6 +64,8 @@ def build_chain(provider_hint: str, model: str) -> List[str]:
 
 def pick_model_for_provider(requested_model: str, provider_name: str) -> str:
     """Map generic model names to provider-specific strings."""
+    if requested_model == "auto":
+        requested_model = "llama-3.1-70b"
     mapping = {
         "llama-3.1-70b": {
             "groq": "llama-3.1-70b-versatile",
@@ -129,7 +131,7 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
     
     for provider_name in chain:
         api_key = keys.get(provider_name)
-        if not api_key and os.getenv("TEST_MODE", "false").lower() != "true":
+        if not api_key:
             logging.warning(f"Skipping {provider_name}: API key missing")
             continue
             

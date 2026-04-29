@@ -25,7 +25,7 @@ def _headers(api_key: str) -> dict:
 def do_login():
     """Prompt for API key, validate against /v1/auth/me, persist."""
     console.print("[bold #ff3333]Rta Login[/bold #ff3333]")
-    console.print(f"[dim]Get your key at [underline]https://rta.sh/dashboard[/underline][/dim]\n")
+    console.print(f"[dim]Get your key at [underline]https://rta-three.vercel.app/dashboard.html[/underline][/dim]\n")
 
     for attempt in range(3):
         api_key = getpass.getpass("Enter your Rta API key: ").strip()
@@ -131,7 +131,7 @@ def do_status():
         console.print(f"[bold #ff3333]Calls today:[/bold #ff3333]  {calls_today} / {calls_limit}")
         console.print(f"[bold #ff3333]Tokens/mo:[/bold #ff3333]    {tokens_month} / {tokens_limit}")
     elif resp.status_code == 429:
-        console.print(f"[red]Daily limit reached. Upgrade at https://rta.sh/pricing[/red]")
+        console.print(f"[red]Daily limit reached. Upgrade at https://rta-three.vercel.app/#/pricing[/red]")
     elif resp.status_code == 401:
         console.print("[red]Invalid or expired key. Run: rta login[/red]")
         sys.exit(1)
