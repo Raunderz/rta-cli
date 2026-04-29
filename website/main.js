@@ -114,6 +114,7 @@ const NavLink = (text, page) => {
 const Footer = () => div({ class: "footer-links" },
     NavLink("pricing", "pricing"),
     NavLink("roadmap", "roadmap"),
+    NavLink("status", "status"),
     NavLink("privacy", "privacy"),
     NavLink("terms", "terms"),
     () => user.val ? NavLink("dashboard", "dashboard") : NavLink("sign in", "auth"),
@@ -149,7 +150,7 @@ const HomePage = () => {
                             currentPage.val = "releases"
                             window.history.pushState({ page: "releases" }, "", "/releases")
                         }
-                    }, "get rta cli (linux)")
+                    }, "get rta cli v0.2.0 (linux)")
                 )
             ),
             div({ class: "logo-container" },
@@ -373,32 +374,145 @@ const AuthPage = () => {
 
 
 const ReleasesPage = () => {
+    const selectedOS = van.state("linux")
+
+    const OSButton = (os, label) => button({
+        style: () => `background: ${selectedOS.val === os ? "var(--gold)" : "rgba(255,255,255,0.05)"}; color: ${selectedOS.val === os ? "var(--bg-dark)" : "var(--gold)"}; border: 1px solid var(--gold-dim); padding: 0.5rem 1.5rem; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-family: inherit; font-size: 0.9rem;`,
+        onclick: () => selectedOS.val = os
+    }, label)
+
     return div({ class: "releases-page" },
         NavLink("← back to home", "home"),
-        div({ class: "release-card" },
-            h1({ class: "release-title" }, "rta cli v0.1.0"),
+        div({ class: "release-card", style: "max-width: 900px;" },
+            h1({ class: "release-title" }, "rta cli v0.2.0"),
             p({ class: "release-subtitle" }, "free tier • signup required"),
-            div({ class: "download-section" },
-                a({
+            
+            div({ style: "display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem;" },
+                OSButton("linux", "Linux"),
+                OSButton("macos", "macOS"),
+                OSButton("windows", "Windows")
+            ),
+
+            div({ class: "download-section", style: "display: flex; flex-direction: column; gap: 1.5rem; align-items: center;" },
+                () => selectedOS.val === "linux" ? a({
                     href: "/rta",
                     class: "download-btn",
                     download: "rta"
-                }, "Download for Linux (x64)"),
-                p({ class: "platform-note" }, "Currently Linux only. macOS & Windows coming soon.")
+                }, "Download for Linux (x64)") : 
+                selectedOS.val === "windows" ? a({
+                    href: "#",
+                    class: "download-btn",
+                    style: "opacity: 0.6; cursor: not-allowed; background: #444; box-shadow: none;",
+                    onclick: (e) => { e.preventDefault(); alert("Windows executable coming soon!") }
+                }, "Windows (.exe) — Coming Soon") :
+                a({
+                    href: "#",
+                    class: "download-btn",
+                    style: "opacity: 0.6; cursor: not-allowed; background: #444; box-shadow: none;",
+                    onclick: (e) => { e.preventDefault(); alert("macOS binary coming soon!") }
+                }, "macOS (Apple Silicon/Intel) — Coming Soon"),
+                p({ class: "platform-note" }, () => `v0.2.0 stable release for ${selectedOS.val}.`)
             ),
-            div({ class: "guide-section" },
-                h2({}, "Installation & Setup"),
-                div({ class: "guide-step" },
-                    h3({}, "1. Authentication"),
-                    p({}, "Login to your Rta account via the CLI:"),
-                    pre({}, "rta login")
-                ),
-                div({ class: "guide-step" },
-                    h3({}, "2. Configuration"),
-                    p({}, "Your config.json will automatically update. To run from anywhere:"),
-                    pre({}, "chmod +x rta\nsudo mv rta /usr/local/bin/")
+
+            div({ class: "guide-section", style: "text-align: left; margin-top: 2rem;" },
+                h2({ style: "margin-bottom: 2rem; border-bottom: 1px solid var(--rule); padding-bottom: 1rem;" }, "Installation Instructions"),
+                
+                () => selectedOS.val === "linux" ? div({},
+                    div({ class: "guide-step" },
+                        h3({}, "1. Make Executable"),
+                        pre({}, "chmod +x rta")
+                    ),
+                    div({ class: "guide-step" },
+                        h3({}, "2. Move to Path"),
+                        pre({}, "sudo mv rta /usr/local/bin/")
+                    ),
+                    div({ class: "guide-step" },
+                        h3({}, "3. Initialize"),
+                        pre({}, "rta login")
+                    )
+                ) : 
+                selectedOS.val === "macos" ? div({},
+                    div({ class: "guide-step" },
+                        h3({}, "1. Remove Quarantine"),
+                        p({}, "After downloading, allow the binary to run:"),
+                        pre({}, "xattr -d com.apple.quarantine rta\nchmod +x rta")
+                    ),
+                    div({ class: "guide-step" },
+                        h3({}, "2. Move to Path"),
+                        pre({}, "sudo mv rta /usr/local/bin/")
+                    ),
+                    div({ class: "guide-step" },
+                        h3({}, "3. Start"),
+                        pre({}, "rta login")
+                    )
+                ) :
+                div({},
+                    div({ class: "guide-step" },
+                        h3({}, "1. Powershell Setup"),
+                        p({}, "Move the rta.exe to a folder in your %PATH% (e.g., C:\\Windows\\)"),
+                        pre({}, "Move-Item .\\rta.exe C:\\Windows\\rta.exe")
+                    ),
+                    div({ class: "guide-step" },
+                        h3({}, "2. Verify"),
+                        pre({}, "rta --help")
+                    ),
+                    div({ class: "guide-step" },
+                        h3({}, "3. Authenticate"),
+                        pre({}, "rta login")
+                    )
                 )
             )
+        ),
+        Footer()
+    )
+}
+
+const StatusPage = () => {
+    const statusData = van.state({ loading: true, status: "checking", services: {} })
+
+    const checkStatus = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/v1/status`)
+            if (!res.ok) throw new Error("Backend unreachable")
+            const data = await res.json()
+            statusData.val = { loading: false, ...data }
+        } catch (err) {
+            statusData.val = {
+                loading: false,
+                status: "down",
+                services: { api: "offline", database: "unknown", proxy: "unknown" }
+            }
+        }
+    }
+
+    checkStatus()
+
+    return div({ class: "content-page" },
+        NavLink("← back to home", "home"),
+        h1({ class: "page-title" }, "System Status"),
+        p({ class: "page-subtitle" }, "Real-time health of Rta infrastructure."),
+        div({ class: "status-container", style: "width: 100%; max-width: 600px;" },
+            () => statusData.val.loading ? p({ style: "text-align: center;" }, "Checking systems...") :
+                div({ class: "roadmap-card" },
+                    div({ style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; justify-content: center;" },
+                        span({
+                            style: `width: 12px; height: 12px; border-radius: 50%; background: ${statusData.val.status === "operational" ? "#4ade80" : "#ff5e5e"}; box-shadow: 0 0 10px ${statusData.val.status === "operational" ? "#4ade80" : "#ff5e5e"};`
+                        }),
+                        h2({ style: "margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 0.1rem;" },
+                            statusData.val.status === "operational" ? "All Systems Operational" : "Service Disruption"
+                        )
+                    ),
+                    div({ class: "roadmap-list" },
+                        Object.entries(statusData.val.services).map(([name, status]) => li({
+                            style: "display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.8rem 0;"
+                        },
+                            span({ style: "text-transform: capitalize;" }, name),
+                            span({
+                                style: `color: ${status === "operational" ? "#4ade80" : "#ff5e5e"}; font-size: 0.9rem; font-weight: 600; text-transform: uppercase;`
+                            }, status)
+                        ))
+                    )
+                )
         ),
         Footer()
     )
@@ -441,6 +555,7 @@ const App = () => {
             case "releases": return ReleasesPage()
             case "pricing": return PricingPage()
             case "roadmap": return RoadmapPage()
+            case "status": return StatusPage()
             case "privacy": return PrivacyPage()
             case "terms": return TermsPage()
             case "auth":

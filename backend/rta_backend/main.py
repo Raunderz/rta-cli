@@ -252,6 +252,48 @@ async def dashboard_endpoint(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+import time
+
+# Simple in-memory cache for status
+_status_cache = {"data": None, "expiry": 0}
+STATUS_CACHE_TTL = 60 # seconds
+
+@app.get("/v1/status")
+async def status_endpoint():
+    """
+    Public status endpoint for the status page.
+    Checks core service connectivity with 60s caching.
+    """
+    now = time.time()
+    if _status_cache["data"] and now < _status_cache["expiry"]:
+        return _status_cache["data"]
+
+    try:
+        from rta_backend.db import get_supabase_client
+        supabase = get_supabase_client()
+        # Simple query to check DB connectivity
+        supabase.table("profiles").select("count", count="exact").limit(1).execute()
+        db_status = "operational"
+    except Exception as e:
+        print(f"Status DB Check Error: {e}")
+        db_status = "degraded"
+
+    data = {
+        "status": "operational" if db_status == "operational" else "degraded",
+        "version": "0.1.0",
+        "services": {
+            "database": db_status,
+            "api": "operational",
+            "proxy": "operational"
+        },
+        "timestamp": now
+    }
+    
+    _status_cache["data"] = data
+    _status_cache["expiry"] = now + STATUS_CACHE_TTL
+    return data
+
+
 @app.get("/")
 async def root():
     return {"message": "Rta Backend API", "version": "0.1.0"}
