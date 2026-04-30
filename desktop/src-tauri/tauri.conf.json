@@ -13,9 +13,9 @@
     "withGlobalTauri": false,
     "windows": [
       {
-        "title": "RTA",
-        "width": 1024,
-        "height": 768,
+        "title": "RTA - AI Code Editor",
+        "width": 1400,
+        "height": 900,
         "resizable": true,
         "fullscreen": false
       }
