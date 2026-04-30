@@ -23,8 +23,9 @@ app = FastAPI(
 
 # CORS setup
 origins = [
-    "http://localhost:5173",
-    "https://rta-three.vercel.app",
+    "http://localhost:5173", # local test
+    "https://rta-three.vercel.app", # website
+    "http://localhost:1420", # desktop
 ]
 
 app.add_middleware(

@@ -21,7 +21,7 @@ function getHeaders(apiKey) {
   };
 }
 
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "https://divisive-herbs-jolly.ngrok-free.dev";
 
 export function ChatPanel() {
   const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("rta_api_key"));
