@@ -65,24 +65,28 @@ def build_chain(provider_hint: str, model: str) -> List[str]:
 def pick_model_for_provider(requested_model: str, provider_name: str) -> str:
     """Map generic model names to provider-specific strings."""
     if requested_model == "auto":
-        requested_model = "llama-3.1-70b"
+        requested_model = "gpt-oss-120b"
     mapping = {
-        "llama-3.1-70b": {
-            "groq": "llama-3.1-70b-versatile",
+        "gpt-oss-120b": {
+            "groq": "openai/gpt-oss-120b",
             "cerebras": "llama3.1-70b",
             "sambanova": "Meta-Llama-3.1-70B-Instruct",
-            "openrouter": "meta-llama/llama-3.1-70b-instruct"
+            "openrouter": "minimax/minimax-m2.5:free"
         },
-        "llama-3.1-8b": {
-            "groq": "llama-3.1-8b-instant",
+        "gpt-oss-20b": {
+            "groq": "openai/gpt-oss-20b",
             "cerebras": "llama3.1-8b",
             "sambanova": "Meta-Llama-3.1-8B-Instruct",
-            "openrouter": "meta-llama/llama-3.1-8b-instruct"
+            "openrouter": "nvidia/nemotron-3-nano-30b-a3b:free"
         }
     }
     
     if requested_model in mapping:
         return mapping[requested_model].get(provider_name, requested_model)
+    
+    if provider_name == "openrouter" and requested_model not in mapping:
+        return "openrouter/free"
+        
     return requested_model
 
 def get_provider_keys() -> Dict[str, str]:
