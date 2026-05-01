@@ -5,7 +5,13 @@ const { div, h1, h2, h3, p, img, main, section, a, button, pre, li, span, form, 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
 // --- State Management ---
-const currentPage = van.state("home")
+const getInitialPage = () => {
+    const path = window.location.pathname.slice(1)
+    const validPages = ["home", "pricing", "roadmap", "status", "releases", "auth"]
+    return validPages.includes(path) ? path : "home"
+}
+
+const currentPage = van.state(getInitialPage())
 const currency = van.state("INR")
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
 const statusData = van.state({ loading: true, status: "Checking", services: {} })
@@ -15,20 +21,31 @@ const priceMap = {
     USD: { free: "$0", basic: "$1.49", pro: "$4.49" }
 }
 
+// --- Global Mouse Tracking ---
+window.addEventListener('mousemove', (e) => {
+    const cards = document.querySelectorAll('.bento-item, .pricing-card')
+    cards.forEach(card => {
+        const rect = card.getBoundingClientRect()
+        const x = ((e.clientX - rect.left) / rect.width) * 100
+        const y = ((e.clientY - rect.top) / rect.height) * 100
+        card.style.setProperty('--x', `${x}%`)
+        card.style.setProperty('--y', `${y}%`)
+    })
+})
+
 // --- Animation Engine ---
 const reveal = (el, immediate = false) => {
+    // Always add the attribute first to ensure CSS classes apply
+    el.setAttribute('data-reveal', '')
+    
     if (immediate) {
-        el.classList.add('visible')
+        // Use requestAnimationFrame to ensure the attribute is processed before adding class
+        requestAnimationFrame(() => {
+            el.classList.add('visible')
+        })
         return
     }
     
-    // Safety check: if element is already in viewport, reveal immediately
-    const rect = el.getBoundingClientRect()
-    if (rect.top < window.innerHeight && rect.bottom > 0) {
-        el.classList.add('visible')
-        return
-    }
-
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -36,9 +53,8 @@ const reveal = (el, immediate = false) => {
                 observer.unobserve(entry.target)
             }
         })
-    }, { threshold: 0.05 })
+    }, { threshold: 0.01 })
     
-    el.setAttribute('data-reveal', '')
     observer.observe(el)
 }
 
