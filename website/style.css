@@ -53,8 +53,9 @@ body::before {
     position: fixed;
     inset: 0;
     background: 
-        radial-gradient(circle at 50% -10%, rgba(255,255,255,0.05) 0%, transparent 60%),
-        radial-gradient(circle at 100% 100%, rgba(255,255,255,0.02) 0%, transparent 40%);
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,0.05) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.03) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(10,10,12,1) 0%, transparent 100%);
     pointer-events: none;
     z-index: 1;
 }
@@ -64,9 +65,10 @@ body::after {
     position: fixed;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    opacity: 0.02;
+    opacity: 0.04;
     pointer-events: none;
     z-index: 2;
+    filter: contrast(120%) brightness(120%);
 }
 
 #app {
@@ -75,6 +77,12 @@ body::after {
     display: flex;
     flex-direction: column;
     min-height: 100dvh;
+    animation: fadeIn 1s var(--ease-premium);
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 .container {
@@ -230,6 +238,22 @@ nav {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.bento-item::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(600px circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.06), transparent 40%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.bento-item:hover::after {
+    opacity: 1;
 }
 
 .bento-item:hover {
@@ -339,6 +363,21 @@ nav {
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow: hidden;
+}
+
+.pricing-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(800px circle at var(--x, 50%) var(--y, 50%), rgba(255,255,255,0.06), transparent 40%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+}
+
+.pricing-card:hover::after {
+    opacity: 1;
 }
 
 .pricing-card.featured {
