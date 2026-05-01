@@ -15,6 +15,8 @@ from rta_backend.providers import (
     ProviderTimeoutError
 )
 
+from rta_backend.prompts import SYSTEM_PROMPT
+
 # Constants
 TIER_TOKEN_CAPS = {
     "free": 2000,
@@ -125,6 +127,9 @@ async def call_provider(name: str, **kwargs) -> dict:
 # Core Entry Point
 async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str) -> ProxyResult:
     """Central routing logic with automatic fallback."""
+    # Prepend system prompt
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + request.messages
+    
     chain = build_chain(request.provider, request.model)
     max_tokens = min(request.max_tokens, TIER_TOKEN_CAPS.get(user_tier.lower(), 2000))
     keys = get_provider_keys()
@@ -145,7 +150,7 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
             # Call provider module
             result = await call_provider(
                 provider_name,
-                messages=request.messages,
+                messages=messages,
                 model=model_to_use,
                 tools=request.tools,
                 api_key=api_key,

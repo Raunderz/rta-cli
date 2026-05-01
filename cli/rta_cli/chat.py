@@ -7,8 +7,14 @@ import json
 import random
 try:
     import readline
-except ImportError:
-    pass # Windows might not have it by default
+    # Suppress potential rl_print_keybinding warning from some readline/sh environments
+    if hasattr(readline, 'parse_and_bind'):
+        try:
+            readline.parse_and_bind("tab: complete")
+        except Exception:
+            pass
+except (ImportError, AttributeError):
+    pass # Windows or incomplete readline install
 
 from rich.console import Console
 from rich.panel import Panel
