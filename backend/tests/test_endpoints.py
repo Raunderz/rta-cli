@@ -88,7 +88,7 @@ async def client():
 # Helpers
 # =============================================================================
 
-def chat_payload(content="Hello, what is 2+2?", model="llama-3.1-70b", **kwargs):
+def chat_payload(content="Hello, what is 2+2?", model="gpt-oss-120b", **kwargs):
     return {
         "messages": [{"role": "user", "content": content}],
         "model": model,
@@ -343,7 +343,7 @@ async def test_502_response_is_sanitized(client, test_user):
 async def test_missing_messages_field_422(client, test_user):
     r = await client.post(
         "/v1/chat",
-        json={"model": "llama-3.1-70b"},
+        json={"model": "gpt-oss-120b"},
         headers=auth_headers(test_user["api_key"])
     )
     assert r.status_code == 422
