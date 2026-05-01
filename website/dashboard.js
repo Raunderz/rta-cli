@@ -34,7 +34,7 @@ const logout = () => {
     window.location.href = "/"
 }
 
-const Icon = (d, size = "18") => svg({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }, path({ d }))
+const Icon = (d, size = "16") => svg({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }, path({ d }))
 
 const fetchDashboard = async () => {
     try {
@@ -66,13 +66,13 @@ const fetchDashboard = async () => {
 fetchDashboard()
 
 const OSButton = (os, label) => button({
-    class: selectedOS.val === os ? "btn-ghost active" : "btn-ghost",
+    class: () => selectedOS.val === os ? "btn-ghost active" : "btn-ghost",
     onclick: () => selectedOS.val = os
 }, label)
 
 const SupportBot = () => {
     const chatOpen = van.state(false)
-    const chatMessages = van.state([{ role: "assistant", content: "Hello! I'm the Rta assistant. How can I help you build with Rta today?" }])
+    const chatMessages = van.state([{ role: "assistant", content: "Hello! I'm the Rta assistant. How can I help you today?" }])
     const chatInput = van.state("")
     const isTyping = van.state(false)
 
@@ -94,7 +94,7 @@ const SupportBot = () => {
                 },
                 body: JSON.stringify({
                     messages: [
-                        { role: "system", content: "You are the Rta Support Bot. Rta is a mobile-first, AI-assisted code editor for Android and a powerful CLI for Linux/Win. Installation: 'sudo mv rta /usr/local/bin/' on Linux. Usage: 'rta login', then 'rta chat'. Rta is built for speed and surgical precision. Be concise, helpful, and technical." },
+                        { role: "system", content: "You are the Rta Support Bot. Rta is a professional code editor and CLI. Be concise and technical." },
                         ...chatMessages.val
                     ],
                     model: "auto",
@@ -116,28 +116,25 @@ const SupportBot = () => {
     return div({ class: "chatbot-container" },
         () => chatOpen.val ? div({ class: "chat-window" },
             div({ class: "chat-header" },
-                span({ style: "color: var(--accent-purple); font-weight: 700; font-size: 0.9rem;" }, "Rta Support"),
-                button({ class: "btn-ghost", onclick: () => chatOpen.val = false, style: "padding: 4px; border:none;" }, "✕")
+                span({ style: "font-weight: 600; font-size: 13px;" }, "Support"),
+                button({ class: "btn-ghost", onclick: () => chatOpen.val = false, style: "padding: 2px; border:none;" }, Icon("M18 6L6 18M6 6l12 12"))
             ),
             div({ class: "chat-messages" },
                 chatMessages.val.map(m => div({ class: `chat-msg ${m.role}` }, m.content)),
-                () => isTyping.val ? div({ style: "font-size: 0.75rem; color: var(--text-muted); padding: 0.5rem;" }, "Rta is thinking...") : ""
+                () => isTyping.val ? div({ style: "font-size: 11px; color: var(--text-muted); padding: 0.5rem;" }, "Thinking...") : ""
             ),
             div({ class: "chat-input-area" },
                 input({ 
                     class: "chat-input",
-                    placeholder: "Ask anything...", 
+                    placeholder: "Ask a question...", 
                     value: chatInput,
                     oninput: (e) => chatInput.val = e.target.value,
                     onkeydown: (e) => e.key === "Enter" && sendChatMessage()
                 }),
-                button({ class: "btn-ghost", onclick: sendChatMessage, style: "background: var(--accent-purple); color: white; border: none; border-radius: 4px; padding: 0 1rem;" }, "Send")
+                button({ class: "btn-ghost active", onclick: sendChatMessage, style: "border: none; padding: 0 12px;" }, Icon("M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"))
             )
         ) : "",
-        button({ 
-            class: () => chatOpen.val ? "chat-trigger open" : "chat-trigger", 
-            onclick: () => chatOpen.val = !chatOpen.val
-        }, Icon("M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", "24"))
+        button({ class: "chat-trigger", onclick: () => chatOpen.val = !chatOpen.val }, Icon("M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z", "20"))
     )
 }
 
@@ -145,112 +142,85 @@ const Dashboard = () => {
     return div({ style: "position: relative; height: 100vh; width: 100vw;" },
         div({ class: "app-shell" },
             nav({ class: "sidebar" },
-                div({ class: "sidebar-logo" }, "rta"),
+                a({ href: "/", class: "sidebar-logo" }, "rta"),
                 div({ class: "nav-group" },
-                    div({ class: "nav-label" }, "Management"),
+                    div({ class: "nav-label" }, "Overview"),
                     div({ class: "nav-item active" }, Icon("M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"), "Dashboard"),
-                    div({ class: "nav-item" }, Icon("M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"), "Projects"),
-                    div({ class: "nav-item" }, Icon("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"), "Security")
+                    div({ class: "nav-item" }, Icon("M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"), "Projects")
                 ),
                 div({ class: "nav-group" },
-                    div({ class: "nav-label" }, "Account"),
+                    div({ class: "nav-label" }, "Settings"),
                     div({ class: "nav-item" }, Icon("M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"), "Profile"),
                     div({ class: "nav-item" }, Icon("M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"), "Alerts")
                 ),
                 div({ style: "margin-top: auto;" },
-                    div({ class: "nav-item", onclick: logout }, Icon("M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"), "Sign Out")
+                    div({ class: "nav-item", onclick: logout }, Icon("M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"), "Logout")
                 )
             ),
 
             main({ class: "main-canvas" },
                 () => {
-                    if (isLoading.val) return div({ style: "padding: 2rem; color: var(--text-primary);" }, "Loading dashboard...")
-                    if (error.val) return div({ style: "padding: 2rem; color: var(--status-error);" }, error.val)
+                    if (isLoading.val) return div({ style: "color: var(--text-muted); font-size: 14px;" }, "Loading...")
+                    if (error.val) return div({ style: "color: #EF4444;" }, "Error: " + error.val)
                     const d = dashData.val
                     if (!d) return div()
 
                     const metrics = [
-                        { label: "Today's Calls", value: `${d.usage.calls_today} / ${d.usage.calls_limit_day}`, color: "var(--accent-emerald)" },
-                        { label: "Monthly Tokens", value: `${d.usage.tokens_used_month.toLocaleString()} / ${d.usage.tokens_limit_month.toLocaleString()}`, color: "var(--accent-blue)" },
-                        { label: "Subscription Tier", value: d.tier.toUpperCase(), color: "var(--status-warning)" }
+                        { label: "Daily Calls", value: `${d.usage.calls_today} / ${d.usage.calls_limit_day}`, icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
+                        { label: "Tokens Used", value: d.usage.tokens_used_month.toLocaleString(), icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
+                        { label: "Current Tier", value: d.tier.toUpperCase(), icon: "M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 21" }
                     ]
 
                     const activities = (d.recent_calls || []).map(c => ({
-                        time: new Date(c.created_at).toLocaleTimeString(),
-                        event: `${c.model_used || "Unknown Model"} via ${c.provider}`,
-                        status: "success",
-                        color: "var(--accent-emerald)"
+                        time: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                        event: c.model_used || "AI Request",
+                        provider: c.provider
                     }))
 
-                    if (activities.length === 0) {
-                        activities.push({
-                            time: "Now",
-                            event: "No recent AI requests logged.",
-                            status: "active",
-                            color: "var(--accent-blue)"
-                        })
-                    }
-
                     return div({ class: "content-grid" },
-                        div({ style: "grid-column: 1 / -1; margin-bottom: 1rem;" },
-                            h2({ style: "color: var(--text-primary); font-size: 1.5rem; letter-spacing: -0.02em;" }, `Welcome, ${d.username || "Developer"}`),
-                            p({ style: "color: var(--text-muted); font-size: 0.875rem;" }, `Member since ${new Date(d.member_since).toLocaleDateString()}`)
+                        div({ style: "grid-column: 1 / -1; margin-bottom: 32px;" },
+                            h2({ style: "font-size: 24px; margin: 0;" }, `Welcome back, ${d.username}`),
+                            p({ style: "color: var(--text-muted); margin-top: 4px; font-size: 14px;" }, `Member since ${new Date(d.member_since).toLocaleDateString()}`)
                         ),
                         ...metrics.map(m => div({ class: "card" },
                             div({ class: "card-header" },
                                 span({ class: "card-title" }, m.label),
-                                Icon("M22 12h-4l-3 9L9 3l-3 9H2")
+                                Icon(m.icon)
                             ),
                             div({ class: "metric-value" }, m.value)
                         )),
-                        div({ class: "card api-well", style: "grid-column: 1 / -1;" },
-                            span({ class: "card-title" }, "System Authentication"),
-                            p({ style: "font-size: 0.8125rem; color: var(--text-muted); margin-top: 0.5rem;" }, `Primary root key for CLI operations. (Hint: ${d.api_key_hint})`),
-                            span({ class: "mono-key" }, () => keyVisible.val ? (user.val.api_key || "No key defined") : "••••••••••••••••••••••••••••••••"),
-                            div({ style: "display: flex; gap: 0.75rem;" },
-                                button({ class: "btn-ghost", onclick: () => keyVisible.val = !keyVisible.val }, "Toggle Visibility"),
-                                button({ class: "btn-ghost", onclick: () => user.val.api_key && navigator.clipboard.writeText(user.val.api_key) }, "Copy Secret")
+                        div({ class: "card api-well" },
+                            span({ class: "card-title" }, "API Key"),
+                            span({ class: "mono-key" }, () => keyVisible.val ? (user.val.api_key || "UNSET") : "••••••••••••••••••••••••••••••••"),
+                            div({ style: "display: flex; gap: 8px;" },
+                                button({ class: "btn-ghost", onclick: () => keyVisible.val = !keyVisible.val }, "Reveal"),
+                                button({ class: "btn-ghost", onclick: () => user.val.api_key && navigator.clipboard.writeText(user.val.api_key) }, "Copy")
                             )
                         ),
-                        div({ class: "card", style: "grid-column: 1 / -1; border: 1px solid var(--accent-purple);" },
-                            div({ class: "card-header" },
-                                span({ class: "card-title", style: "color: var(--accent-purple);" }, "CLI Downloads"),
-                                Icon("M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4")
-                            ),
-                            div({ style: "display: flex; gap: 0.75rem; margin-top: 1rem;" },
+                        div({ class: "card", style: "grid-column: span 3;" },
+                            span({ class: "card-title" }, "Recent Activity"),
+                            div({ style: "margin-top: 16px;" },
+                                activities.length > 0 ? activities.map(a => div({ class: "activity-row" },
+                                    div({ class: "status-indicator", style: "background: #10B981;" }),
+                                    div({ style: "display: flex; flex-direction: column;" },
+                                        span({ style: "font-weight: 500;" }, a.event),
+                                        span({ style: "font-size: 11px; color: var(--text-muted);" }, a.provider)
+                                    ),
+                                    span({ style: "color: var(--text-muted); font-size: 11px; font-family: var(--font-mono);" }, a.time)
+                                )) : p({ style: "color: var(--text-muted); font-size: 13px;" }, "No recent activity.")
+                            )
+                        ),
+                        div({ class: "card", style: "grid-column: span 3;" },
+                            span({ class: "card-title" }, "Releases"),
+                            div({ style: "display: flex; gap: 8px; margin: 20px 0;" },
                                 OSButton("linux", "Linux"),
-                                OSButton("macos", "macOS"),
                                 OSButton("windows", "Windows")
                             ),
-                            div({ style: "margin-top: 1rem;" },
-                                () => selectedOS.val === "linux" ? a({
-                                    href: "/rta",
-                                    class: "download-btn",
-                                    download: "rta"
-                                }, "Download for Linux (x64)") : 
-                                selectedOS.val === "windows" ? a({
-                                    href: "/rta.exe",
-                                    class: "download-btn",
-                                    download: "rta.exe"
-                                }, "Download for Windows (.exe)") : 
-                                a({
-                                    href: "#",
-                                    class: "download-btn",
-                                    style: "opacity: 0.6; cursor: not-allowed; background: #444; box-shadow: none;",
-                                    onclick: (e) => { e.preventDefault(); alert("macOS binary coming soon!") }
-                                }, "macOS — Coming Soon"),
-                                p({ style: "color: var(--text-muted); font-size: 0.8125rem; margin-top: 0.5rem;" }, () => `v0.2.0 stable release for ${selectedOS.val}.`)
-                            )
-                        ),
-                        div({ class: "card activity-section", style: "grid-column: 1 / -1;" },
-                            span({ class: "card-title" }, "Recent AI Requests"),
-                            div({ style: "margin-top: 1rem;" },
-                                activities.map(a => div({ class: "activity-row" },
-                                    div({ class: "status-indicator", style: `background: ${a.color};` }),
-                                    span({ style: "color: var(--text-primary); font-family: var(--font-mono);" }, a.event),
-                                    span({ style: "color: var(--text-muted); font-size: 0.75rem; margin-left: auto;" }, a.time)
-                                ))
-                            )
+                            a({
+                                href: selectedOS.val === "linux" ? "/rta" : "/rta.exe",
+                                class: "download-btn",
+                                download: selectedOS.val === "linux" ? "rta" : "rta.exe"
+                            }, `Download for ${selectedOS.val.toUpperCase()}`, Icon("M12 15V3m0 12l-4-4m4 4l4-4"))
                         )
                     )
                 }
