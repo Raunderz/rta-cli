@@ -1,617 +1,324 @@
 import van from "vanjs-core"
 
-const { div, h1, h2, h3, p, img, main, section, a, button, pre, li, span, form, input, svg, path } = van.tags
+const { div, h1, h2, h3, h4, p, img, main, section, a, button, pre, li, span, form, input, svg, path, nav, ul, footer, table, tr, th, td, tbody, thead } = van.tags
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
-// State for current page
+// State
 const currentPage = van.state("home")
 const currency = van.state("INR")
-const authMode = van.state("login") // "login" or "signup"
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
-const authError = van.state("")
 const isLoading = van.state(false)
-const dashboardTheme = van.state(localStorage.getItem("rta_dash_theme") || "light")
+const authError = van.state("")
+const authMode = van.state("login")
 
 const priceMap = {
-    INR: { basic: "₹75", pro: "₹299" },
-    USD: { basic: "$1.49", pro: "$4.49" }
+    INR: { free: "₹0", basic: "₹75", pro: "₹299" },
+    USD: { free: "$0", basic: "$1.49", pro: "$4.49" }
 }
 
-// Auth Helpers
-const saveUser = (userData) => {
-    user.val = userData
-    localStorage.setItem("rta_user", JSON.stringify(userData))
-    window.location.href = "/dashboard.html"
-}
+// Icons
+const IconCode = () => svg({ class: "feature-icon-box", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.5" }, 
+    path({ d: "M16 18l6-6-6-6M8 6l-6 6 6 6" })
+)
+const IconGit = () => svg({ class: "feature-icon-box", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.5" },
+    path({ d: "M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" })
+)
+const IconCloud = () => svg({ class: "feature-icon-box", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "1.5" },
+    path({ d: "M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" })
+)
 
-const logout = () => {
-    user.val = null
-    localStorage.removeItem("rta_user")
-    currentPage.val = "home"
-    window.history.pushState({ page: "home" }, "", "/")
-}
-
-const handleAuth = async (e, type) => {
-    e.preventDefault()
-    authError.val = ""
-    isLoading.val = true
-
-    const formData = new FormData(e.target)
-    const data = Object.fromEntries(formData.entries())
-
-    // Get hCaptcha token
-    const captchaToken = window.hcaptcha ? window.hcaptcha.getResponse() : "test_token"
-    if (!captchaToken && import.meta.env.PROD) {
-        authError.val = "Please complete the captcha."
-        isLoading.val = false
-        return
-    }
-
-    data.captcha_token = captchaToken
-
-    try {
-        const endpoint = type === "signup" ? "/v1/auth/signup" : "/v1/auth/login"
-        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
+// Scroll Reveal Observer
+const observe = (el) => {
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('visible')
+                observer.unobserve(entry.target)
+            }
         })
+    }, { threshold: 0.1 })
+    observer.observe(el)
+}
 
-        const result = await res.json()
-        if (!res.ok) throw new Error(result.detail || "Authentication failed")
+const Navbar = () => nav({ class: "container" },
+    a({ href: "/", class: "logo", onclick: (e) => { e.preventDefault(); currentPage.val = "home" } }, "rta"),
+    div({ class: "nav-links" },
+        NavLink("Pricing", "pricing"),
+        NavLink("Roadmap", "roadmap"),
+        NavLink("Status", "status"),
+        NavLink("Releases", "releases"),
+        () => user.val ? a({ href: "/dashboard.html", class: "nav-link" }, "Dashboard") : NavLink("Account", "auth")
+    )
+)
 
-        if (type === "signup") {
-            authMode.val = "login"
-            authError.val = "Signup successful! Please log in."
-        } else {
-            saveUser(result)
-        }
-    } catch (err) {
-        authError.val = err.message
-    } finally {
-        isLoading.val = false
-        if (window.hcaptcha) window.hcaptcha.reset()
+const NavLink = (text, page) => a({
+    href: `#/${page}`,
+    class: () => `nav-link ${currentPage.val === page ? "active" : ""}`,
+    onclick: (e) => {
+        e.preventDefault()
+        currentPage.val = page
+        window.history.pushState({ page }, "", `/${page}`)
+        window.scrollTo(0, 0)
     }
-}
+}, text)
 
-// Parallax logic
-const setupParallax = () => {
-    let ticking = false;
-    window.addEventListener('mousemove', (e) => {
-        if (!ticking) {
-            window.requestAnimationFrame(() => {
-                const x = (e.clientX / window.innerWidth - 0.5) * 2;
-                const y = (e.clientY / window.innerHeight - 0.5) * 2;
-                document.body.style.setProperty('--mx', `${x.toFixed(2)}`);
-                document.body.style.setProperty('--my', `${y.toFixed(2)}`);
-                ticking = false;
-            });
-            ticking = true;
-        }
-    });
-}
-
-const NavLink = (text, page) => {
-    if (page === "dashboard") {
-        return a({
-            href: "/dashboard.html",
-            class: "nav-link"
-        }, text)
-    }
-    return a({
-        href: `#/${page}`,
-        class: "nav-link",
-        onclick: (e) => {
-            e.preventDefault()
-            currentPage.val = page
-            window.history.pushState({ page }, "", `/${page}`)
-            window.scrollTo(0, 0)
-        }
-    }, text)
-}
-
-const Footer = () => div({ class: "footer-links" },
-    NavLink("pricing", "pricing"),
-    NavLink("roadmap", "roadmap"),
-    NavLink("status", "status"),
-    NavLink("privacy", "privacy"),
-    NavLink("terms", "terms"),
-    () => user.val ? NavLink("dashboard", "dashboard") : NavLink("sign in", "auth"),
-    p({ class: "footer-line" }, "Coming Soon — October 2026")
+const AppFooter = () => footer({},
+    div({ class: "container footer-grid" },
+        div({},
+            a({ href: "/", class: "footer-logo" }, "Rta"),
+            p({ class: "description", style: "max-width: 300px;" }, "Bringing medical-grade surgical development to the modern developer's pocket.")
+        ),
+        div({},
+            p({ class: "mono mb-8", style: "color: var(--color-primary);" }, "Platform"),
+            div({ style: "display: flex; flex-direction: column; gap: 16px;" },
+                NavLink("Pricing", "pricing"),
+                NavLink("Roadmap", "roadmap"),
+                NavLink("Status", "status"),
+                NavLink("Releases", "releases")
+            )
+        ),
+        div({},
+            p({ class: "mono mb-8", style: "color: var(--color-primary);" }, "Legal"),
+            div({ style: "display: flex; flex-direction: column; gap: 16px;" },
+                NavLink("Privacy", "privacy"),
+                NavLink("Terms", "terms")
+            )
+        )
+    ),
+    div({ class: "container", style: "margin-top: 80px; padding-top: 40px; border-top: 1px solid var(--color-border); opacity: 0.4;" },
+        p({ style: "font-size: 14px; font-family: var(--font-mono);" }, "© 2026 Rta Software Solutions. Built with anatomical precision.")
+    )
 )
 
 const HomePage = () => {
-    return main({ class: "container" },
-        section({ class: "hero" },
-            div({ class: "title-container" },
-                h1({ class: "app-name" }, "rta"),
-                p({ class: "description" },
-                    "a mobile-first, ai-assisted code editor for android. built for speed, precision, and surgical development on the go."
-                ),
-                div({ class: "cta-container" },
-                    () => !user.val ? a({
-                        class: "waitlist-btn",
-                        href: "#/auth",
-                        onclick: (e) => {
-                            e.preventDefault()
-                            currentPage.val = "auth"
-                            window.history.pushState({ page: "auth" }, "", "/auth")
-                        }
-                    }, "get started") : a({
-                        class: "waitlist-btn",
-                        href: "/dashboard.html"
-                    }, "open dashboard"),
-                    a({
-                        class: "release-link-btn",
-                        href: "#/releases",
-                        onclick: (e) => {
-                            e.preventDefault()
-                            currentPage.val = "releases"
-                            window.history.pushState({ page: "releases" }, "", "/releases")
-                        }
-                    }, "get rta cli v0.2.0 (linux/win)")
+    const s1 = section({ class: "container" },
+        div({ class: "hero-grid" },
+            div({ class: "hero-text" },
+                h1({}, "Surgical development. In your pocket."),
+                p({ class: "description mb-8" }, "Rta is the mobile workstation for the modern developer. Architected for high-precision coding, Git native workflows, and surgical AI assistance."),
+                div({ style: "display: flex; gap: 20px;" },
+                    a({ class: "btn btn-primary", href: "#/auth", onclick: (e) => { e.preventDefault(); currentPage.val = "auth" } }, "Get Started"),
+                    a({ class: "btn btn-secondary", href: "#/releases", onclick: (e) => { e.preventDefault(); currentPage.val = "releases" } }, "Download CLI")
                 )
             ),
-            div({ class: "logo-container" },
-                img({ class: "logo", src: "/assets/icon.png", alt: "Rta Icon" })
+            div({ class: "hero-icon-wrapper" },
+                img({ src: "/assets/icon.png", class: "hero-icon" })
             )
-        ),
-        section({ class: "features-grid" },
-            div({ class: "feature-card" },
-                h3({}, "Surgical AI"),
-                p({}, "Real-time AI assistance tuned for mobile constraints. Code faster with surgical precision.")
-            ),
-            div({ class: "feature-card" },
-                h3({}, "Git Native"),
-                p({}, "Full version control in your pocket. Commit, push, and pull without ever leaving the editor.")
-            ),
-            div({ class: "feature-card" },
-                h3({}, "Cloud Sync"),
-                p({}, "Sync your workspaces and API keys across devices. Move from CLI to Mobile seamlessly.")
-            )
-        ),
-        Footer()
+        )
     )
+    observe(s1)
+
+    const s2 = section({ class: "alternate" },
+        div({ class: "container" },
+            h2({}, "Core Capabilities."),
+            div({ class: "feature-list" },
+                div({ class: "feature-row" },
+                    div({ class: "feature-meta" }, IconCode(), h3({ style: "margin:0" }, "Surgical AI")),
+                    p({ class: "description" }, "Context-aware intelligence tuned for mobile. Our models are trained for anatomical precision in refactoring and generation.")
+                ),
+                div({ class: "feature-row" },
+                    div({ class: "feature-meta" }, IconGit(), h3({ style: "margin:0" }, "Git Native")),
+                    p({ class: "description" }, "Full version control without compromise. Commit, push, and pull directly from your device with native performance.")
+                ),
+                div({ class: "feature-row" },
+                    div({ class: "feature-meta" }, IconCloud(), h3({ style: "margin:0" }, "Cloud Sync")),
+                    p({ class: "description" }, "Seamless continuity between CLI and Mobile environments. Your workspace follows you everywhere.")
+                )
+            )
+        )
+    )
+    observe(s2)
+
+    const s3 = section({ class: "container" },
+        div({ class: "grid-2", style: "align-items: center;" },
+            div({},
+                h2({}, "Terminal Access."),
+                p({ class: "description mb-8" }, "The Rta CLI brings high-precision intelligence to your local environment. One command to diagnose and refactor."),
+                div({ class: "code-preview" },
+                    span({ style: "color: var(--color-primary);" }, "$ rta chat"), "\n",
+                    span({ style: "color: #7CB342;" }, "i >"), " optimize database query...", "\n",
+                    span({ style: "color: var(--color-text); opacity: 0.5;" }, "rta > analyzing project structure..."), "\n",
+                    span({ style: "color: #E8A547;" }, "✓ surgical refactor applied. 42% faster.")
+                )
+            ),
+            div({ class: "card" },
+                h3({ style: "color: var(--color-text); margin-bottom: 24px;" }, "Experience Precision."),
+                p({ class: "description mb-8" }, "Join the movement of developers building with surgical accuracy. Sign up to get started."),
+                a({ class: "btn btn-primary", href: "#/auth", onclick: (e) => { e.preventDefault(); currentPage.val = "auth" } }, "Sign Up Now")
+            )
+        )
+    )
+    observe(s3)
+
+    return main({}, s1, s2, s3)
 }
 
 const PricingPage = () => {
-    return div({ class: "content-page" },
-        NavLink("← back to home", "home"),
-        h1({ class: "page-title" }, "Pricing Plans"),
-        div({ class: "currency-selector" },
-            p({}, "Select Currency:"),
-            button({
-                class: () => currency.val === "INR" ? "active" : "",
-                onclick: () => currency.val = "INR"
-            }, "INR"),
-            button({
-                class: () => currency.val === "USD" ? "active" : "",
-                onclick: () => currency.val = "USD"
-            }, "USD")
+    const s = section({ class: "container" },
+        h1({ class: "text-center" }, "Pricing Plans"),
+        p({ class: "description text-center mb-8" }, "Sustainable intelligence for your pocket."),
+        div({ style: "display: flex; justify-content: center; gap: 16px; margin-bottom: 60px;" },
+            button({ class: () => `btn ${currency.val === "INR" ? "btn-primary" : "btn-secondary"}`, onclick: () => currency.val = "INR" }, "INR"),
+            button({ class: () => `btn ${currency.val === "USD" ? "btn-primary" : "btn-secondary"}`, onclick: () => currency.val = "USD" }, "USD")
         ),
-        p({ class: "page-subtitle" }, "Sustainable intelligence for your pocket."),
-        div({ class: "pricing-grid" },
-            div({ class: "price-card" },
-                h2({}, "Free"),
-                div({ class: "price" }, "₹0 / $0"),
-                p({ class: "tier-desc" }, "Perfect for light edits."),
-                pre({}, "10 calls / day\n2,000 tokens / request\n25,000 tokens / month")
-            ),
-            div({ class: "price-card featured" },
-                h2({}, "Basic"),
-                div({ class: "price" }, () => priceMap[currency.val].basic + "/mo"),
-                p({ class: "tier-desc" }, "For the focused student."),
-                pre({}, "20 calls / minute\n4,000 tokens / request\n500,000 tokens / month")
-            ),
-            div({ class: "price-card" },
-                h2({}, "Pro"),
-                div({ class: "price" }, () => priceMap[currency.val].pro + "/mo"),
-                p({ class: "tier-desc" }, "For the daily builder."),
-                pre({}, "100 calls / minute\n10,000 tokens / request\n5,000,000 tokens / month")
+        div({ class: "pricing-wrapper" },
+            table({ class: "pricing-table" },
+                thead({}, tr({}, th({}, "Plan"), th({}, "Daily Calls"), th({}, "Monthly Tokens"), th({}, "Price"))),
+                tbody({},
+                    tr({}, td({}, "Free"), td({}, "10 Calls"), td({}, "25k Tokens"), td({ class: "price-cell" }, () => priceMap[currency.val].free)),
+                    tr({ class: "featured" }, td({}, "Basic"), td({}, "20 / min"), td({}, "500k Tokens"), td({ class: "price-cell" }, () => priceMap[currency.val].basic)),
+                    tr({}, td({}, "Pro"), td({}, "100 / min"), td({}, "5M Tokens"), td({ class: "price-cell" }, () => priceMap[currency.val].pro))
+                )
             )
-        ),
-        Footer()
+        )
     )
+    observe(s)
+    return main({}, s)
 }
 
 const RoadmapPage = () => {
     const phases = [
-        {
-            title: "Phase I",
-            tag: "Current",
-            status: "active",
-            items: [
-                "Build the central backend: secure auth, API routing, and billing.",
-                "Ship the initial headless CLI for early developer testing.",
-                "Begin logging anonymized telemetry to understand real-world workflows."
-            ]
-        },
-        {
-            title: "Phase II",
-            tag: "Next",
-            items: [
-                "Open public access to the Rta CLI experience.",
-                "Introduce fast, context-aware AI code generation straight from the terminal.",
-                "Deploy initial subscription tiers to ensure stable server performance."
-            ]
-        },
-        {
-            title: "Phase III",
-            tag: "Soon",
-            items: [
-                "Release the full Rta Desktop application.",
-                "Add deep project navigation and file-system indexing.",
-                "Integrate advanced, multi-step AI reasoning for complex refactoring."
-            ]
-        },
-        {
-            title: "Phase IV",
-            tag: "Later",
-            items: [
-                "Launch the core Rta mobile app for Android — the pocket workstation.",
-                "Enable seamless, encrypted workspace syncing between CLI, Desktop, and Mobile.",
-                "Bring native Git integration (commit, push, pull) straight to your phone."
-            ]
-        },
-        {
-            title: "Phase V",
-            tag: "Future",
-            items: [
-                "Train custom models fine-tuned purely on the anonymized Rta developer dataset.",
-                "Dramatically reduce subscription costs by running our own intelligence layer.",
-                "Explore open-sourcing non-critical parts of the Rta infrastructure."
-            ]
-        }
+        { title: "Phase I", items: ["Central Backend & Auth", "Headless CLI Testing", "Telemetry Logging"] },
+        { title: "Phase II", items: ["Public CLI Access", "Context-Aware Generation", "Subscription Tiers"] },
+        { title: "Phase III", items: ["Rta Desktop Release", "Project Navigation", "Multi-Step Reasoning"] },
+        { title: "Phase IV", items: ["Android Mobile App", "Workspace Syncing", "Native Git"] },
+        { title: "Phase V", items: ["Custom Models", "Cost Reduction", "Open-Core"] }
     ]
 
-    return div({ class: "roadmap-page" },
-        NavLink("← back to home", "home"),
-        h1({ class: "page-title" }, "Roadmap"),
-        p({ class: "page-subtitle" }, "The architectural evolution of Rta."),
-        div({ class: "roadmap-timeline" },
-            phases.map(phase => div({ class: "roadmap-phase" },
-                div({ class: `phase-marker ${phase.status || ""}` }),
-                div({ class: "phase-header" },
-                    h2({ class: "phase-title" }, phase.title),
-                    div({ class: "phase-tag" }, phase.tag)
-                ),
-                div({ class: "roadmap-card" },
-                    div({ class: "roadmap-list" },
-                        phase.items.map(item => li({}, item))
-                    )
+    const s = section({ class: "container" },
+        h1({ class: "mb-8" }, "Project Roadmap"),
+        div({ class: "roadmap-container" },
+            phases.map(p => div({ class: "roadmap-box" },
+                h3({ style: "color: var(--color-text); margin-bottom: 24px;" }, p.title),
+                ul({ style: "list-style: none; display: flex; flex-direction: column; gap: 12px; opacity: 0.7;" },
+                    p.items.map(i => li({ style: "display: flex; gap: 10px;" }, span({ style: "color: var(--color-primary);" }, "→"), i))
                 )
             ))
-        ),
-        Footer()
+        )
     )
-}
-
-const PrivacyPage = () => {
-    return div({ class: "content-page doc-page" },
-        NavLink("← back to home", "home"),
-        h1({ class: "page-title" }, "Privacy Policy"),
-        section({},
-            h2({}, "1. Information We Collect"),
-            p({}, "We take privacy seriously. However, to improve Rta and bill correctly, we collect minimal data required to provide our AI services:"),
-            pre({}, "- Account Data: Username.\n- Telemetry: Scans of AI interactions (anonymized & scrubbed).\n- Usage: Token consumption for billing accuracy.\n- Payment Info: Processed securely by our payment partners (Stripe/Razorpay)."),
-            h2({}, "2. Data Sanitization"),
-            p({}, "Our server-side sanitizers automatically strip secrets (AWS keys, auth tokens) and local file paths from AI interaction logs before storage."),
-            h2({}, "3. Data Security"),
-            p({}, "We use industry-standard encryption (HTTPS/TLS) and hashed credentials. We never sell your data to third parties."),
-            h2({}, "4. Support"),
-            p({}, "Privacy-related inquiries can be submitted via our future ticket system.")
-        ),
-        Footer()
-    )
-}
-
-const TermsPage = () => {
-    return div({ class: "content-page doc-page" },
-        NavLink("← back to home", "home"),
-        h1({ class: "page-title" }, "Terms of Service"),
-        section({},
-            h2({}, "1. Terms of Use"),
-            p({}, "By using Rta, you agree to these terms. Rta is a productivity tool for developers."),
-            h2({}, "2. Subscription & Payments"),
-            p({}, "Payments are billed monthly. Access to specific tiers (Basic/Pro) is granted immediately upon successful payment."),
-            h2({}, "3. Refund Policy"),
-            p({}, "We offer a 7-day no-questions-asked refund policy for your first subscription month if you are unsatisfied with the service."),
-            h2({}, "4. Limitations"),
-            p({}, "You may not use Rta to generate malicious code or engage in activity that disrupts our server infrastructure."),
-            h2({}, "5. Business Info"),
-            p({}, "Rta Software Solutions. Registered in India.")
-        ),
-        Footer()
-    )
-}
-
-const AuthPage = () => {
-    const isLogin = () => authMode.val === "login"
-
-    return div({ class: "content-page auth-page" },
-        NavLink("← back to home", "home"),
-        div({ class: "auth-card" },
-            h1({ class: "page-title" }, () => isLogin() ? "Login" : "Sign Up"),
-            p({ class: "page-subtitle" }, () => isLogin() ? "Welcome back, developer." : "Join the medical-grade coding era."),
-
-            () => authError.val ? p({ class: "error-msg" }, authError.val) : "",
-
-            form({ onsubmit: (e) => handleAuth(e, authMode.val) },
-                () => !isLogin() ? div({ class: "input-group" },
-                    input({ name: "username", placeholder: "Username", required: true, class: "auth-input" })
-                ) : "",
-                div({ class: "input-group" },
-                    input({ name: "email", type: "email", placeholder: "Email", required: true, class: "auth-input" })
-                ),
-                div({ class: "input-group" },
-                    input({ name: "password", type: "password", placeholder: "Password", required: true, class: "auth-input" })
-                ),
-                div({ class: "hcaptcha-container" },
-                    div({ class: "h-captcha", "data-sitekey": "51b06ce2-0f58-4148-8fec-b2944c54e718" })
-                ),
-                button({
-                    type: "submit",
-                    class: "auth-btn",
-                    disabled: isLoading
-                }, () => isLoading.val ? "Processing..." : (isLogin() ? "Login" : "Sign Up"))
-            ),
-
-            div({ class: "auth-divider" }, span({}, "OR")),
-
-            button({
-                class: "github-btn",
-                onclick: () => window.location.href = `${API_BASE_URL}/v1/auth/github`
-            }, 
-                svg({ width: "20", height: "20", viewBox: "0 0 24 24", fill: "currentColor", style: "margin-right: 10px;" },
-                    path({ d: "M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" })
-                ),
-                "Continue with GitHub"
-            ),
-
-            p({ class: "auth-toggle" },
-                () => isLogin() ? "New to Rta?" : "Already have an account?",
-                button({
-                    class: "toggle-btn",
-                    onclick: () => {
-                        authMode.val = isLogin() ? "signup" : "login"
-                        authError.val = ""
-                    }
-                }, () => isLogin() ? " Create an account" : " Login")
-            )
-        ),
-        Footer()
-    )
-}
-
-
-const ReleasesPage = () => {
-    const selectedOS = van.state("linux")
-
-    const OSButton = (os, label) => button({
-        style: () => `background: ${selectedOS.val === os ? "var(--gold)" : "rgba(255,255,255,0.05)"}; color: ${selectedOS.val === os ? "var(--bg-dark)" : "var(--gold)"}; border: 1px solid var(--gold-dim); padding: 0.5rem 1.5rem; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-family: inherit; font-size: 0.9rem;`,
-        onclick: () => selectedOS.val = os
-    }, label)
-
-    return div({ class: "releases-page" },
-        NavLink("← back to home", "home"),
-        div({ class: "release-card", style: "max-width: 900px;" },
-            h1({ class: "release-title" }, "rta cli v0.2.0"),
-            p({ class: "release-subtitle" }, "free tier • signup required"),
-            
-            div({ style: "display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem;" },
-                OSButton("linux", "Linux"),
-                OSButton("macos", "macOS"),
-                OSButton("windows", "Windows")
-            ),
-
-            div({ class: "download-section", style: "display: flex; flex-direction: column; gap: 1.5rem; align-items: center;" },
-                () => selectedOS.val === "linux" ? a({
-                    href: "/rta",
-                    class: "download-btn",
-                    download: "rta"
-                }, "Download for Linux (x64)") : 
-                selectedOS.val === "windows" ? a({
-                    href: "/rta.exe",
-                    class: "download-btn",
-                    download: "rta.exe"
-                }, "Download for Windows (.exe)") : 
-                a({
-                    href: "#",
-                    class: "download-btn",
-                    style: "opacity: 0.6; cursor: not-allowed; background: #444; box-shadow: none;",
-                    onclick: (e) => { e.preventDefault(); alert("macOS binary coming soon!") }
-                }, "macOS (Apple Silicon/Intel) — Coming Soon"),
-                p({ class: "platform-note" }, () => `v0.2.0 stable release for ${selectedOS.val}.`)
-            ),
-
-            div({ class: "guide-section", style: "text-align: left; margin-top: 2rem;" },
-                h2({ style: "margin-bottom: 2rem; border-bottom: 1px solid var(--rule); padding-bottom: 1rem;" }, "Installation & Global Usage"),
-                
-                div({ class: "global-note", style: "background: rgba(212, 175, 55, 0.1); border-left: 4px solid var(--gold); padding: 1rem; margin-bottom: 2rem; border-radius: 0 8px 8px 0;" },
-                    h3({ style: "margin-top: 0; color: var(--gold);" }, "💡 Pro Tip: Run Anywhere"),
-                    p({ style: "margin-bottom: 0; font-size: 0.95rem;" }, "Once installed globally, typing ", span({style: "color: var(--gold); font-family: monospace;"}, "rta"), " in any folder (like /Documents/project) will automatically open that folder as your workspace. It doesn't matter where the binary is stored; it always works where you are.")
-                ),
-
-                () => selectedOS.val === "linux" ? div({},
-                    div({ class: "guide-step" },
-                        h3({}, "1. Make Executable"),
-                        pre({}, "chmod +x rta")
-                    ),
-                    div({ class: "guide-step" },
-                        h3({}, "2. Move to Global Path"),
-                        p({}, "To use rta from any directory:"),
-                        pre({}, "sudo mv rta /usr/local/bin/")
-                    ),
-                    div({ class: "guide-step" },
-                        h3({}, "3. Usage"),
-                        p({}, "Navigate to your project and start chatting:"),
-                        pre({}, "cd ~/my-cool-app\nrta login\nrta chat")
-                    )
-                ) : 
-                selectedOS.val === "macos" ? div({},
-                    div({ class: "guide-step" },
-                        h3({}, "1. Remove Quarantine"),
-                        p({}, "After downloading, allow the binary to run:"),
-                        pre({}, "xattr -d com.apple.quarantine rta\nchmod +x rta")
-                    ),
-                    div({ class: "guide-step" },
-                        h3({}, "2. Move to Global Path"),
-                        pre({}, "sudo mv rta /usr/local/bin/")
-                    ),
-                    div({ class: "guide-step" },
-                        h3({}, "3. Start"),
-                        p({}, "Open your terminal in any folder and run:"),
-                        pre({}, "rta chat")
-                    )
-                ) :
-                div({},
-                    div({ class: "guide-step" },
-                        h3({}, "1. Setup Global Access"),
-                        p({}, "Move rta.exe to a folder in your System PATH (e.g., C:\\Windows\\) or add your download folder to PATH."),
-                        pre({}, "Move-Item .\\rta.exe C:\\Windows\\rta.exe")
-                    ),
-                    div({ class: "guide-step" },
-                        h3({}, "2. Verify"),
-                        p({}, "Open CMD or PowerShell anywhere and type:"),
-                        pre({}, "rta --help")
-                    ),
-                    div({ class: "guide-step" },
-                        h3({}, "3. Start Coding"),
-                        pre({}, "cd C:\\Users\\Name\\Projects\\App\nrta chat")
-                    )
-                )
-            )
-        ),
-        Footer()
-    )
+    observe(s)
+    return main({}, s)
 }
 
 const StatusPage = () => {
     const statusData = van.state({ loading: true, status: "checking", services: {} })
-
-    const checkStatus = async () => {
+    const check = async () => {
         try {
-            const res = await fetch(`${API_BASE_URL}/v1/status`, {
-                headers: { "ngrok-skip-browser-warning": "true" }
-            })
-            if (!res.ok) throw new Error("Backend unreachable")
-            const data = await res.json()
-            statusData.val = { loading: false, ...data }
-        } catch (err) {
-            statusData.val = {
-                loading: false,
-                status: "down",
-                services: { api: "offline", database: "unknown", proxy: "unknown" }
-            }
+            const res = await fetch(`${API_BASE_URL}/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
+            statusData.val = { loading: false, ...(await res.json()) }
+        } catch {
+            statusData.val = { loading: false, status: "down", services: { api: "offline" } }
         }
     }
+    check()
 
-    checkStatus()
-
-    return div({ class: "content-page" },
-        NavLink("← back to home", "home"),
-        h1({ class: "page-title" }, "System Status"),
-        p({ class: "page-subtitle" }, "Real-time health of Rta infrastructure."),
-        div({ class: "status-container", style: "width: 100%; max-width: 600px;" },
-            () => statusData.val.loading ? p({ style: "text-align: center;" }, "Checking systems...") :
-                div({ class: "roadmap-card" },
-                    div({ style: "display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; justify-content: center;" },
-                        span({
-                            style: `width: 12px; height: 12px; border-radius: 50%; background: ${statusData.val.status === "operational" ? "#4ade80" : "#ff5e5e"}; box-shadow: 0 0 10px ${statusData.val.status === "operational" ? "#4ade80" : "#ff5e5e"};`
-                        }),
-                        h2({ style: "margin: 0; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 0.1rem;" },
-                            statusData.val.status === "operational" ? "All Systems Operational" : "Service Disruption"
-                        )
-                    ),
-                    div({ class: "roadmap-list" },
-                        Object.entries(statusData.val.services).map(([name, status]) => li({
-                            style: "display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 0.8rem 0;"
-                        },
-                            span({ style: "text-transform: capitalize;" }, name),
-                            span({
-                                style: `color: ${status === "operational" ? "#4ade80" : "#ff5e5e"}; font-size: 0.9rem; font-weight: 600; text-transform: uppercase;`
-                            }, status)
-                        ))
-                    )
-                )
-        ),
-        Footer()
-    )
-}
-
-const WaitlistPage = () => {
-    return div({ class: "waitlist-page" },
-        NavLink("← back to home", "home"),
-        div({ class: "iframe-container" },
-            div({},
-                `Loading form...`
+    const s = section({ class: "container" },
+        h1({ class: "text-center" }, "System Health"),
+        div({ class: "status-card" },
+            div({ class: "status-header" },
+                h3({ style: "margin:0" }, "Global Status"),
+                () => statusData.val.loading ? p({}, "Checking...") : 
+                span({ 
+                    class: "status-indicator", 
+                    style: `background: ${statusData.val.status === "operational" ? "#7CB342" : "#E57373"}; color: #fff;` 
+                }, statusData.val.status.toUpperCase())
+            ),
+            div({ class: "status-body" },
+                () => Object.entries(statusData.val.services).map(([n, s]) => div({ class: "status-row" },
+                    span({ style: "font-weight: 500;" }, n.charAt(0).toUpperCase() + n.slice(1)),
+                    span({ style: `color: ${s === "operational" ? "#7CB342" : "#E57373"}; font-family: var(--font-mono); font-weight: 700;` }, s.toUpperCase())
+                ))
             )
-        ),
-        Footer()
+        )
     )
+    observe(s)
+    return main({}, s)
 }
 
-// Load iframe dynamically
-const loadWaitlistIframe = () => {
-    setTimeout(() => {
-        const container = document.querySelector('.iframe-container')
-        if (container && currentPage.val === "waitlist") {
-            container.innerHTML = `
-                <iframe 
-                    src="https://docs.google.com/forms/d/e/1FAIpQLSfnm1xCMBLUks3NIFWDfcyjvc6zIzC5gkQkevuXnTSGUnPQOQ/viewform?embedded=true" 
-                    frameborder="0" 
-                    marginheight="0" 
-                    marginwidth="0">Loading…</iframe>
-            `
-        }
-    }, 0)
+const ReleasesPage = () => {
+    const selectedOS = van.state("linux")
+    const s = section({ class: "container" },
+        div({ class: "text-center" },
+            h1({}, "Rta CLI v0.2.0"),
+            p({ class: "description mb-8" }, "Anatomical precision in every command."),
+            div({ style: "display: flex; justify-content: center; gap: 16px; margin-bottom: 60px;" },
+                button({ class: () => `btn ${selectedOS.val === "linux" ? "btn-primary" : "btn-secondary"}`, onclick: () => selectedOS.val = "linux" }, "Linux"),
+                button({ class: () => `btn ${selectedOS.val === "macos" ? "btn-primary" : "btn-secondary"}`, onclick: () => selectedOS.val = "macos" }, "macOS"),
+                button({ class: () => `btn ${selectedOS.val === "windows" ? "btn-primary" : "btn-secondary"}`, onclick: () => selectedOS.val = "windows" }, "Windows")
+            ),
+            div({ class: "card", style: "max-width: 800px; margin: 0 auto; text-align: left;" },
+                div({ style: "text-align: center; margin-bottom: 48px;" },
+                    () => selectedOS.val === "linux" ? a({ href: "/rta", class: "btn btn-primary", download: "rta" }, "Download Binary") : 
+                    selectedOS.val === "windows" ? a({ href: "/rta.exe", class: "btn btn-primary", download: "rta.exe" }, "Download Binary (.exe)") : 
+                    p({ class: "description" }, "macOS Binary Coming Soon")
+                ),
+                h3({ class: "mb-4" }, "Quick Start"),
+                pre({ class: "code-preview" }, () => selectedOS.val === "linux" ? "chmod +x rta\nsudo mv rta /usr/local/bin/\nrta chat" : "rta.exe chat")
+            )
+        )
+    )
+    observe(s)
+    return main({}, s)
 }
 
-const App = () => {
-    return () => {
-        setupParallax()
+const AuthPage = () => {
+    const isLogin = () => authMode.val === "login"
+    const s = section({ class: "container" },
+        div({ style: "display: flex; justify-content: center;" },
+            div({ class: "card", style: "width: 100%; max-width: 480px;" },
+                h2({ class: "text-center" }, () => isLogin() ? "Welcome Back" : "Create Account"),
+                p({ class: "description text-center mb-8" }, () => isLogin() ? "Access your workstation." : "Start your surgical journey."),
+                form({ onsubmit: (e) => e.preventDefault() },
+                    !isLogin() ? div({ class: "mb-4" }, input({ style: "width:100%; background:var(--color-secondary); border:1px solid var(--color-border); padding:16px; border-radius:4px; color:var(--color-text);", placeholder: "Username" })) : "",
+                    div({ class: "mb-4" }, input({ style: "width:100%; background:var(--color-secondary); border:1px solid var(--color-border); padding:16px; border-radius:4px; color:var(--color-text);", type: "email", placeholder: "Email Address" })),
+                    div({ class: "mb-8" }, input({ style: "width:100%; background:var(--color-secondary); border:1px solid var(--color-border); padding:16px; border-radius:4px; color:var(--color-text);", type: "password", placeholder: "Secure Password" })),
+                    button({ class: "btn btn-primary", style: "width: 100%;" }, () => isLogin() ? "Login" : "Sign Up")
+                ),
+                div({ class: "text-center mt-8" },
+                    a({ 
+                        href: "#", 
+                        class: "description", 
+                        style: "font-size: 14px; opacity: 0.6;",
+                        onclick: (e) => { e.preventDefault(); authMode.val = isLogin() ? "signup" : "login" }
+                    }, () => isLogin() ? "New to Rta? Create an account" : "Already have an account? Login")
+                )
+            )
+        )
+    )
+    observe(s)
+    return main({}, s)
+}
+
+const PrivacyPage = () => {
+    const s = section({ class: "container" }, h1({}, "Privacy Policy"), p({ class: "description" }, "Your data remains yours. Anatomical precision means zero leak of sensitive information."))
+    observe(s); return main({}, s)
+}
+
+const TermsPage = () => {
+    const s = section({ class: "container" }, h1({}, "Terms of Service"), p({ class: "description" }, "Built with transparency. Billed with accuracy."))
+    observe(s); return main({}, s)
+}
+
+const App = () => div({},
+    Navbar(),
+    () => {
         switch (currentPage.val) {
             case "home": return HomePage()
-            case "waitlist": loadWaitlistIframe(); return WaitlistPage()
-            case "releases": return ReleasesPage()
             case "pricing": return PricingPage()
             case "roadmap": return RoadmapPage()
             case "status": return StatusPage()
+            case "releases": return ReleasesPage()
+            case "auth": return AuthPage()
             case "privacy": return PrivacyPage()
             case "terms": return TermsPage()
-            case "auth":
-                setTimeout(() => {
-                    const container = document.querySelector('.h-captcha');
-                    if (container && window.hcaptcha) {
-                        try {
-                            window.hcaptcha.render(container);
-                        } catch (e) {
-                            console.warn("hCaptcha already rendered or failed:", e);
-                        }
-                    }
-                }, 200);
-                return AuthPage();
             default: return HomePage()
         }
-    }
-}
-
-// Handle browser back/forward buttons
-window.addEventListener('popstate', (e) => {
-    const page = e.state?.page || "home"
-    currentPage.val = page
-})
-
-// Parse URL on initial load
-const initRoute = () => {
-    const path = window.location.pathname.slice(1) || "home"
-    currentPage.val = path
-}
+    },
+    AppFooter()
+)
 
 const root = document.getElementById("app")
 if (root) {
-    initRoute()
     van.add(root, App())
 }
-
