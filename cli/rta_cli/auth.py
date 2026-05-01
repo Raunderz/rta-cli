@@ -50,10 +50,9 @@ def do_login():
 
         if resp.status_code == 200:
             data = resp.json()
-            email = data.get("email", "unknown")
             tier = data.get("tier", "free")
             save_credential("rta_api_key", api_key)
-            console.print(f"\n[bold green]✓ Logged in as {email} ({tier})[/bold green]")
+            console.print(f"\n[bold green]✓ Authenticated ({tier})[/bold green]")
             console.print(f"[dim]Key saved to ~/.rta/credentials[/dim]")
             return
         elif resp.status_code == 401:
@@ -91,9 +90,9 @@ def do_whoami():
 
     if resp.status_code == 200:
         data = resp.json()
-        console.print(f"[bold #ff3333]User:[/bold #ff3333]  {data.get('email', '?')}")
-        console.print(f"[bold #ff3333]Tier:[/bold #ff3333]  {data.get('tier', '?')}")
-        console.print(f"[bold #ff3333]ID:[/bold #ff3333]    {data.get('user_id', '?')}")
+        console.print(f"[bold #ff3333]Status:[/bold #ff3333] Authenticated")
+        console.print(f"[bold #ff3333]Tier:[/bold #ff3333]   {data.get('tier', '?')}")
+        console.print(f"[bold #ff3333]ID:[/bold #ff3333]     {data.get('user_id', '?')}")
     elif resp.status_code == 401:
         console.print("[red]Invalid or expired key. Run: rta login[/red]")
         sys.exit(1)
