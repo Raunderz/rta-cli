@@ -17,41 +17,43 @@
             padding: 4rem 2rem;
             position: relative;
             z-index: 2;
+            text-align: center;
         }
         .back-link {
-            margin-bottom: 3rem;
+            margin-bottom: 4rem;
             color: var(--text-muted);
             text-decoration: none;
             text-transform: uppercase;
             font-family: var(--font-mono);
-            font-size: 11px;
-            letter-spacing: 0.2em;
-            transition: all 0.3s var(--ease-premium);
+            font-size: 10px;
+            letter-spacing: 0.3em;
+            transition: all 0.4s var(--ease-premium);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
         }
         .back-link:hover {
             color: var(--text);
-            transform: translateX(-4px);
+            letter-spacing: 0.4em;
         }
         .iframe-container {
             width: 100%;
-            max-width: 640px;
-            height: 600px;
+            max-width: 600px;
+            height: 580px;
             border: 1px solid var(--border);
-            border-radius: 32px;
+            border-radius: 40px;
             background: var(--card-bg);
-            backdrop-filter: blur(20px);
+            backdrop-filter: blur(24px);
             overflow: hidden;
             box-shadow: 0 40px 80px -20px rgba(0,0,0,0.8);
+            position: relative;
         }
-        .iframe-container iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            filter: invert(0.95) hue-rotate(180deg) brightness(1.2) contrast(0.85) grayscale(1);
-            opacity: 0.8;
+        .iframe-container::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(255,255,255,0.02), transparent);
+            pointer-events: none;
         }
         .footer-line {
             margin-top: 4rem;

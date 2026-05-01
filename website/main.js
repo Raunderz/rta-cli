@@ -12,8 +12,11 @@ const getInitialPage = () => {
 }
 
 const currentPage = van.state(getInitialPage())
+const authMode = van.state("login") // Added back
 const currency = van.state("INR")
 const user = van.state(JSON.parse(localStorage.getItem("rta_user") || "null"))
+const authError = van.state("") // Added back
+const isLoading = van.state(false) // Added back
 const statusData = van.state({ loading: true, status: "Checking", services: {} })
 
 const priceMap = {
@@ -21,9 +24,66 @@ const priceMap = {
     USD: { free: "$0", basic: "$1.49", pro: "$4.49" }
 }
 
+// --- Auth Helpers ---
+const saveUser = (userData) => {
+    user.val = userData
+    localStorage.setItem("rta_user", JSON.stringify(userData))
+    window.location.href = "/dashboard.html"
+}
+
+const logout = () => {
+    user.val = null
+    localStorage.removeItem("rta_user")
+    currentPage.val = "home"
+    window.history.pushState({ page: "home" }, "", "/")
+}
+
+const handleAuth = async (e, type) => {
+    e.preventDefault()
+    authError.val = ""
+    isLoading.val = true
+
+    const formData = new FormData(e.target)
+    const data = Object.fromEntries(formData.entries())
+
+    // Get hCaptcha token
+    const captchaToken = window.hcaptcha ? window.hcaptcha.getResponse() : "test_token"
+    if (!captchaToken && import.meta.env.PROD) {
+        authError.val = "Please complete the captcha."
+        isLoading.val = false
+        return
+    }
+
+    data.captcha_token = captchaToken
+
+    try {
+        const endpoint = type === "signup" ? "/v1/auth/signup" : "/v1/auth/login"
+        const res = await fetch(`${API_BASE_URL}${endpoint}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data)
+        })
+
+        const result = await res.json()
+        if (!res.ok) throw new Error(result.detail || "Authentication failed")
+
+        if (type === "signup") {
+            authMode.val = "login"
+            authError.val = "Signup successful! Please log in."
+        } else {
+            saveUser(result)
+        }
+    } catch (err) {
+        authError.val = err.message
+    } finally {
+        isLoading.val = false
+        if (window.hcaptcha) window.hcaptcha.reset()
+    }
+}
+
 // --- Global Mouse Tracking ---
 window.addEventListener('mousemove', (e) => {
-    const cards = document.querySelectorAll('.bento-item, .pricing-card')
+    const cards = document.querySelectorAll('.bento-item, .pricing-card, .status-card')
     cards.forEach(card => {
         const rect = card.getBoundingClientRect()
         const x = ((e.clientX - rect.left) / rect.width) * 100
@@ -35,17 +95,11 @@ window.addEventListener('mousemove', (e) => {
 
 // --- Animation Engine ---
 const reveal = (el, immediate = false) => {
-    // Always add the attribute first to ensure CSS classes apply
     el.setAttribute('data-reveal', '')
-    
     if (immediate) {
-        // Use requestAnimationFrame to ensure the attribute is processed before adding class
-        requestAnimationFrame(() => {
-            el.classList.add('visible')
-        })
+        requestAnimationFrame(() => { el.classList.add('visible') })
         return
     }
-    
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -54,14 +108,13 @@ const reveal = (el, immediate = false) => {
             }
         })
     }, { threshold: 0.01 })
-    
     observer.observe(el)
 }
 
 const Icon = (d, size = "16") => svg({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }, path({ d }))
 
 const GifPlaceholder = () => {
-    return div({ class: "gif-placeholder floating" },
+    return div({ class: "gif-placeholder" },
         div({ class: "gif-placeholder-inner" },
             svg({ 
                 class: "gif-placeholder-icon",
@@ -87,7 +140,7 @@ const Navbar = () => nav({},
             NavLink("Roadmap", "roadmap"),
             NavLink("Status", "status"),
             NavLink("Releases", "releases"),
-            () => user.val ? a({ href: "/dashboard.html", class: "nav-link" }, "Dashboard") : NavLink("Account", "auth")
+            () => user.val ? a({ href: "#", class: "nav-link", onclick: (e) => { e.preventDefault(); logout() } }, "Logout") : NavLink("Account", "auth")
         )
     )
 )
@@ -142,9 +195,9 @@ const AppFooter = () => footer({},
 const Hero = () => {
     const el = section({ class: "container hero" },
         div({ class: "hero-content" },
-            h1({}, "Build faster. ", span({}, "Everywhere.")),
+            h1({ class: "text-balance" }, "Build faster. ", span({}, "Everywhere.")),
             p({ class: "description" }, "Rta is a high-performance code editor for Android and a powerful CLI for Linux and Windows. Designed for mobile-first precision."),
-            div({ style: "display: flex; gap: 16px; justify-content: center; margin-top: 40px;" },
+            div({ style: "display: flex; gap: 16px; margin-top: 48px;" },
                 a({ class: "btn btn-primary", href: "#", onclick: (e) => { e.preventDefault(); currentPage.val = "auth" } }, "Get Started"),
                 a({ class: "btn btn-secondary", href: "#", onclick: (e) => { e.preventDefault(); currentPage.val = "releases" } }, "Download CLI")
             )
@@ -162,11 +215,11 @@ const Capabilities = () => {
         { title: "Local First", desc: "Lightning fast execution with zero round-trip latency." }
     ]
 
-    const el = section({ class: "container", style: "padding-top: 0;" },
+    const el = section({ class: "container", style: "padding-top: 0; padding-bottom: 120px;" },
         div({ class: "bento-grid" },
             items.map(item => div({ class: "bento-item" },
                 h3({}, item.title),
-                p({ class: "description" }, item.desc)
+                p({ class: "description", style: "font-size: 14px;" }, item.desc)
             ))
         )
     )
@@ -194,12 +247,12 @@ const PricingPage = () => {
         }
     ]
 
-    const el = section({ class: "container", style: "padding-top: 120px;" },
-        div({ class: "text-center mb-8" },
-            h2({ class: "mb-4" }, "Pricing"),
-            p({ class: "description" }, "Simple, transparent tiers for every developer.")
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
+        div({ class: "text-center mb-12", style: "max-width: 700px; margin: 0 auto;" },
+            h2({ class: "mb-12 text-balance" }, "Simple, transparent pricing for teams"),
+            p({ class: "description text-center" }, "Choose the plan that fits your development workflow. No hidden fees, just raw performance.")
         ),
-        div({ style: "display: flex; justify-content: center; gap: 8px; margin-bottom: 48px;" },
+        div({ style: "display: flex; justify-content: center; gap: 12px; margin-bottom: 64px;" },
             button({ class: () => `btn ${currency.val === "INR" ? "btn-primary" : "btn-secondary"}`, onclick: () => currency.val = "INR" }, "INR"),
             button({ class: () => `btn ${currency.val === "USD" ? "btn-primary" : "btn-secondary"}`, onclick: () => currency.val = "USD" }, "USD")
         ),
@@ -210,30 +263,36 @@ const PricingPage = () => {
                 ul({ class: "pricing-features" },
                     tier.features.map(f => li({}, f))
                 ),
-                button({ class: `btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}`, style: "width: 100%;" }, "Select Plan")
+                button({ class: `btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}`, style: "width: 100%; border-radius: 16px;" }, "Select Plan")
             ))
         )
     )
-    reveal(el, true) // Instant visibility for first section
+    reveal(el, true)
     return main({}, el)
 }
 
 const RoadmapPage = () => {
     const phases = [
-        { title: "Phase 1", tag: "Active", items: ["Core CLI", "Auth System", "Telemetry"] },
-        { title: "Phase 2", tag: "Soon", items: ["Public Beta", "Context Sync", "AI Refactor"] },
-        { title: "Phase 3", tag: "Future", items: ["Mobile App", "Desktop Sync", "Native Git"] }
+        { title: "Phase 1", tag: "Active", items: ["Core CLI v1.0", "Auth & Telemetry", "Project Indexing"] },
+        { title: "Phase 2", tag: "Soon", items: ["Public Beta", "Context Sync", "AI Refactor Engine"] },
+        { title: "Phase 3", tag: "Future", items: ["Mobile App (iOS/Android)", "Desktop Sync", "Native Git Core"] }
     ]
 
-    const el = section({ class: "container", style: "padding-top: 120px;" },
-        h2({ class: "text-center mb-8" }, "Roadmap"),
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
+        div({ class: "mb-16", style: "max-width: 600px;" },
+            span({ class: "mono" }, "Development Path"),
+            h2({ class: "mt-6 text-balance" }, "Our journey toward the perfect developer toolkit"),
+        ),
         div({ class: "bento-grid" },
             phases.map(p => div({ class: "bento-item" },
                 div({},
-                    span({ class: "mono" }, p.tag),
-                    h3({ class: "mt-4" }, p.title),
-                    ul({ style: "list-style: none; margin-top: 24px; display: flex; flex-direction: column; gap: 12px;" },
-                        p.items.map(i => li({ style: "font-size: 14px; color: var(--text-muted);" }, "→ " + i))
+                    span({ class: "mono", style: "opacity: 0.5;" }, p.tag),
+                    h3({ class: "mt-6", style: "color: var(--text);" }, p.title),
+                    ul({ style: "list-style: none; margin-top: 32px; display: flex; flex-direction: column; gap: 16px;" },
+                        p.items.map(i => li({ style: "font-size: 14px; color: var(--text-muted); display: flex; align-items: center; gap: 12px;" }, 
+                            span({ style: "width: 4px; height: 4px; border-radius: 50%; background: var(--border-hover);" }),
+                            i
+                        ))
                     )
                 )
             ))
@@ -255,20 +314,23 @@ const StatusPage = () => {
     }
     checkStatus()
 
-    const el = section({ class: "container", style: "padding-top: 120px;" },
-        h2({ class: "text-center mb-8" }, "System Status"),
-        div({ class: "status-card" },
-            () => statusData.val.loading ? div({ class: "text-center" }, p({}, "Loading...")) : div({},
-                div({ style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 32px;" },
-                    h3({ style: "margin: 0;" }, "Status"),
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
+        div({ class: "text-center mb-16" }, // Increased mb-12 to mb-16
+            span({ class: "mono" }, "Real-time Telemetry"),
+            h2({ class: "mt-6" }, "System Integrity")
+        ),
+        div({ class: "status-card", style: "max-width: 540px; margin: 0 auto;" },
+            () => statusData.val.loading ? div({ class: "text-center" }, p({ class: "mono" }, "Scanning...")) : div({},
+                div({ style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; padding-bottom: 24px; border-bottom: 1px solid var(--border);" },
+                    h3({ style: "margin: 0; color: var(--text);" }, "Global Status"),
                     span({ 
-                        style: `font-size: 12px; font-weight: 600; color: ${statusData.val.status === 'operational' ? '#10B981' : '#EF4444'}` 
+                        style: `font-size: 11px; font-weight: 700; font-family: var(--font-mono); padding: 4px 12px; border-radius: 100px; background: ${statusData.val.status === 'operational' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'}; color: ${statusData.val.status === 'operational' ? '#10B981' : '#EF4444'}` 
                     }, statusData.val.status.toUpperCase())
                 ),
                 Object.entries(statusData.val.services).map(([name, status]) => div({ class: "status-row" },
-                    span({ style: "color: var(--text-muted); font-size: 14px;" }, name),
+                    span({ style: "color: var(--text-muted); font-size: 13px; text-transform: capitalize;" }, name),
                     span({ 
-                        style: `font-weight: 500; font-size: 14px; color: ${status === 'operational' ? '#10B981' : '#EF4444'}` 
+                        style: `font-weight: 600; font-size: 13px; color: ${status === 'operational' ? '#10B981' : '#EF4444'}` 
                     }, status.toUpperCase())
                 ))
             )
@@ -280,22 +342,28 @@ const StatusPage = () => {
 
 const ReleasesPage = () => {
     const selectedOS = van.state("linux")
-    const el = section({ class: "container", style: "padding-top: 120px;" },
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
+        div({ class: "text-center mb-16" }, // Increased mb-12 to mb-16
+            span({ class: "mono" }, "Distribution"),
+            h2({ class: "mt-6" }, "Download CLI")
+        ),
         div({ class: "text-center" },
-            h2({ class: "mb-4" }, "Releases"),
-            p({ class: "description mb-8" }, "Get the latest Rta CLI for your platform."),
-            div({ style: "display: flex; justify-content: center; gap: 8px; margin-bottom: 40px;" },
+            div({ style: "display: flex; justify-content: center; gap: 12px; margin-bottom: 64px;" }, // Increased mb-48 to mb-64
                 button({ class: () => `btn ${selectedOS.val === 'linux' ? 'btn-primary' : 'btn-secondary'}`, onclick: () => selectedOS.val = 'linux' }, "Linux"),
                 button({ class: () => `btn ${selectedOS.val === 'windows' ? 'btn-primary' : 'btn-secondary'}`, onclick: () => selectedOS.val = 'windows' }, "Windows")
             ),
-            div({ class: "status-card", style: "max-width: 800px; text-align: left;" },
-                div({ style: "text-align: center; margin-bottom: 40px;" },
+            div({ class: "status-card", style: "max-width: 720px; text-align: left; padding: 48px; margin: 0 auto;" },
+                div({ style: "display: flex; justify-content: space-between; align-items: center; margin-bottom: 48px;" },
+                    div({},
+                        h3({ style: "color: var(--text); margin-bottom: 8px;" }, "Stable Release"),
+                        p({ class: "mono", style: "font-size: 10px; opacity: 0.5;" }, "v1.4.2 — Latest stable")
+                    ),
                     () => selectedOS.val === 'linux' ? a({ href: "/rta", class: "btn btn-primary", download: "rta" }, "Download for Linux") : 
                     a({ href: "/rta.exe", class: "btn btn-primary", download: "rta.exe" }, "Download for Windows")
                 ),
-                h3({ class: "mb-4" }, "Installation"),
+                h3({ class: "mb-6", style: "font-size: 12px; color: var(--text);" }, "Quick Install"),
                 pre({ 
-                    style: "background: #111; padding: 24px; border-radius: 8px; font-family: var(--font-mono); color: #888; font-size: 14px; overflow-x: auto;" 
+                    style: "background: rgba(0,0,0,0.3); padding: 24px; border-radius: 16px; border: 1px solid var(--border); font-family: var(--font-mono); color: var(--text-muted); font-size: 13px; overflow-x: auto; line-height: 1.6;" 
                 }, () => selectedOS.val === 'linux' ? "chmod +x rta\nsudo mv rta /usr/local/bin/\nrta chat" : "rta.exe chat")
             )
         )
@@ -305,30 +373,63 @@ const ReleasesPage = () => {
 }
 
 const AuthPage = () => {
-    const mode = van.state("login")
-    const el = section({ class: "container", style: "padding-top: 120px; padding-bottom: 100px;" },
+    const isLogin = () => authMode.val === "login"
+
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
         div({ style: "display: flex; justify-content: center;" },
-            div({ class: "status-card", style: "width: 100%; max-width: 400px;" },
-                h2({ class: "text-center mb-8", style: "font-size: 24px;" }, mode.val === "login" ? "Login" : "Sign Up"),
-                form({ onsubmit: (e) => e.preventDefault() },
-                    () => mode.val === "signup" ? div({ class: "mb-4" }, 
-                        input({ style: "width:100%; background:var(--bg); border:1px solid var(--border); padding:12px; border-radius:6px; color:var(--text);", placeholder: "Username" })
+            div({ class: "status-card", style: "width: 100%; max-width: 440px; padding: 48px;" },
+                div({ class: "text-center mb-10" },
+                    span({ class: "mono" }, "Access Control"),
+                    h2({ class: "mt-4 text-balance", style: "font-size: 28px;" }, () => isLogin() ? "Login" : "Sign Up"),
+                    () => authError.val ? p({ style: "color: #EF4444; font-size: 13px; margin-top: 16px; background: rgba(239, 68, 68, 0.1); padding: 12px; border-radius: 8px;" }, authError.val) : ""
+                ),
+                div({ class: "mb-8" },
+                    button({ 
+                        class: "btn btn-secondary", 
+                        style: "width: 100%; display: flex; align-items: center; justify-content: center; gap: 12px; border-radius: 12px; padding: 14px;",
+                        onclick: () => window.location.href = `${API_BASE_URL}/v1/auth/github`
+                    }, 
+                        svg({ width: "20", height: "20", viewBox: "0 0 24 24", fill: "currentColor" },
+                            path({ d: "M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.042-1.416-4.042-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" })
+                        ),
+                        "Continue with GitHub"
+                    )
+                ),
+                div({ style: "display: flex; align-items: center; gap: 16px; margin-bottom: 32px; opacity: 0.3;" },
+                    div({ style: "flex: 1; height: 1px; background: var(--text);" }),
+                    span({ style: "font-size: 11px; font-family: var(--font-mono);" }, "OR"),
+                    div({ style: "flex: 1; height: 1px; background: var(--text);" })
+                ),
+                form({ onsubmit: (e) => handleAuth(e, authMode.val) },
+                    () => !isLogin() ? div({ class: "mb-4" }, 
+                        input({ name: "username", style: "width:100%; background:rgba(255,255,255,0.02); border:1px solid var(--border); padding:14px; border-radius:12px; color:var(--text); font-family:var(--font-main);", placeholder: "Username", required: true })
                     ) : "",
                     div({ class: "mb-4" }, 
-                        input({ style: "width:100%; background:var(--bg); border:1px solid var(--border); padding:12px; border-radius:6px; color:var(--text);", type: "email", placeholder: "Email" })
+                        input({ name: "email", style: "width:100%; background:rgba(255,255,255,0.02); border:1px solid var(--border); padding:14px; border-radius:12px; color:var(--text); font-family:var(--font-main);", type: "email", placeholder: "Email", required: true })
                     ),
-                    div({ class: "mb-8" }, 
-                        input({ style: "width:100%; background:var(--bg); border:1px solid var(--border); padding:12px; border-radius:6px; color:var(--text);", type: "password", placeholder: "Password" })
+                    div({ class: "mb-6" }, 
+                        input({ name: "password", style: "width:100%; background:rgba(255,255,255,0.02); border:1px solid var(--border); padding:14px; border-radius:12px; color:var(--text); font-family:var(--font-main);", type: "password", placeholder: "Password", required: true })
                     ),
-                    button({ class: "btn btn-primary", style: "width: 100%;" }, mode.val === "login" ? "Continue" : "Create Account")
+                    div({ class: "hcaptcha-container", style: "margin-bottom: 24px; min-height: 78px;" },
+                        div({ class: "h-captcha", "data-sitekey": "51b06ce2-0f58-4148-8fec-b2944c54e718" })
+                    ),
+                    button({ 
+                        class: "btn btn-primary", 
+                        style: "width: 100%; border-radius: 12px; padding: 14px;",
+                        disabled: isLoading
+                    }, () => isLoading.val ? "Processing..." : (isLogin() ? "Login" : "Sign Up"))
                 ),
-                div({ class: "text-center mt-8" },
+                div({ class: "text-center mt-10" },
                     a({ 
                         href: "#", 
                         class: "nav-link", 
                         style: "font-size: 13px;",
-                        onclick: (e) => { e.preventDefault(); mode.val = mode.val === "login" ? "signup" : "login" }
-                    }, mode.val === "login" ? "Don't have an account? Sign up" : "Already have an account? Login")
+                        onclick: (e) => { 
+                            e.preventDefault()
+                            authMode.val = isLogin() ? "signup" : "login" 
+                            authError.val = ""
+                        }
+                    }, () => isLogin() ? "Don't have an account? Sign up" : "Already have an account? Login")
                 )
             )
         )
@@ -342,6 +443,16 @@ const AuthPage = () => {
 const App = () => div({ id: "app" },
     Navbar(),
     () => {
+        // Handle hCaptcha rendering
+        if (currentPage.val === "auth") {
+            setTimeout(() => {
+                const container = document.querySelector('.h-captcha');
+                if (container && window.hcaptcha) {
+                    try { window.hcaptcha.render(container); } catch (e) {}
+                }
+            }, 100);
+        }
+
         switch (currentPage.val) {
             case "home": return div({}, Hero(), Capabilities())
             case "pricing": return PricingPage()
