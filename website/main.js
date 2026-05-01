@@ -16,7 +16,11 @@ const priceMap = {
 }
 
 // --- Animation Engine ---
-const reveal = (el) => {
+const reveal = (el, immediate = false) => {
+    if (immediate) {
+        el.classList.add('visible')
+        return
+    }
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -31,6 +35,56 @@ const reveal = (el) => {
 }
 
 const Icon = (d, size = "16") => svg({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", "stroke-width": "2", "stroke-linecap": "round", "stroke-linejoin": "round" }, path({ d }))
+
+const TerminalDemo = () => {
+    const lines = van.state([])
+    const currentLine = van.state("")
+    const cursor = van.state(true)
+    
+    const script = [
+        { cmd: "rta login", response: "✓ Authenticated as schallten" },
+        { cmd: "rta chat \"how to optimize this loop?\"", response: "⚡ Analyzing project context...\n✨ Suggestion: Use vectorized operations for 10x speedup." },
+        { cmd: "rta push", response: "📦 Packaging changes...\n🚀 Deployed to production node." }
+    ]
+
+    const runScript = async () => {
+        for (const item of script) {
+            currentLine.val = "> "
+            for (const char of item.cmd) {
+                currentLine.val += char
+                await new Promise(r => setTimeout(r, 50 + Math.random() * 50))
+            }
+            await new Promise(r => setTimeout(r, 500))
+            lines.val = [...lines.val, currentLine.val, item.response]
+            currentLine.val = ""
+            await new Promise(r => setTimeout(r, 1000))
+            if (lines.val.length > 6) lines.val = lines.val.slice(2)
+        }
+        setTimeout(runScript, 2000)
+    }
+
+    setInterval(() => cursor.val = !cursor.val, 500)
+    runScript()
+
+    return div({ 
+        style: "background: #0D0D0E; border: 1px solid var(--border); border-radius: 12px; padding: 24px; font-family: var(--font-mono); text-align: left; max-width: 600px; margin: 48px auto 0; box-shadow: 0 32px 64px rgba(0,0,0,0.4); min-height: 240px; position: relative; overflow: hidden;" 
+    },
+        div({ style: "display: flex; gap: 6px; margin-bottom: 20px; opacity: 0.5;" },
+            div({ style: "width: 10px; height: 10px; border-radius: 50%; background: #ff5f56;" }),
+            div({ style: "width: 10px; height: 10px; border-radius: 50%; background: #ffbd2e;" }),
+            div({ style: "width: 10px; height: 10px; border-radius: 50%; background: #27c93f;" })
+        ),
+        div({ style: "font-size: 14px; line-height: 1.6; white-space: pre-wrap;" },
+            lines.val.map((line, i) => div({ 
+                style: `color: ${line.startsWith('>') ? 'var(--text)' : 'var(--text-muted)'}; margin-bottom: 8px;` 
+            }, line)),
+            div({ style: "color: var(--text);" }, 
+                () => currentLine.val, 
+                () => span({ style: `display: inline-block; width: 8px; height: 15px; background: var(--text); margin-left: 4px; vertical-align: middle; opacity: ${cursor.val ? 1 : 0};` })
+            )
+        )
+    )
+}
 
 // --- Shared Components ---
 const Navbar = () => nav({},
@@ -96,13 +150,14 @@ const AppFooter = () => footer({},
 const Hero = () => {
     const el = section({ class: "container hero" },
         h1({}, "Build faster. ", span({}, "Everywhere.")),
-        p({ class: "description mb-8" }, "Rta is a high-performance code editor for Android and a powerful CLI for Linux and Windows. Designed for mobile-first precision."),
-        div({ style: "display: flex; gap: 12px; justify-content: center;" },
+        p({ class: "description" }, "Rta is a high-performance code editor for Android and a powerful CLI for Linux and Windows. Designed for mobile-first precision."),
+        div({ style: "display: flex; gap: 12px; justify-content: center; margin-top: 32px;" },
             a({ class: "btn btn-primary", href: "#", onclick: (e) => { e.preventDefault(); currentPage.val = "auth" } }, "Get Started"),
             a({ class: "btn btn-secondary", href: "#", onclick: (e) => { e.preventDefault(); currentPage.val = "releases" } }, "Download CLI")
-        )
+        ),
+        TerminalDemo()
     )
-    reveal(el)
+    reveal(el, true) // Trigger immediately to prevent black screen
     return el
 }
 
