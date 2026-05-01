@@ -140,7 +140,7 @@ const Navbar = () => nav({},
             NavLink("Roadmap", "roadmap"),
             NavLink("Status", "status"),
             NavLink("Releases", "releases"),
-            () => user.val ? a({ href: "#", class: "nav-link", onclick: (e) => { e.preventDefault(); logout() } }, "Logout") : NavLink("Account", "auth")
+            () => user.val ? a({ href: "/dashboard.html", class: "nav-link active" }, "Dashboard") : NavLink("Account", "auth")
         )
     )
 )
