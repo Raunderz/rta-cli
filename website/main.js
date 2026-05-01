@@ -21,6 +21,14 @@ const reveal = (el, immediate = false) => {
         el.classList.add('visible')
         return
     }
+    
+    // Safety check: if element is already in viewport, reveal immediately
+    const rect = el.getBoundingClientRect()
+    if (rect.top < window.innerHeight && rect.bottom > 0) {
+        el.classList.add('visible')
+        return
+    }
+
     const observer = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
@@ -28,7 +36,7 @@ const reveal = (el, immediate = false) => {
                 observer.unobserve(entry.target)
             }
         })
-    }, { threshold: 0.1 })
+    }, { threshold: 0.05 })
     
     el.setAttribute('data-reveal', '')
     observer.observe(el)
@@ -138,7 +146,7 @@ const Capabilities = () => {
         { title: "Local First", desc: "Lightning fast execution with zero round-trip latency." }
     ]
 
-    const el = section({ class: "container" },
+    const el = section({ class: "container", style: "padding-top: 0;" },
         div({ class: "bento-grid" },
             items.map(item => div({ class: "bento-item" },
                 h3({}, item.title),
@@ -151,27 +159,46 @@ const Capabilities = () => {
 }
 
 const PricingPage = () => {
-    const el = section({ class: "container" },
+    const tiers = [
+        { 
+            name: "Starter", 
+            price: () => priceMap[currency.val].free, 
+            features: ["10 Daily AI Calls", "25k Monthly Tokens", "Standard Support", "Core Editor Access"] 
+        },
+        { 
+            name: "Basic", 
+            featured: true,
+            price: () => priceMap[currency.val].basic, 
+            features: ["200 Daily AI Calls", "500k Monthly Tokens", "Priority Support", "Advanced CLI Tools", "Early Access Features"] 
+        },
+        { 
+            name: "Pro", 
+            price: () => priceMap[currency.val].pro, 
+            features: ["1000 Daily AI Calls", "5M Monthly Tokens", "24/7 Dedicated Support", "Enterprise CLI Suite", "Custom Model Tuning"] 
+        }
+    ]
+
+    const el = section({ class: "container", style: "padding-top: 120px;" },
         div({ class: "text-center mb-8" },
             h2({ class: "mb-4" }, "Pricing"),
             p({ class: "description" }, "Simple, transparent tiers for every developer.")
         ),
-        div({ style: "display: flex; justify-content: center; gap: 8px; margin-bottom: 32px;" },
+        div({ style: "display: flex; justify-content: center; gap: 8px; margin-bottom: 48px;" },
             button({ class: () => `btn ${currency.val === "INR" ? "btn-primary" : "btn-secondary"}`, onclick: () => currency.val = "INR" }, "INR"),
             button({ class: () => `btn ${currency.val === "USD" ? "btn-primary" : "btn-secondary"}`, onclick: () => currency.val = "USD" }, "USD")
         ),
-        div({ class: "pricing-wrapper" },
-            table({ class: "pricing-table" },
-                thead({}, tr({}, th({}, "Plan"), th({}, "Daily Calls"), th({}, "Monthly Tokens"), th({}, "Price"))),
-                tbody({},
-                    tr({}, td({ style: "font-weight: 500;" }, "Starter"), td({}, "10"), td({}, "25k"), td({ style: "font-weight: 600;" }, () => priceMap[currency.val].free)),
-                    tr({ class: "featured" }, td({ style: "font-weight: 500;" }, "Basic"), td({}, "200"), td({}, "500k"), td({ style: "font-weight: 600;" }, () => priceMap[currency.val].basic)),
-                    tr({}, td({ style: "font-weight: 500;" }, "Pro"), td({}, "1000"), td({}, "5M"), td({ style: "font-weight: 600;" }, () => priceMap[currency.val].pro))
-                )
-            )
+        div({ class: "pricing-grid" },
+            tiers.map(tier => div({ class: `pricing-card ${tier.featured ? 'featured' : ''}` },
+                div({ class: "pricing-tier" }, tier.name),
+                div({ class: "pricing-price" }, tier.price(), span({}, "/ month")),
+                ul({ class: "pricing-features" },
+                    tier.features.map(f => li({}, f))
+                ),
+                button({ class: `btn ${tier.featured ? 'btn-primary' : 'btn-secondary'}`, style: "width: 100%;" }, "Select Plan")
+            ))
         )
     )
-    reveal(el)
+    reveal(el, true) // Instant visibility for first section
     return main({}, el)
 }
 
@@ -182,7 +209,7 @@ const RoadmapPage = () => {
         { title: "Phase 3", tag: "Future", items: ["Mobile App", "Desktop Sync", "Native Git"] }
     ]
 
-    const el = section({ class: "container" },
+    const el = section({ class: "container", style: "padding-top: 120px;" },
         h2({ class: "text-center mb-8" }, "Roadmap"),
         div({ class: "bento-grid" },
             phases.map(p => div({ class: "bento-item" },
@@ -196,7 +223,7 @@ const RoadmapPage = () => {
             ))
         )
     )
-    reveal(el)
+    reveal(el, true)
     return main({}, el)
 }
 
@@ -212,7 +239,7 @@ const StatusPage = () => {
     }
     checkStatus()
 
-    const el = section({ class: "container" },
+    const el = section({ class: "container", style: "padding-top: 120px;" },
         h2({ class: "text-center mb-8" }, "System Status"),
         div({ class: "status-card" },
             () => statusData.val.loading ? div({ class: "text-center" }, p({}, "Loading...")) : div({},
@@ -231,13 +258,13 @@ const StatusPage = () => {
             )
         )
     )
-    reveal(el)
+    reveal(el, true)
     return main({}, el)
 }
 
 const ReleasesPage = () => {
     const selectedOS = van.state("linux")
-    const el = section({ class: "container" },
+    const el = section({ class: "container", style: "padding-top: 120px;" },
         div({ class: "text-center" },
             h2({ class: "mb-4" }, "Releases"),
             p({ class: "description mb-8" }, "Get the latest Rta CLI for your platform."),
@@ -257,13 +284,13 @@ const ReleasesPage = () => {
             )
         )
     )
-    reveal(el)
+    reveal(el, true)
     return main({}, el)
 }
 
 const AuthPage = () => {
     const mode = van.state("login")
-    const el = section({ class: "container", style: "padding: 100px 0;" },
+    const el = section({ class: "container", style: "padding-top: 120px; padding-bottom: 100px;" },
         div({ style: "display: flex; justify-content: center;" },
             div({ class: "status-card", style: "width: 100%; max-width: 400px;" },
                 h2({ class: "text-center mb-8", style: "font-size: 24px;" }, mode.val === "login" ? "Login" : "Sign Up"),
@@ -290,7 +317,7 @@ const AuthPage = () => {
             )
         )
     )
-    reveal(el)
+    reveal(el, true)
     return main({}, el)
 }
 
