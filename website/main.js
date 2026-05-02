@@ -131,6 +131,60 @@ const GifPlaceholder = () => {
     )
 }
 
+const LegalPage = () => {
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
+        div({ class: "mb-16", style: "max-width: 800px;" },
+            span({ class: "mono" }, "Legal Framework"),
+            h2({ class: "mt-6 mb-8" }, "Terms of Service"),
+            div({ class: "description", style: "font-size: 14px; display: flex; flex-direction: column; gap: 24px;" },
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "1. Acceptance of Terms"),
+                    p({}, "By accessing Rta, you agree to be bound by these terms. If you disagree with any part, you may not access our services.")
+                ),
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "2. Subscription & Payments"),
+                    p({}, "Billing is processed via secure payment gateways. Subscriptions renew automatically unless cancelled. All fees are non-refundable except as required by law.")
+                ),
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "3. License & Restrictions"),
+                    p({}, "We grant you a personal, non-exclusive license to use Rta. You may not reverse engineer or attempt to extract source code.")
+                ),
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "4. Limitation of Liability"),
+                    p({}, "Rta is provided 'as is'. We are not liable for any indirect, incidental, or consequential damages arising from your use of the software.")
+                )
+            )
+        )
+    )
+    reveal(el, true)
+    return main({}, el)
+}
+
+const PrivacyPage = () => {
+    const el = section({ class: "container", style: "padding-top: 160px; padding-bottom: 120px;" },
+        div({ class: "mb-16", style: "max-width: 800px;" },
+            span({ class: "mono" }, "Data Protection"),
+            h2({ class: "mt-6 mb-8" }, "Privacy Policy"),
+            div({ class: "description", style: "font-size: 14px; display: flex; flex-direction: column; gap: 24px;" },
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "1. Information Collection"),
+                    p({}, "We collect email addresses and basic telemetry to provide services and improve performance. No private code is ever stored on our servers.")
+                ),
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "2. Payment Processing"),
+                    p({}, "Payment data is handled exclusively by PCI-compliant third-party processors. We do not store credit card information.")
+                ),
+                div({},
+                    h3({ style: "color: var(--text); margin-bottom: 12px; font-size: 16px;" }, "3. Third-Party Sharing"),
+                    p({}, "We do not sell your data. Information is shared only with essential service providers (e.g., auth, billing) to maintain functionality.")
+                )
+            )
+        )
+    )
+    reveal(el, true)
+    return main({}, el)
+}
+
 // --- Shared Components ---
 const Navbar = () => nav({},
     div({ class: "container nav-container" },
@@ -184,8 +238,8 @@ const AppFooter = () => footer({},
     div({ class: "container footer-bottom" },
         p({}, "© 2026 Rta Software — All Rights Reserved"),
         div({ style: "display: flex; gap: 32px;" },
-            a({ href: "#", class: "nav-link" }, "Privacy"),
-            a({ href: "#", class: "nav-link" }, "Terms")
+            NavLink("Privacy", "privacy"),
+            NavLink("Terms", "legal")
         )
     )
 )
@@ -460,6 +514,8 @@ const App = () => div({ id: "app" },
             case "status": return StatusPage()
             case "releases": return ReleasesPage()
             case "auth": return AuthPage()
+            case "legal": return LegalPage()
+            case "privacy": return PrivacyPage()
             default: return Hero()
         }
     },
