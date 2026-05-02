@@ -192,12 +192,26 @@ This starts:
 ### Production Build
 
 ```bash
-# Build frontend
-bun run build
+# Build the release binary (no bundler)
+bun run tauri:build -- --no-bundle
+```
 
-# Build desktop app (creates installable)
+The compiled binary will be at:
+```
+src-tauri/target/release/rta-desktop
+```
+
+Run the app anytime:
+```bash
+./src-tauri/target/release/rta-desktop
+```
+
+To create bundled installers (.deb, .AppImage, .rpm), use:
+```bash
 bun run tauri:build
 ```
+(Requires `linuxdeploy` installed on your system for Linux targets)
+
 
 Output binaries:
 - **Linux**: `src-tauri/target/release/bundle/deb/` or `appimage/`
