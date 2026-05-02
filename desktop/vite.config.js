@@ -12,4 +12,7 @@ export default defineConfig({
     target: 'esnext',
     minify: 'esbuild',
   },
+  optimizeDeps: {
+    include: ['@monaco-editor/react']
+  }
 });

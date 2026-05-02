@@ -3,6 +3,15 @@
   "description": "Capability for the main window",
   "windows": ["main"],
   "permissions": [
-    "shell:allow-open"
+    "shell:allow-open",
+    "fs:allow-read-dir",
+    "fs:allow-read-file",
+    "fs:allow-write-file",
+    "fs:allow-create",
+    "fs:allow-remove",
+    "fs:allow-rename",
+    "fs:allow-mkdir",
+    "fs:allow-exists",
+    "dialog:default"
   ]
 }

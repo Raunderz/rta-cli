@@ -56,19 +56,19 @@ RTA Desktop brings the CLI's AI agent into a visual workspace:
 - [ ] Main layout structure (header, sidebar, main area)
 
 ### Phase 2: Workspace & File Explorer
-- [ ] Workspace folder selector (Tauri dialog)
-- [ ] File explorer sidebar with tree view
-- [ ] Directory navigation (click to expand/collapse)
-- [ ] File icons by type (.js, .py, .json, etc.)
-- [ ] Context menu: new file, new folder, delete, rename
+- [x] Workspace folder selector (Tauri dialog)
+- [x] File explorer sidebar with tree view
+- [x] Directory navigation (click to expand/collapse)
+- [x] File icons by type (.js, .py, .json, etc.)
+- [x] Context menu: new file, new folder, delete, rename
 
 ### Phase 3: Monaco Editor Integration
-- [ ] Monaco Editor component with theme
-- [ ] Tab bar for open files
-- [ ] Language detection from file extension
-- [ ] Syntax highlighting (handled by Monaco)
-- [ ] File save (Ctrl+S / Cmd+S)
-- [ ] Unsaved changes indicator
+- [x] Monaco Editor component with theme
+- [x] Tab bar for open files
+- [x] Language detection from file extension
+- [x] Syntax highlighting (handled by Monaco)
+- [x] File save (Ctrl+S / Cmd+S)
+- [x] Unsaved changes indicator
 
 ### Phase 4: AI Chat Panel
 - [ ] Chat message list (user + assistant messages)
