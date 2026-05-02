@@ -1,6 +1,5 @@
 import { h } from 'preact';
 import { useState } from 'preact/hooks';
-import backgroundImage from '../assets/background.png';
 import iconImage from '../assets/icon.png';
 
 const API_BASE_URL = "https://divisive-herbs-jolly.ngrok-free.dev";
@@ -26,11 +25,9 @@ function getHeaders(apiKey) {
 }
 
 export function LandingPage() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => !!localStorage.getItem("rta_api_key"));
   const [apiKey, setApiKey] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [userInfo, setUserInfo] = useState(null);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -49,10 +46,8 @@ export function LandingPage() {
       });
 
       if (res.status === 200) {
-        const data = await res.json();
         localStorage.setItem("rta_api_key", apiKey);
-        setIsLoggedIn(true);
-        setUserInfo(data);
+        // App.jsx will detect this change and switch to MainLayout
       } else if (res.status === 401) {
         setError("Invalid API key. Please check and try again.");
       } else {
@@ -65,105 +60,56 @@ export function LandingPage() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("rta_api_key");
-    setIsLoggedIn(false);
-    setApiKey("");
-    setUserInfo(null);
-  };
-
-  if (isLoggedIn) {
-    return (
-      <div className="app-container min-h-screen flex items-center justify-center p-4">
-        <div className="glass-panel w-full max-w-2xl p-12 md:p-16 text-center">
-          <div className="animate-fade-in">
-            <img 
-              src={iconImage} 
-              alt="RTA Logo" 
-              className="w-24 h-24 mx-auto mb-8 drop-shadow-2xl"
-            />
-          </div>
-          
-          <h1 className="animate-fade-in text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-widest">
-            RTA Desktop
-          </h1>
-          
-          <div className="animate-fade-in-delay mb-8">
-            <div className="glass-card px-6 py-4 inline-block">
-              <p className="text-white/80 text-lg">Logged in</p>
-              <p className="text-white/50 text-sm">{userInfo?.email || "User"}</p>
-              <p className="text-white/40 text-xs">Tier: {userInfo?.tier || "free"}</p>
-            </div>
-          </div>
-
-          <p className="animate-fade-in-delay-2 text-white/50 text-lg max-w-md mx-auto leading-relaxed">
-            Desktop app is under development. In the meantime, use the CLI for Rta operations.
-          </p>
-
-          <button 
-            onClick={handleLogout}
-            className="animate-fade-in-delay-2 mt-8 px-6 py-2 bg-red-600/20 hover:bg-red-600/40 text-red-400 rounded-lg transition-colors"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="app-container min-h-screen flex items-center justify-center p-4">
-      <div className="glass-panel w-full max-w-2xl p-12 md:p-16 text-center">
-        <div className="animate-fade-in">
-          <img 
-            src={iconImage} 
-            alt="RTA Logo" 
-            className="w-24 h-24 mx-auto mb-8 drop-shadow-2xl"
-          />
-        </div>
+    <div className="app-container min-h-[100dvh] flex items-center justify-center p-6 bg-[#09090b]">
+      <div className="glass-panel w-full max-w-md p-10 md:p-12 rounded-[2.5rem] shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-blue-500 opacity-50" />
         
-        <h1 className="animate-fade-in text-4xl md:text-5xl font-extrabold text-white mb-4 tracking-widest">
-          RTA
-        </h1>
-        
-        <div className="animate-fade-in-delay">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="h-px w-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
-            <span className="text-white/60 text-lg font-medium uppercase tracking-wider">API Key Entry</span>
-            <div className="h-px w-12 bg-gradient-to-r from-transparent via-white/40 to-transparent"></div>
+        <div className="flex flex-col items-center text-center space-y-8">
+          <div className="animate-float w-20 h-20 rounded-3xl bg-zinc-900 border border-white/5 flex items-center justify-center shadow-2xl">
+            <img src={iconImage} alt="RTA Logo" className="w-12 h-12 rounded-xl" />
+          </div>
+          
+          <div className="space-y-3">
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+              Connect to RTA
+            </h1>
+            <p className="text-zinc-500 text-sm max-w-[280px] mx-auto leading-relaxed">
+              Enter your secure API key to unlock the power of Rta Desktop.
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="w-full space-y-4">
+            <div className="relative group">
+              <input
+                type="password"
+                value={apiKey}
+                onInput={(e) => setApiKey(e.target.value)}
+                placeholder="Secure API Key"
+                className="w-full px-5 py-4 bg-zinc-900 border border-zinc-800 rounded-2xl text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500/50 transition-all text-sm"
+                disabled={loading}
+              />
+            </div>
+            
+            {error && (
+              <p className="text-red-400 text-xs font-medium px-2 animate-pulse">{error}</p>
+            )}
+            
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full px-6 py-4 bg-zinc-100 hover:bg-white text-zinc-950 font-bold rounded-2xl transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+            >
+              {loading ? "Establishing connection..." : "Access Dashboard"}
+            </button>
+          </form>
+
+          <div className="pt-4">
+            <p className="text-zinc-600 text-xs">
+              Need a key? Visit <a href="https://rta-three.vercel.app" target="_blank" className="text-zinc-400 hover:text-zinc-200 underline underline-offset-4 decoration-zinc-700 transition-colors">the dashboard</a>
+            </p>
           </div>
         </div>
-        
-        <p className="animate-fade-in-delay-2 text-white/50 text-sm max-w-md mx-auto mb-8">
-          Enter your Rta API key to continue. Get your key from the dashboard.
-        </p>
-
-        <form onSubmit={handleLogin} className="animate-fade-in-delay-2 max-w-sm mx-auto">
-          <input
-            type="password"
-            value={apiKey}
-            onInput={(e) => setApiKey(e.target.value)}
-            placeholder="Enter your Rta API key"
-            className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/30 focus:outline-none focus:border-white/30 mb-4"
-            disabled={loading}
-          />
-          
-          {error && (
-            <p className="text-red-400 text-sm mb-4">{error}</p>
-          )}
-          
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full px-6 py-3 bg-[#ff3333]/20 hover:bg-[#ff3333]/40 text-[#ff3333] font-medium rounded-lg transition-colors disabled:opacity-50"
-          >
-            {loading ? "Validating..." : "Login"}
-          </button>
-        </form>
-
-        <p className="animate-fade-in-delay-2 text-white/30 text-xs mt-8">
-          Get your API key at <span className="underline">https://rta-three.vercel.app/dashboard.html</span>
-        </p>
       </div>
     </div>
   );
