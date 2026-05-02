@@ -18,6 +18,9 @@
             yarn
             python3
             gcc
+            xorg.libX11
+            xorg.libX11.dev
+            libxkbcommon
           ];
 
           shellHook = ''
