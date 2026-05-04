@@ -58,6 +58,6 @@
     "electron": {
       "icon": "node_modules/rta-desktop/src/browser/style/rta-icon.png"
     },
-    "pluginsDir": "plugins"
+    "pluginsDir": "../plugins"
   }
 }

@@ -52,6 +52,6 @@
     "frontendOptions": {
       "applicationName": "Rta"
     },
-    "pluginsDir": "plugins"
+    "pluginsDir": "../plugins"
   }
 }
