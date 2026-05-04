@@ -1,0 +1,26 @@
+/* Rta Branding Styles */
+
+.theia-about-dialog .theia-about-logo {
+    background-image: url('rta-icon.png') !important;
+    width: 64px;
+    height: 64px;
+    background-size: contain;
+    background-repeat: no-repeat;
+}
+
+#theia-logo {
+    background-image: url('rta-icon.png') !important;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    width: 32px;
+    height: 32px;
+    margin: 4px;
+}
+
+/* Hide default Theia branding if any */
+.theia-about-dialog .theia-about-header:after {
+    content: "Rta Desktop" !important;
+    font-size: 1.5em;
+    font-weight: bold;
+}

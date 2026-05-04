@@ -16,6 +16,14 @@
     "@theia/process": "1.71.0",
     "@theia/terminal": "1.71.0",
     "@theia/workspace": "1.71.0",
+    "@theia/vscode-builtin-python": "1.71.0",
+    "@theia/vscode-builtin-javascript": "1.71.0",
+    "@theia/vscode-builtin-typescript": "1.71.0",
+    "@theia/vscode-builtin-json": "1.71.0",
+    "@theia/vscode-builtin-css": "1.71.0",
+    "@theia/vscode-builtin-html": "1.71.0",
+    "@theia/vscode-builtin-markdown": "1.71.0",
+    "@theia/vscode-builtin-yaml": "1.71.0",
     "rta-desktop": "0.0.0"
   },
   "devDependencies": {
@@ -29,6 +37,12 @@
     "watch": "npm run rebuild && theia build --watch --mode development"
   },
   "theia": {
-    "target": "electron"
+    "target": "electron",
+    "frontendOptions": {
+      "applicationName": "Rta"
+    },
+    "electron": {
+      "icon": "node_modules/rta-desktop/src/browser/style/rta-icon.png"
+    }
   }
 }
