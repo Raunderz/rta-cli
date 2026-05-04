@@ -18,8 +18,10 @@
             yarn
             python3
             gcc
+            pkg-config
             xorg.libX11
             xorg.libX11.dev
+            xorg.libxkbfile
             libxkbcommon
           ];
 
