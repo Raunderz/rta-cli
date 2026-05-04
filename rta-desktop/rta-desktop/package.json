@@ -23,7 +23,8 @@
   },
   "theiaExtensions": [
     {
-      "frontend": "lib/browser/rta-desktop-frontend-module"
+      "frontend": "lib/browser/rta-desktop-frontend-module",
+      "style": "src/browser/style/index.css"
     }
   ]
 }

@@ -1,10 +1,10 @@
 import { injectable, inject } from '@theia/core/shared/inversify';
 import { Command, CommandContribution, CommandRegistry, MenuContribution, MenuModelRegistry, MessageService } from '@theia/core/lib/common';
-import { CommonMenus } from '@theia/core/lib/browser';
+import { CommonMenus, FrontendApplicationContribution, FrontendApplication } from '@theia/core/lib/browser';
 
 export const RtaDesktopCommand: Command = {
     id: 'RtaDesktop.command',
-    label: 'Say Hello'
+    label: 'Rta: Show Info'
 };
 
 @injectable()
@@ -15,7 +15,7 @@ export class RtaDesktopCommandContribution implements CommandContribution {
 
     registerCommands(registry: CommandRegistry): void {
         registry.registerCommand(RtaDesktopCommand, {
-            execute: () => this.messageService.info('Hello World!')
+            execute: () => this.messageService.info('Rta Desktop - Real-Time Assistant')
         });
     }
 }
@@ -28,5 +28,12 @@ export class RtaDesktopMenuContribution implements MenuContribution {
             commandId: RtaDesktopCommand.id,
             label: RtaDesktopCommand.label
         });
+    }
+}
+
+@injectable()
+export class RtaBrandingContribution implements FrontendApplicationContribution {
+    onStart(app: FrontendApplication): void {
+        app.setTitle('Rta');
     }
 }

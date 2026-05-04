@@ -1,7 +1,8 @@
-# rta-desktop
-The example of how to build the Theia-based applications with the rta-desktop.
+# Rta Desktop
 
-## Getting started
+Rta Desktop is a Real-Time Assistant application based on the Eclipse Theia framework.
+
+## Prerequisites
 
 Please install all necessary [prerequisites](https://github.com/eclipse-theia/theia/blob/master/doc/Developing.md#prerequisites).
 
