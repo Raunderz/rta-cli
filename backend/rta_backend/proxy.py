@@ -52,17 +52,40 @@ class AllProvidersExhaustedError(Exception):
         super().__init__(f"All providers failed: {models_tried}")
 
 # Helpers
+LAST_RESORT_MODELS = [
+    "qwen/qwen3-32b",
+    "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile"
+]
+
 def build_chain(provider_hint: str, model: str) -> List[str]:
     """Determine provider priority list."""
     if provider_hint == "gemini" or model.lower().startswith("gemini"):
-        return ["gemini", "openrouter"]
+        return ["gemini", "openrouter", "cerebras", "sambanova", "groq"]
     
     if provider_hint != "auto":
         # Force requested + safety fallback
-        return [provider_hint, "openrouter"]
+        return [provider_hint, "openrouter", "cerebras", "sambanova", "groq"]
     
-    # Default high-speed chain
-    return ["groq", "cerebras", "sambanova", "openrouter"]
+    # Default high-speed chain: groq -> openrouter -> gemini -> cerebras -> sambanova -> last resort groq models
+    return ["groq", "openrouter", "gemini", "cerebras", "sambanova"]
+
+def get_last_resort_model(requested_model: str) -> str:
+    """Get a last resort groq model when all other providers fail."""
+    base_model = "gpt-oss-120b" if requested_model == "auto" or requested_model not in LAST_RESORT_MODELS else requested_model
+    mapping = {
+        "gpt-oss-120b": [
+            "qwen/qwen3-32b",
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile"
+        ],
+        "gpt-oss-20b": [
+            "qwen/qwen3-32b",
+            "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile"
+        ]
+    }
+    return mapping.get(base_model, LAST_RESORT_MODELS)
 
 def pick_model_for_provider(requested_model: str, provider_name: str) -> str:
     """Map generic model names to provider-specific strings."""
@@ -182,6 +205,36 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
             last_error = e
             logging.error(f"Unexpected error in {provider_name}: {e}")
             continue
-            
+    
+    # Last resort: try backup groq models
+    groq_key = keys.get("groq")
+    if groq_key:
+        last_resort_models = get_last_resort_model(request.model)
+        for model_name in last_resort_models:
+            try:
+                models_tried.append(f"last_resort_groq/{model_name}")
+                result = await call_provider(
+                    "groq",
+                    messages=messages,
+                    model=model_name,
+                    tools=request.tools,
+                    api_key=groq_key,
+                    max_tokens=max_tokens
+                )
+                latency_ms = (time.time() - start_time) * 1000
+                return ProxyResult(
+                    choices=result["choices"],
+                    usage=result["usage"],
+                    model=model_name,
+                    provider_used="groq",
+                    models_tried=models_tried,
+                    latency_ms=latency_ms,
+                    tool_calls_log=result.get("tool_calls_log", []),
+                    fallback_used=True
+                )
+            except Exception as e:
+                logging.error(f"Last resort model {model_name} failed: {e}")
+                continue
+                
     # If loop completes without return, all failed
     raise AllProvidersExhaustedError(models_tried, last_error)

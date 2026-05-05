@@ -148,8 +148,8 @@ async def usage_endpoint(
     tier_caps = {
         "free": {"calls": 10, "tokens": 25000},
         "basic": {"calls": 50, "tokens": 100000},
-        "pro": {"calls": 500, "tokens": 1000000},
-        "enterprise": {"calls": 9999, "tokens": 10000000},
+        "pro": {"calls": 100, "tokens": 1000000},
+        "enterprise": {"calls": 500, "tokens": 10000000},
     }
     caps = tier_caps.get(tier.lower(), tier_caps["free"])
 
@@ -185,8 +185,8 @@ async def dashboard_endpoint(
         tier_caps = {
             "free":       {"calls_day": 10,   "tokens_req": 2000,  "tokens_month": 25000},
             "basic":      {"calls_day": 50,   "tokens_req": 4000,  "tokens_month": 100000},
-            "pro":        {"calls_day": 500,  "tokens_req": 10000, "tokens_month": 1000000},
-            "enterprise": {"calls_day": 9999, "tokens_req": 32000, "tokens_month": 10000000},
+            "pro":        {"calls_day": 100,  "tokens_req": 10000, "tokens_month": 1000000},
+            "enterprise": {"calls_day": 500,  "tokens_req": 32000, "tokens_month": 10000000},
         }
         caps = tier_caps.get(tier.lower(), tier_caps["free"])
 

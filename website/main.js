@@ -197,18 +197,26 @@ const PrivacyPage = () => {
 }
 
 // --- Shared Components ---
-const Navbar = () => nav({},
-    div({ class: "container nav-container" },
-        a({ href: "/", class: "logo", onclick: (e) => { e.preventDefault(); currentPage.val = "home"; window.history.pushState({}, "", "/") } }, "rta"),
-        div({ class: "nav-links" },
-            NavLink("Pricing", "pricing"),
-            NavLink("Roadmap", "roadmap"),
-            NavLink("Status", "status"),
-            NavLink("Releases", "releases"),
-            () => user.val ? a({ href: "/dashboard.html", class: "nav-link active" }, "Dashboard") : NavLink("Account", "auth")
+const Navbar = () => {
+    const menuOpen = van.state(false)
+    return nav({},
+        div({ class: "container nav-container" },
+            a({ href: "/", class: "logo", onclick: (e) => { e.preventDefault(); currentPage.val = "home"; window.history.pushState({}, "", "/") } }, "rta"),
+            button({ 
+                class: "nav-toggle", 
+                onclick: () => menuOpen.val = !menuOpen.val,
+                children: () => [span({}), span({}), span({})]
+            }),
+            div({ class: () => `nav-links ${menuOpen.val ? 'open' : ''}` },
+                NavLink("Pricing", "pricing"),
+                NavLink("Roadmap", "roadmap"),
+                NavLink("Status", "status"),
+                NavLink("Releases", "releases"),
+                () => user.val ? a({ href: "/dashboard.html", class: "nav-link active" }, "Dashboard") : NavLink("Account", "auth")
+            )
         )
     )
-)
+}
 
 const NavLink = (text, page) => a({
     href: `#/${page}`,
@@ -297,18 +305,18 @@ const PricingPage = () => {
         { 
             name: "Starter", 
             price: () => priceMap[currency.val].free, 
-            features: ["10 Daily AI Calls", "25k Monthly Tokens", "Standard Support", "Core Editor Access"] 
+            features: ["10 Daily AI Calls", "25k Context (Monthly)", "Standard Support", "Core Editor Access"] 
         },
         { 
             name: "Basic", 
             featured: true,
             price: () => priceMap[currency.val].basic, 
-            features: ["200 Daily AI Calls", "500k Monthly Tokens", "Priority Support", "Advanced CLI Tools", "Early Access Features"] 
+            features: ["50 Daily AI Calls", "100k Context (Monthly)", "Priority Support", "Advanced CLI Tools", "Early Access Features"] 
         },
         { 
             name: "Pro", 
             price: () => priceMap[currency.val].pro, 
-            features: ["1000 Daily AI Calls", "5M Monthly Tokens", "24/7 Dedicated Support", "Enterprise CLI Suite", "Custom Model Tuning"] 
+            features: ["100 Daily AI Calls", "1M Context (Monthly)", "24/7 Dedicated Support", "Enterprise CLI Suite", "Custom Model Tuning"] 
         }
     ]
 
