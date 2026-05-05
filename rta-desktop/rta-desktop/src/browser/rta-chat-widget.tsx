@@ -2,6 +2,11 @@ import * as React from 'react';
 import { injectable, postConstruct, inject } from '@theia/core/shared/inversify';
 import { ReactWidget } from '@theia/core/lib/browser';
 import { MessageService } from '@theia/core/lib/common';
+import { FileService } from '@theia/filesystem/lib/browser/file-service';
+import { URI } from '@theia/core/lib/common/uri';
+import { EnvVariablesServer } from '@theia/core/lib/common/env-variables/env-variables-protocol';
+import { QuickInputService } from '@theia/core/lib/browser/quick-input/quick-input-service';
+import { BinaryBuffer } from '@theia/core/lib/common/buffer';
 
 interface ChatMessage {
     text: string;
@@ -13,13 +18,26 @@ export class RtaChatWidget extends ReactWidget {
 
     static readonly ID = 'rta-chat-widget';
     static readonly LABEL = 'RTA AI';
+    static readonly DEFAULT_BACKEND_URL = 'https://divisive-herbs-jolly.ngrok-free.dev';
 
     @inject(MessageService)
     protected readonly messageService!: MessageService;
 
+    @inject(FileService)
+    protected readonly fileService!: FileService;
+
+    @inject(EnvVariablesServer)
+    protected readonly envVariablesServer!: EnvVariablesServer;
+
+    @inject(QuickInputService)
+    protected readonly quickInputService!: QuickInputService;
+
     protected messages: ChatMessage[] = [
         { text: 'Welcome to RTA AI!', sender: 'bot' }
     ];
+
+    protected apiKey: string | undefined;
+    protected backendUrl: string = RtaChatWidget.DEFAULT_BACKEND_URL;
 
     @postConstruct()
     protected init(): void {
@@ -29,31 +47,133 @@ export class RtaChatWidget extends ReactWidget {
         this.title.closable = false;
         this.title.iconClass = 'fa fa-robot';
         this.update();
+        this.loadConfig();
+        this.ensureApiKey();
+    }
+
+    protected async loadConfig(): Promise<void> {
+        try {
+            const homeUriStr = await this.envVariablesServer.getHomeDirUri();
+            if (homeUriStr) {
+                const configUri = new URI(homeUriStr).resolve('.rta/config.json');
+                if (await this.fileService.exists(configUri)) {
+                    const content = await this.fileService.readFile(configUri);
+                    const config = JSON.parse(content.value.toString());
+                    if (config.server_url) {
+                        this.backendUrl = config.server_url.replace(/\/$/, '');
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error loading config:', e);
+        }
+    }
+
+    protected async ensureApiKey(): Promise<string | undefined> {
+        if (this.apiKey) return this.apiKey;
+
+        // Try load from CLI credentials
+        try {
+            const homeUriStr = await this.envVariablesServer.getHomeDirUri();
+            if (homeUriStr) {
+                const credsUri = new URI(homeUriStr).resolve('.rta/credentials');
+                if (await this.fileService.exists(credsUri)) {
+                    const content = await this.fileService.readFile(credsUri);
+                    const text = content.value.toString();
+                    const match = text.match(/rta_api_key=(.*)/);
+                    if (match && match[1]) {
+                        this.apiKey = atob(match[1].trim());
+                        return this.apiKey;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error loading API key:', e);
+        }
+
+        // Prompt user
+        const key = await this.quickInputService.input({
+            prompt: 'Enter your Rta API key',
+            placeHolder: 'API key from https://rta-three.vercel.app/dashboard.html'
+        });
+
+        if (key) {
+            this.apiKey = key;
+            await this.saveApiKey(key);
+            return key;
+        }
+
+        return undefined;
+    }
+
+    protected async saveApiKey(key: string): Promise<void> {
+        try {
+            const homeUriStr = await this.envVariablesServer.getHomeDirUri();
+            if (homeUriStr) {
+                const rtaDir = new URI(homeUriStr).resolve('.rta');
+                if (!(await this.fileService.exists(rtaDir))) {
+                    await this.fileService.createFolder(rtaDir);
+                }
+                const credsUri = rtaDir.resolve('credentials');
+                const encoded = btoa(key);
+                const content = `rta_api_key=${encoded}\n`;
+                await this.fileService.writeFile(credsUri, BinaryBuffer.fromString(content));
+            }
+        } catch (e) {
+            console.error('Error saving API key:', e);
+        }
     }
 
     protected state = {
-        inputValue: ''
+        inputValue: '',
+        isSending: false
     };
 
-    protected handleSendMessage(text: string): void {
-        if (!text.trim()) return;
+    protected async handleSendMessage(text: string): Promise<void> {
+        if (!text.trim() || this.state.isSending) return;
+
+        const apiKey = await this.ensureApiKey();
+        if (!apiKey) {
+            this.messageService.error('RTA API key is required to chat.');
+            return;
+        }
 
         this.messages.push({ text, sender: 'user' });
+        this.state.isSending = true;
         this.update();
 
-        // Simulate bot reply
-        setTimeout(() => {
-            const reply = this.getMockReply(text);
-            this.messages.push({ text: reply, sender: 'bot' });
-            this.update();
-        }, 1000);
-    }
+        try {
+            const response = await fetch(`${this.backendUrl}/v1/chat`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey,
+                    'ngrok-skip-browser-warning': '69420'
+                },
+                body: JSON.stringify({
+                    messages: this.messages.map(m => ({
+                        role: m.sender === 'user' ? 'user' : 'assistant',
+                        content: m.text
+                    })),
+                    model: 'auto',
+                    stream: false
+                })
+            });
 
-    protected getMockReply(userText: string): string {
-        const lower = userText.toLowerCase();
-        if (lower.includes('hello') || lower.includes('hi')) return 'Hello! How can I help you today?';
-        if (lower.includes('help')) return 'I can help you navigate the RTA desktop application. What do you need?';
-        return `I received your message: "${userText}". This is a sample reply from RTA AI.`;
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`API Error (${response.status}): ${errorText.substring(0, 100)}`);
+            }
+
+            const data = await response.json();
+            const reply = data.choices?.[0]?.message?.content || 'No response from RTA.';
+            this.messages.push({ text: reply, sender: 'bot' });
+        } catch (e: any) {
+            this.messages.push({ text: `Error: ${e.message}`, sender: 'bot' });
+        } finally {
+            this.state.isSending = false;
+            this.update();
+        }
     }
 
     protected render(): React.ReactNode {
@@ -123,7 +243,7 @@ export class RtaChatWidget extends ReactWidget {
                     }}>
                         <input 
                             type="text" 
-                            placeholder="Ask RTA anything..." 
+                            placeholder={this.state.isSending ? "RTA is thinking..." : "Ask RTA anything..."}
                             style={{
                                 flex: 1,
                                 padding: '8px 0',
@@ -131,15 +251,17 @@ export class RtaChatWidget extends ReactWidget {
                                 color: 'var(--theia-input-foreground)',
                                 border: 'none',
                                 outline: 'none',
-                                fontSize: 'var(--theia-ui-font-size1)'
+                                fontSize: 'var(--theia-ui-font-size1)',
+                                opacity: this.state.isSending ? 0.5 : 1
                             }} 
                             value={this.state.inputValue}
+                            disabled={this.state.isSending}
                             onChange={(e) => {
                                 this.state.inputValue = e.target.value;
                                 this.update();
                             }}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && this.state.inputValue.trim()) {
+                                if (e.key === 'Enter' && this.state.inputValue.trim() && !this.state.isSending) {
                                     this.handleSendMessage(this.state.inputValue);
                                     this.state.inputValue = '';
                                     this.update();
@@ -147,8 +269,9 @@ export class RtaChatWidget extends ReactWidget {
                             }}
                         />
                         <button 
+                            disabled={this.state.isSending || !this.state.inputValue.trim()}
                             onClick={() => {
-                                if (this.state.inputValue.trim()) {
+                                if (this.state.inputValue.trim() && !this.state.isSending) {
                                     this.handleSendMessage(this.state.inputValue);
                                     this.state.inputValue = '';
                                     this.update();
@@ -164,11 +287,12 @@ export class RtaChatWidget extends ReactWidget {
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: '50%',
-                                cursor: 'pointer',
-                                transition: 'opacity 0.2s'
+                                cursor: (this.state.isSending || !this.state.inputValue.trim()) ? 'default' : 'pointer',
+                                transition: 'opacity 0.2s',
+                                opacity: (this.state.isSending || !this.state.inputValue.trim()) ? 0.3 : 1
                             }}
                         >
-                            <i className="fa fa-paper-plane"></i>
+                            <i className={this.state.isSending ? "fa fa-spinner fa-spin" : "fa fa-paper-plane"}></i>
                         </button>
                     </div>
                     <div style={{ 
