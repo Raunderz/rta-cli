@@ -12,13 +12,13 @@ interface ChatMessage {
 export class RtaChatWidget extends ReactWidget {
 
     static readonly ID = 'rta-chat-widget';
-    static readonly LABEL = 'RTA Chat';
+    static readonly LABEL = 'RTA AI';
 
     @inject(MessageService)
     protected readonly messageService!: MessageService;
 
     protected messages: ChatMessage[] = [
-        { text: 'Welcome to RTA Chat!', sender: 'bot' }
+        { text: 'Welcome to RTA AI!', sender: 'bot' }
     ];
 
     @postConstruct()
@@ -27,9 +27,13 @@ export class RtaChatWidget extends ReactWidget {
         this.title.label = RtaChatWidget.LABEL;
         this.title.caption = RtaChatWidget.LABEL;
         this.title.closable = false;
-        this.title.iconClass = 'fa fa-comments';
+        this.title.iconClass = 'fa fa-robot';
         this.update();
     }
+
+    protected state = {
+        inputValue: ''
+    };
 
     protected handleSendMessage(text: string): void {
         if (!text.trim()) return;
@@ -39,9 +43,17 @@ export class RtaChatWidget extends ReactWidget {
 
         // Simulate bot reply
         setTimeout(() => {
-            this.messages.push({ text: 'This feature is currently under construction. Stay tuned!', sender: 'bot' });
+            const reply = this.getMockReply(text);
+            this.messages.push({ text: reply, sender: 'bot' });
             this.update();
-        }, 500);
+        }, 1000);
+    }
+
+    protected getMockReply(userText: string): string {
+        const lower = userText.toLowerCase();
+        if (lower.includes('hello') || lower.includes('hi')) return 'Hello! How can I help you today?';
+        if (lower.includes('help')) return 'I can help you navigate the RTA desktop application. What do you need?';
+        return `I received your message: "${userText}". This is a sample reply from RTA AI.`;
     }
 
     protected render(): React.ReactNode {
@@ -52,28 +64,43 @@ export class RtaChatWidget extends ReactWidget {
                 height: '100%',
                 backgroundColor: 'var(--theia-layout-color1)',
                 color: 'var(--theia-ui-font-color1)',
+                fontFamily: 'var(--theia-ui-font-family)',
                 fontSize: 'var(--theia-ui-font-size1)'
             }}>
                 <div style={{
+                    padding: '16px',
+                    borderBottom: '1px solid var(--theia-border-color)',
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                }}>
+                    <i className="fa fa-robot" style={{ color: 'var(--theia-brand-color1)' }}></i>
+                    RTA AI Assistant
+                </div>
+
+                <div style={{
                     flex: 1,
                     overflowY: 'auto',
-                    padding: '12px',
+                    padding: '16px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '12px'
+                    gap: '16px'
                 }}>
                     {this.messages.map((m, i) => (
                         <div key={i} style={{
                             alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
-                            backgroundColor: m.sender === 'user' ? 'var(--theia-brand-color1)' : 'var(--theia-layout-color3)',
-                            color: m.sender === 'user' ? 'white' : 'inherit',
-                            padding: '8px 12px',
-                            borderRadius: '12px',
-                            borderBottomRightRadius: m.sender === 'user' ? '2px' : '12px',
-                            borderBottomLeftRadius: m.sender === 'bot' ? '2px' : '12px',
-                            maxWidth: '85%',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.1)',
-                            wordBreak: 'break-word'
+                            backgroundColor: m.sender === 'user' ? '#007acc' : '#3c3c3c',
+                            color: 'white',
+                            padding: '10px 14px',
+                            borderRadius: '16px',
+                            border: '1px solid ' + (m.sender === 'user' ? '#005a9e' : '#555'),
+                            borderBottomRightRadius: m.sender === 'user' ? '2px' : '16px',
+                            borderBottomLeftRadius: m.sender === 'bot' ? '2px' : '16px',
+                            maxWidth: '80%',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            wordBreak: 'break-word',
+                            lineHeight: '1.4'
                         }}>
                             {m.text}
                         </div>
@@ -81,54 +108,78 @@ export class RtaChatWidget extends ReactWidget {
                 </div>
                 
                 <div style={{
-                    padding: '12px',
+                    padding: '16px',
                     borderTop: '1px solid var(--theia-border-color)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '8px'
+                    backgroundColor: 'var(--theia-layout-color2)'
                 }}>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                    <div style={{ 
+                        display: 'flex', 
+                        gap: '10px',
+                        backgroundColor: 'var(--theia-input-background)',
+                        border: '1px solid var(--theia-input-border)',
+                        borderRadius: '24px',
+                        padding: '4px 4px 4px 16px',
+                        alignItems: 'center'
+                    }}>
                         <input 
                             type="text" 
-                            placeholder="Type a message..." 
+                            placeholder="Ask RTA anything..." 
                             style={{
                                 flex: 1,
-                                padding: '8px 12px',
-                                backgroundColor: 'var(--theia-input-background)',
+                                padding: '8px 0',
+                                backgroundColor: 'transparent',
                                 color: 'var(--theia-input-foreground)',
-                                border: '1px solid var(--theia-input-border)',
-                                borderRadius: '20px',
-                                outline: 'none'
+                                border: 'none',
+                                outline: 'none',
+                                fontSize: 'var(--theia-ui-font-size1)'
                             }} 
+                            value={this.state.inputValue}
+                            onChange={(e) => {
+                                this.state.inputValue = e.target.value;
+                                this.update();
+                            }}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                    const input = e.target as HTMLInputElement;
-                                    this.handleSendMessage(input.value);
-                                    input.value = '';
+                                if (e.key === 'Enter' && this.state.inputValue.trim()) {
+                                    this.handleSendMessage(this.state.inputValue);
+                                    this.state.inputValue = '';
+                                    this.update();
                                 }
                             }}
                         />
                         <button 
                             onClick={() => {
-                                const input = document.querySelector('#rta-chat-container input') as HTMLInputElement;
-                                this.handleSendMessage(input.value);
-                                input.value = '';
+                                if (this.state.inputValue.trim()) {
+                                    this.handleSendMessage(this.state.inputValue);
+                                    this.state.inputValue = '';
+                                    this.update();
+                                }
                             }}
                             style={{
-                                padding: '8px 16px',
-                                backgroundColor: 'var(--theia-button-background)',
-                                color: 'var(--theia-button-foreground)',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                backgroundColor: 'var(--theia-brand-color1)',
+                                color: 'white',
                                 border: 'none',
-                                borderRadius: '20px',
+                                borderRadius: '50%',
                                 cursor: 'pointer',
-                                fontWeight: 'bold'
+                                transition: 'opacity 0.2s'
                             }}
                         >
-                            Send
+                            <i className="fa fa-paper-plane"></i>
                         </button>
                     </div>
-                    <div style={{ fontSize: '10px', opacity: 0.6, textAlign: 'center' }}>
-                        RTA AI - Experimental
+                    <div style={{ 
+                        fontSize: '10px', 
+                        marginTop: '8px',
+                        opacity: 0.5, 
+                        textAlign: 'center',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                    }}>
+                        Powered by RTA Intelligence
                     </div>
                 </div>
             </div>
