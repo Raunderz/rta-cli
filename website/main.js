@@ -81,17 +81,28 @@ const handleAuth = async (e, type) => {
     }
 }
 
-// --- Global Mouse Tracking ---
-window.addEventListener('mousemove', (e) => {
-    const cards = document.querySelectorAll('.bento-item, .pricing-card, .status-card')
-    cards.forEach(card => {
-        const rect = card.getBoundingClientRect()
-        const x = ((e.clientX - rect.left) / rect.width) * 100
-        const y = ((e.clientY - rect.top) / rect.height) * 100
-        card.style.setProperty('--x', `${x}%`)
-        card.style.setProperty('--y', `${y}%`)
+// --- Global Mouse Tracking (throttled, disabled on touch) ---
+let ticking = false
+const isTouchDevice = () => 'ontouchstart' in window || navigator.maxTouchPoints > 0
+
+if (!isTouchDevice()) {
+    window.addEventListener('mousemove', (e) => {
+        if (ticking) return
+        ticking = true
+        requestAnimationFrame(() => {
+            const cards = document.querySelectorAll('.bento-item, .pricing-card, .status-card')
+            cards.forEach(card => {
+                const rect = card.getBoundingClientRect()
+                if (rect.width === 0 || rect.height === 0) return
+                const x = ((e.clientX - rect.left) / rect.width) * 100
+                const y = ((e.clientY - rect.top) / rect.height) * 100
+                card.style.setProperty('--x', `${x}%`)
+                card.style.setProperty('--y', `${y}%`)
+            })
+            ticking = false
+        })
     })
-})
+}
 
 // --- Animation Engine ---
 const reveal = (el, immediate = false) => {
