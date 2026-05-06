@@ -58,6 +58,35 @@ LAST_RESORT_MODELS = [
     "llama-3.3-70b-versatile"
 ]
 
+def truncate_messages(messages: List[Dict], max_chars: int = 120000) -> List[Dict]:
+    """
+    Truncate conversation history and large tool outputs to fit within a safety limit.
+    Prevents HTTP 413 Payload Too Large from providers.
+    """
+    if not messages:
+        return []
+        
+    system_msg = messages[0] if messages[0].get("role") == "system" else None
+    other_msgs = messages[1:] if system_msg else messages
+    
+    # 1. Surgical truncation of individual messages (especially tool outputs)
+    for msg in other_msgs:
+        content = msg.get("content")
+        if isinstance(content, str) and len(content) > 30000:
+            msg["content"] = content[:30000] + "\n\n[... TRUNCATED BY RTA PROXY TO PREVENT 413 ...]"
+
+    # 2. Global message count truncation (keep latest)
+    current_chars = sum(len(str(m.get("content", ""))) for m in messages)
+    if current_chars <= max_chars:
+        return messages
+        
+    # Keep system prompt + last 10 messages
+    truncated = other_msgs[-10:]
+    if system_msg:
+        truncated = [system_msg] + truncated
+        
+    return truncated
+
 def get_routing_sequence(provider_hint: str, requested_model: str) -> List[Dict[str, str]]:
     """Determine the exact sequence of (provider, model) to try."""
     # User's specific high-speed chain for default "auto" case
@@ -174,8 +203,9 @@ async def call_provider(name: str, **kwargs) -> dict:
 # Core Entry Point
 async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str) -> ProxyResult:
     """Central routing logic with automatic fallback."""
-    # Prepend system prompt
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + request.messages
+    # Prepend system prompt and truncate to prevent 413
+    raw_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + request.messages
+    messages = truncate_messages(raw_messages)
     
     sequence = get_routing_sequence(request.provider, request.model)
     max_tokens = min(request.max_tokens, TIER_TOKEN_CAPS.get(user_tier.lower(), 2000))

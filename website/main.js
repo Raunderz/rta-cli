@@ -91,6 +91,203 @@ const reveal = (el, immediate = false) => {
     observer.observe(el)
 }
 
+// --- Terminal Animation Component ---
+const TerminalDemo = () => {
+    let infoDiv = null
+    let commandDiv = null
+    let timeoutIds = []
+
+    const sleep = (ms) => new Promise((r) => {
+        const id = setTimeout(r, ms)
+        timeoutIds.push(id)
+    })
+
+    const scrollToBottom = () => {
+        if (commandDiv) {
+            commandDiv.scrollTop = commandDiv.scrollHeight
+        }
+    }
+
+    const addInfoLine = async (label, value, delay = 0) => {
+        await sleep(delay)
+        if (!infoDiv) return
+        const line = div({
+            style: "display: flex; justify-content: space-between; margin-bottom: 0.3rem; font-size: 10px; line-height: 1.4;"
+        },
+            span({ style: "color: #a0a0a0;" }, label),
+            span({ style: "color: #ff6b6b;" }, value)
+        )
+        van.add(infoDiv, line)
+    }
+
+    const typeCommand = async (text, speed = 30) => {
+        if (!commandDiv) return
+        const cmdSpan = span({ style: "color: #ff6b6b;" })
+        commandDiv.lastChild.appendChild(cmdSpan)
+        for (let char of text) {
+            cmdSpan.textContent += char
+            scrollToBottom()
+            await sleep(speed)
+        }
+    }
+
+    const showLoader = async (duration = 1800) => {
+        if (!commandDiv) return
+        const frames = ['-', '\\', '|', '/']
+        let frame = 0
+        const start = Date.now()
+        const loaderSpan = span({ style: "color: #ff6b6b; font-size: 10px;" })
+        van.add(commandDiv, loaderSpan)
+
+        return new Promise((r) => {
+            const iv = setInterval(() => {
+                loaderSpan.textContent = frames[frame % frames.length] + ' Processing...'
+                frame++
+                scrollToBottom()
+                if (Date.now() - start > duration) {
+                    clearInterval(iv)
+                    loaderSpan.remove()
+                    r()
+                }
+            }, 80)
+        })
+    }
+
+    const addTool = async (name) => {
+        await sleep(400)
+        if (!commandDiv) return
+        const line = div({
+            style: "color: #a0a0a0; margin-bottom: 0.4rem; font-size: 10px; display: flex; align-items: center; gap: 0.5rem;"
+        },
+            span({ style: "color: #ff6b6b; font-weight: bold;" }, "[+]"),
+            span(name)
+        )
+        van.add(commandDiv, line)
+        scrollToBottom()
+
+        await sleep(500)
+        if (!commandDiv) return
+        const check = div({
+            style: "color: #cc2222; margin-bottom: 0.4rem; font-size: 9px; margin-left: 1.5rem;"
+        }, "[done]")
+        van.add(commandDiv, check)
+        scrollToBottom()
+    }
+
+    const agentMsg = async (msg) => {
+        await sleep(600)
+        if (!commandDiv) return
+        const line = div({
+            style: "color: #ff6b6b; margin-top: 0.5rem; padding: 0.6rem; background: rgba(255, 107, 107, 0.05); border-left: 2px solid #ff6b6b; border-radius: 4px; font-size: 10px; line-height: 1.4;"
+        })
+        van.add(commandDiv, line)
+
+        for (let char of msg) {
+            line.textContent += char
+            scrollToBottom()
+            await sleep(15)
+        }
+    }
+
+    const runDemo = async () => {
+        if (!infoDiv || !commandDiv) return
+        infoDiv.innerHTML = ''
+        commandDiv.innerHTML = ''
+
+        const scenarios = [
+            {
+                command: 'create a todo app with nextjs and stripe',
+                tools: ['read_directory', 'create_file', 'install_package', 'configure_env', 'run_build'],
+                message: 'Done! Created a Next.js todo app with Stripe integration and auth setup.'
+            },
+            {
+                command: 'train a simple neural network in c++ for mnist',
+                tools: ['create_file', 'configure_compiler', 'optimize_weights', 'run_simulation'],
+                message: 'Training complete. Accuracy: 98.4%. Weights saved to model.bin.'
+            },
+            {
+                command: 'generate the rta landing page with vanjs',
+                tools: ['analyze_branding', 'scaffold_project', 'generate_components', 'apply_styling'],
+                message: 'Website generated! High-performance landing page with terminal animations ready.'
+            }
+        ]
+
+        const scenario = scenarios[Math.floor(Math.random() * scenarios.length)]
+
+        await addInfoLine('Version', 'v0.2.0', 0)
+        await addInfoLine('User', 'test@example.com', 100)
+        await addInfoLine('Provider', 'rta', 100)
+        await addInfoLine('Model', 'auto', 100)
+        await addInfoLine('RAM', '42.5 MB', 100)
+
+        await sleep(400)
+        const prompt = div({
+            style: "color: #cc2222; margin-bottom: 0.4rem; font-size: 10px; margin-top: 0.8rem;"
+        }, "rta > ")
+        van.add(commandDiv, prompt)
+
+        await typeCommand(scenario.command, 40)
+        await showLoader(2000)
+
+        for (const tool of scenario.tools) {
+            await addTool(tool)
+        }
+
+        await agentMsg(scenario.message)
+
+        await sleep(4000)
+        if (infoDiv.isConnected) runDemo()
+    }
+
+    const container = div({
+        style: "background: #050505; border: 1px solid var(--dark-border); border-radius: 8px; font-family: var(--font-mono); overflow: hidden; width: 100%; height: 100%; display: flex; flex-direction: column;"
+    },
+        div({
+            style: "background: #111; padding: 0.5rem 1rem; border-bottom: 1px solid var(--dark-border); display: flex; justify-content: space-between; align-items: center;"
+        }, 
+            span({ style: "font-size: 10px; color: #a0a0a0; font-weight: 600;" }, "rta-terminal-demo"),
+            div({ style: "display: flex; gap: 4px;" },
+                div({ style: "width: 6px; height: 6px; border-radius: 50%; background: #333;" }),
+                div({ style: "width: 6px; height: 6px; border-radius: 50%; background: #333;" }),
+                div({ style: "width: 6px; height: 6px; border-radius: 50%; background: #333;" })
+            )
+        ),
+        div({
+            style: "display: flex; flex-direction: column; gap: 1rem; padding: 1.2rem; flex: 1; overflow: hidden;"
+        },
+            // Top section: Branding + Info
+            div({
+                style: "display: flex; gap: 2rem; align-items: flex-start; border-bottom: 1px solid rgba(255,107,107,0.1); padding-bottom: 1rem; flex-shrink: 0;"
+            },
+                pre({
+                    style: "font-family: monospace; font-size: 7px; line-height: 1.1; color: #ff6b6b; font-weight: bold; white-space: pre; margin: 0;"
+                }, ` _  .-')   .-') _      ('-.     
+( \\( -O ) (  OO) )    ( OO ).-. 
+ ,------.  /     '._   / . --. / 
+|   /\`. '|'--...__)  | \\-.  \\  
+|  /  | |'--.  .--'.-'-'  |  | 
+|  |_.' |   |  |    \\| |_.'  | 
+|  .  '.'   |  |     |  .-.  | 
+|  |\\  \\    |  |     |  | |  | 
+ \\'--' '--'   \\'--'     \\'--' \\'--'`),
+                div({ style: "min-width: 140px; flex: 1;" }) // Info container
+            ),
+            // Bottom section: Command output
+            div({
+                style: "color: #ff6b6b; font-size: 10px; line-height: 1.5; overflow-y: auto; flex: 1; padding-right: 5px;"
+            })
+        )
+    )
+
+    const mainArea = container.lastChild
+    infoDiv = mainArea.firstChild.lastChild
+    commandDiv = mainArea.lastChild
+
+    setTimeout(() => runDemo(), 100)
+
+    return container
+}
+
 // --- Components ---
 
 const NavLink = (text, page) => a({
@@ -147,14 +344,8 @@ const Hero = () => {
                 a({ class: "btn btn-secondary", href: "#", onclick: (e) => { e.preventDefault(); currentPage.val = "releases" } }, "Download CLI")
             )
         ),
-        div({ class: "hero-visual animate-fade-up", style: "animation-delay: 0.5s;" },
-            div({ style: "text-align: center; opacity: 0.5;" },
-                svg({ width: "64", height: "64", viewBox: "0 0 24 24", fill: "none", stroke: "var(--accent)", "stroke-width": "1.5" },
-                    path({ d: "M21 12a9 9 0 11-18 0 9 9 0 0118 0z" }),
-                    path({ d: "M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z" })
-                ),
-                p({ class: "mono", style: "margin-top: 1rem; color: var(--accent);" }, "Watch Demo")
-            )
+        div({ class: "hero-visual animate-fade-up", style: "animation-delay: 0.5s; padding: 20px;" },
+            TerminalDemo()
         )
     )
     return el
@@ -197,7 +388,7 @@ const FeaturesSection = () => {
                 )
             ))
         ),
-        div({ class: "features-cta" },
+        div({ class: "features-cta", style: "margin-bottom: 4rem;" },
             p({}, "Want to see RTA in action?"),
             a({ class: "btn btn-primary", href: "#", onclick: (e) => { e.preventDefault(); currentPage.val = "auth" } }, "Get Started Free")
         )
