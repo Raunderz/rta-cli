@@ -1,7 +1,7 @@
 import van from "vanjs-core"
 import { marked } from "marked"
 
-const { div, h2, h3, p, span, a, section, main, style } = van.tags
+const { div, h2, h3, p, span, a, section, main } = van.tags
 
 const reveal = (el, immediate = false) => {
     el.setAttribute('data-reveal', '')
@@ -189,21 +189,7 @@ We briefly evaluated LynxJS and VanJS for extreme startup speeds, but stuck with
         const mdContainer = div({ class: "markdown-body description", style: "font-size: 18px; line-height: 1.8; color: var(--text-primary);" })
         mdContainer.innerHTML = htmlContent
 
-        const markdownStyles = style(`
-            .markdown-body h1 { font-size: 2.5rem; margin-top: 2rem; margin-bottom: 1rem; font-weight: 700; color: var(--text-primary); }
-            .markdown-body h2 { font-size: 1.8rem; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid var(--dark-border); padding-bottom: 0.5rem; color: var(--text-primary); }
-            .markdown-body h3 { font-size: 1.4rem; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--text-primary); }
-            .markdown-body p { margin-bottom: 1.2rem; color: var(--text-secondary); font-size: 1.1rem; line-height: 1.7; }
-            .markdown-body ul { margin-bottom: 1.5rem; padding-left: 2rem; list-style-type: disc; color: var(--text-secondary); }
-            .markdown-body li { margin-bottom: 0.5rem; }
-            .markdown-body code { background: rgba(255, 255, 255, 0.1); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; }
-            .markdown-body pre { background: #0d0d0d; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--dark-border); overflow-x: auto; margin-bottom: 1.5rem; }
-            .markdown-body pre code { background: none; padding: 0; color: #ff6b6b; }
-            .markdown-body strong { font-weight: 600; color: var(--text-primary); }
-        `)
-
         return div({ style: "max-width: 800px; margin: 0 auto; text-align: left;" },
-            markdownStyles,
             div({ style: "margin-bottom: 2rem;" },
                 a({ 
                     href: "#", 

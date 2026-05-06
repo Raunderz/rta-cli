@@ -555,6 +555,23 @@ footer {
     transform: translateY(0);
 }
 
+.nav-toggle {
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+}
+
+.nav-toggle span {
+    width: 20px;
+    height: 2px;
+    background: var(--text-primary);
+    transition: 0.3s;
+}
+
 /* Responsive */
 @media (max-width: 1024px) {
     section { padding: 4rem 2rem; }
@@ -589,19 +606,19 @@ footer {
     .nav-links.open { display: flex; }
 }
 
-.nav-toggle {
-    display: none;
-    flex-direction: column;
-    gap: 5px;
-    background: none;
-    border: none;
-    cursor: pointer;
-    padding: 8px;
+/* Markdown Rendering */
+.markdown-body {
+    font-size: 18px;
+    line-height: 1.8;
+    color: var(--text-primary);
 }
-
-.nav-toggle span {
-    width: 20px;
-    height: 2px;
-    background: var(--text-primary);
-    transition: 0.3s;
-}
+.markdown-body h1 { font-size: 2.5rem; margin-top: 2rem; margin-bottom: 1rem; font-weight: 700; color: var(--text-primary); }
+.markdown-body h2 { font-size: 1.8rem; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid var(--dark-border); padding-bottom: 0.5rem; color: var(--text-primary); }
+.markdown-body h3 { font-size: 1.4rem; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--text-primary); }
+.markdown-body p { margin-bottom: 1.2rem; color: var(--text-secondary); font-size: 1.1rem; line-height: 1.7; }
+.markdown-body ul { margin-bottom: 1.5rem; padding-left: 2rem; list-style-type: disc; color: var(--text-secondary); }
+.markdown-body li { margin-bottom: 0.5rem; }
+.markdown-body code { background: rgba(255, 255, 255, 0.1); padding: 0.2rem 0.4rem; border-radius: 4px; font-family: var(--font-mono); font-size: 0.9em; }
+.markdown-body pre { background: #0d0d0d; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--dark-border); overflow-x: auto; margin-bottom: 1.5rem; }
+.markdown-body pre code { background: none; padding: 0; color: #ff6b6b; }
+.markdown-body strong { font-weight: 600; color: var(--text-primary); }
