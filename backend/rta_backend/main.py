@@ -62,9 +62,23 @@ TIER_CAPS = {
     "enterprise": {"calls_day": 500,  "tokens_req": 32000, "tokens_month": 10000000},
 }
 
-# Limiter key function to use user_id from request state
+# Limiter key function to use user_id from request state or API key
 def get_user_id_key(request: Request):
-    return getattr(request.state, "user_id", get_remote_address(request))
+    user_id = getattr(request.state, "user_id", None)
+    if not user_id:
+        api_key = request.headers.get("X-API-KEY")
+        if api_key:
+            from rta_backend.security import hash_key
+            from rta_backend.db import get_supabase_client
+            hashed = hash_key(api_key)
+            try:
+                supabase = get_supabase_client()
+                res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
+                if res.data:
+                    user_id = res.data[0]["user_id"]
+            except:
+                pass
+    return user_id if user_id else get_remote_address(request)
 
 def get_tier_limit(request: Request = None) -> str:
     """Dynamic rate limit based on user tier."""
