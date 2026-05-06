@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "lucide-static": "^1.9.0",
+    "marked": "^18.0.3",
     "vanjs-core": "^1.6.0"
   },
   "devDependencies": {
