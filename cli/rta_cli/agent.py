@@ -16,12 +16,14 @@ from rta_cli.functions.edit_file import edit_file, schema_edit_file
 from rta_cli.functions.delete_file import delete_file, schema_delete_file
 from rta_cli.functions.create_dir import create_dir, schema_create_dir
 from rta_cli.functions.list_directory import list_directory, schema_list_directory
+from rta_cli.discovery import discover_project, get_test_command, get_lint_command, get_build_command, schema_discovery
 
 CLI_VERSION = "2.0.0"
 
 AVAILABLE_TOOLS = [
     {"type": "function", "function": f}
     for f in [
+        schema_discovery,
         schema_get_files_info,
         schema_get_file_contents,
         schema_run_python_file,
@@ -70,17 +72,18 @@ def call_function(function_call: dict, workspace_dir: str) -> dict:
     args = function_call.get("args", {})
 
     dispatch = {
-        "get_files_info":   lambda: get_files_info(workspace_dir, **args),
+        "discover_project":   lambda: discover_project(workspace_dir),
+        "get_files_info":     lambda: get_files_info(workspace_dir, **args),
         "get_file_contents": lambda: get_file_contents(workspace_dir, **args),
-        "run_python_file":  lambda: run_python_file(workspace_dir, **args),
-        "write_file":       lambda: write_file(workspace_dir, **args),
-        "run_command":      lambda: run_command(workspace_dir, **args),
-        "grep_search":      lambda: grep_search(workspace_dir, **args),
-        "glob_search":      lambda: glob_search(workspace_dir, **args),
-        "edit_file":        lambda: edit_file(workspace_dir, **args),
+        "run_python_file":    lambda: run_python_file(workspace_dir, **args),
+        "write_file":         lambda: write_file(workspace_dir, **args),
+        "run_command":       lambda: run_command(workspace_dir, **args),
+        "grep_search":       lambda: grep_search(workspace_dir, **args),
+        "glob_search":        lambda: glob_search(workspace_dir, **args),
+        "edit_file":         lambda: edit_file(workspace_dir, **args),
         "delete_file":      lambda: delete_file(workspace_dir, **args),
-        "create_dir":       lambda: create_dir(workspace_dir, **args),
-        "list_directory":   lambda: list_directory(workspace_dir, **args),
+        "create_dir":        lambda: create_dir(workspace_dir, **args),
+        "list_directory":    lambda: list_directory(workspace_dir, **args),
     }
 
     fn = dispatch.get(name)
