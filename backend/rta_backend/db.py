@@ -60,6 +60,38 @@ def get_user_tier(user_id: str) -> str:
         return res.data[0].get("subscription_tier", "free")
     return "free"
 
+def check_and_update_daily_calls(user_id: str, tier: str, limit: int) -> tuple[bool, int]:
+    """
+    Check if user has calls remaining for today. Reset if new day, increment if allowed.
+    Returns (allowed: bool, remaining: int)
+    """
+    from datetime import datetime, timezone
+    
+    client = get_supabase_client()
+    today = datetime.now(timezone.utc).date().isoformat()
+    
+    res = client.table("profiles").select("calls_used_today, calls_reset_date").eq("id", user_id).execute()
+    
+    if not res.data:
+        return True, limit
+    
+    row = res.data[0]
+    reset_date = row.get("calls_reset_date")
+    used_today = row.get("calls_used_today", 0) or 0
+    
+    if reset_date != today:
+        used_today = 0
+    
+    if used_today >= limit:
+        return False, 0
+    
+    client.table("profiles").update({
+        "calls_used_today": used_today + 1,
+        "calls_reset_date": today
+    }).eq("id", user_id).execute()
+    
+    return True, limit - used_today - 1
+
 def insert_telemetry(data: dict):
     """Direct insert into telemetry table."""
     client = get_supabase_client()
