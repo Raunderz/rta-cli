@@ -127,21 +127,21 @@ class RtaChat:
         except:
             pass
 
-    def _trim_messages(self, max_msgs=8):
+    def _trim_messages(self, max_msgs=10):
+        """Aggressively prune and truncate history to keep payloads small."""
         if len(self.messages) > max_msgs:
+            # Keep first 2 (often system/intro) and last 8
             self.messages = self.messages[:2] + self.messages[-(max_msgs-2):]
         
-        # Aggressively prune older tool results to save tokens and reduce 'context noise'
-        # We prune everything except the last 2 turns.
-        for msg in self.messages[:-2]:
-            if msg.get("role") == "function":
-                for part in msg.get("parts", []):
-                    if "functionResponse" in part:
-                        fr = part["functionResponse"]
-                        resp = fr.get("response", {})
-                        content = resp.get("content", "")
-                        if isinstance(content, str) and len(content) > 150:
-                            resp["content"] = content[:150] + "\n[... HISTORICAL TOOL RESULT TRUNCATED ...]"
+        for msg in self.messages:
+            content = msg.get("content", "")
+            if isinstance(content, str) and len(content) > 20000:
+                msg["content"] = content[:20000] + "\n[... CONTENT TRUNCATED BY CLI ...]"
+            
+            # Also handle tool result parts if they exist (for some providers)
+            if msg.get("role") == "function" or msg.get("role") == "tool":
+                if isinstance(content, str) and len(content) > 15000:
+                    msg["content"] = content[:15000] + "\n[... TOOL RESULT TRUNCATED ...]"
 
     def print_header(self):
         ascii_lines = self.ascii_art.splitlines()

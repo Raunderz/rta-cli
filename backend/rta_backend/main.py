@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from contextvars import ContextVar
 
 from rta_backend.auth import router as auth_router, limiter
 from rta_backend.data import router as data_router, log_telemetry_task
@@ -20,6 +21,18 @@ app = FastAPI(
     description="Backend API for Rta - Securing Auth & Threaded Telemetry",
     version="0.1.0",
 )
+
+# Context variable to hold the current request for rate limiting
+request_var: ContextVar[Request] = ContextVar("request", default=None)
+
+@app.middleware("http")
+async def request_context_middleware(request: Request, call_next):
+    token = request_var.set(request)
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        request_var.reset(token)
 
 # CORS setup
 origins = [
@@ -41,20 +54,53 @@ app.state.limiter = limiter
 # Limiter stays enabled in TEST_MODE to allow rate limit testing.
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# Tier caps for token limits
+# Tier caps for token limits and rate limits
 TIER_CAPS = {
-    "free": 2000,
-    "basic": 4000,
-    "pro": 10000,
-    "enterprise": 32000
+    "free":       {"calls_day": 10,   "tokens_req": 2000,  "tokens_month": 25000},
+    "basic":      {"calls_day": 50,   "tokens_req": 4000,  "tokens_month": 100000},
+    "pro":        {"calls_day": 100,  "tokens_req": 10000, "tokens_month": 1000000},
+    "enterprise": {"calls_day": 500,  "tokens_req": 32000, "tokens_month": 10000000},
 }
 
 # Limiter key function to use user_id from request state
 def get_user_id_key(request: Request):
     return getattr(request.state, "user_id", get_remote_address(request))
 
+def get_tier_limit(request: Request = None) -> str:
+    """Dynamic rate limit based on user tier."""
+    if request is None:
+        request = request_var.get()
+    
+    if not request:
+        return "10/day"
+
+    # Try to get user_id from state (if require_api_key already ran)
+    # or from header manually if it hasn't.
+    user_id = getattr(request.state, "user_id", None)
+    
+    if not user_id:
+        api_key = request.headers.get("X-API-KEY")
+        if api_key:
+            from rta_backend.security import hash_key
+            from rta_backend.db import get_supabase_client
+            hashed = hash_key(api_key)
+            try:
+                supabase = get_supabase_client()
+                res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
+                if res.data:
+                    user_id = res.data[0]["user_id"]
+            except:
+                pass
+
+    if user_id:
+        tier = get_user_tier(user_id)
+        limit = TIER_CAPS.get(tier.lower(), TIER_CAPS["free"])["calls_day"]
+        return f"{limit}/day"
+    
+    return "10/day"
+
 @app.post("/v1/chat")
-@limiter.limit("10/day", key_func=get_user_id_key)
+@limiter.limit(get_tier_limit, key_func=get_user_id_key)
 async def chat_endpoint(
     request: Request,
     payload: ChatRequest,
@@ -67,7 +113,8 @@ async def chat_endpoint(
     try:
         # Step 3: Tier lookup & token cap
         user_tier = get_user_tier(user_id)
-        cap = TIER_CAPS.get(user_tier.lower(), 2000)
+        caps = TIER_CAPS.get(user_tier.lower(), TIER_CAPS["free"])
+        cap = caps["tokens_req"]
         
         # Silently cap max_tokens
         payload.max_tokens = min(payload.max_tokens, cap)
@@ -145,20 +192,15 @@ async def usage_endpoint(
         for row in (tokens_res.data or [])
     )
 
-    tier_caps = {
-        "free": {"calls": 10, "tokens": 25000},
-        "basic": {"calls": 50, "tokens": 100000},
-        "pro": {"calls": 100, "tokens": 1000000},
-        "enterprise": {"calls": 500, "tokens": 10000000},
-    }
+    tier_caps = TIER_CAPS
     caps = tier_caps.get(tier.lower(), tier_caps["free"])
 
     return {
         "tier": tier,
         "calls_today": calls_today,
-        "calls_limit": caps["calls"],
+        "calls_limit": caps["calls_day"],
         "tokens_used_month": tokens_used,
-        "tokens_limit_month": caps["tokens"],
+        "tokens_limit_month": caps["tokens_month"],
     }
 
 
@@ -182,12 +224,7 @@ async def dashboard_endpoint(
         today = now.date().isoformat()
         month_start = now.replace(day=1).date().isoformat()
 
-        tier_caps = {
-            "free":       {"calls_day": 10,   "tokens_req": 2000,  "tokens_month": 25000},
-            "basic":      {"calls_day": 50,   "tokens_req": 4000,  "tokens_month": 100000},
-            "pro":        {"calls_day": 100,  "tokens_req": 10000, "tokens_month": 1000000},
-            "enterprise": {"calls_day": 500,  "tokens_req": 32000, "tokens_month": 10000000},
-        }
+        tier_caps = TIER_CAPS
         caps = tier_caps.get(tier.lower(), tier_caps["free"])
 
         # Profile
