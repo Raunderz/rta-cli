@@ -58,34 +58,58 @@ LAST_RESORT_MODELS = [
     "llama-3.3-70b-versatile"
 ]
 
-def build_chain(provider_hint: str, model: str) -> List[str]:
-    """Determine provider priority list."""
-    if provider_hint == "gemini" or model.lower().startswith("gemini"):
-        return ["gemini", "openrouter", "cerebras", "sambanova", "groq"]
-    
-    if provider_hint != "auto":
-        # Force requested + safety fallback
-        return [provider_hint, "openrouter", "cerebras", "sambanova", "groq"]
-    
-    # Default high-speed chain: groq -> openrouter -> gemini -> cerebras -> sambanova -> last resort groq models
-    return ["groq", "openrouter", "gemini", "cerebras", "sambanova"]
-
-def get_last_resort_model(requested_model: str) -> str:
-    """Get a last resort groq model when all other providers fail."""
-    base_model = "gpt-oss-120b" if requested_model == "auto" or requested_model not in LAST_RESORT_MODELS else requested_model
-    mapping = {
-        "gpt-oss-120b": [
-            "qwen/qwen3-32b",
-            "llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile"
-        ],
-        "gpt-oss-20b": [
-            "qwen/qwen3-32b",
-            "llama-3.1-8b-instant",
-            "llama-3.3-70b-versatile"
+def get_routing_sequence(provider_hint: str, requested_model: str) -> List[Dict[str, str]]:
+    """Determine the exact sequence of (provider, model) to try."""
+    # User's specific high-speed chain for default "auto" case
+    if provider_hint == "auto" and (requested_model == "auto" or requested_model == "gpt-oss-120b"):
+        return [
+            {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "groq", "model": "openai/gpt-oss-20b"},
+            {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
+            {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-30b-a3b:free"},
+            {"provider": "gemini", "model": "gemini-2.5-flash"},
+            {"provider": "gemini", "model": "gemini-3-flash-preview"},
+            {"provider": "cerebras", "model": "llama3.1-70b"},
+            {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
         ]
-    }
-    return mapping.get(base_model, LAST_RESORT_MODELS)
+    
+    # Normalized model name for other cases
+    working_model = "gpt-oss-120b" if requested_model == "auto" else requested_model
+
+    # For Gemini-specific requests
+    if provider_hint == "gemini" or working_model.lower().startswith("gemini"):
+        base_gemini = working_model if working_model.lower().startswith("gemini") else "gemini-2.5-flash"
+        return [
+            {"provider": "gemini", "model": base_gemini},
+            {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
+            {"provider": "cerebras", "model": "llama3.1-70b"},
+            {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
+            {"provider": "groq", "model": "openai/gpt-oss-120b"}
+        ]
+        
+    # For any other specific provider hint
+    if provider_hint != "auto":
+        return [
+            {"provider": provider_hint, "model": pick_model_for_provider(working_model, provider_hint)},
+            {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
+            {"provider": "cerebras", "model": "llama3.1-70b"},
+            {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
+            {"provider": "groq", "model": "openai/gpt-oss-120b"}
+        ]
+    
+    # Default fallback for other models (e.g. gpt-oss-20b explicitly requested)
+    return [
+        {"provider": "groq", "model": pick_model_for_provider(working_model, "groq")},
+        {"provider": "openrouter", "model": pick_model_for_provider(working_model, "openrouter")},
+        {"provider": "gemini", "model": "gemini-2.5-flash"},
+        {"provider": "gemini", "model": "gemini-3-flash-preview"},
+        {"provider": "cerebras", "model": pick_model_for_provider(working_model, "cerebras")},
+        {"provider": "sambanova", "model": pick_model_for_provider(working_model, "sambanova")}
+    ]
+
+def get_last_resort_model(requested_model: str) -> List[str]:
+    """Get a last resort groq model when all other providers fail."""
+    return LAST_RESORT_MODELS
 
 def pick_model_for_provider(requested_model: str, provider_name: str) -> str:
     """Map generic model names to provider-specific strings."""
@@ -153,7 +177,7 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
     # Prepend system prompt
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + request.messages
     
-    chain = build_chain(request.provider, request.model)
+    sequence = get_routing_sequence(request.provider, request.model)
     max_tokens = min(request.max_tokens, TIER_TOKEN_CAPS.get(user_tier.lower(), 2000))
     keys = get_provider_keys()
     
@@ -161,14 +185,15 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
     start_time = time.time()
     last_error = None
     
-    for provider_name in chain:
+    for entry in sequence:
+        provider_name = entry["provider"]
+        model_to_use = entry["model"]
+        
         api_key = keys.get(provider_name)
         if not api_key:
             logging.warning(f"Skipping {provider_name}: API key missing")
             continue
             
-        model_to_use = pick_model_for_provider(request.model, provider_name)
-        
         try:
             # Call provider module
             result = await call_provider(
