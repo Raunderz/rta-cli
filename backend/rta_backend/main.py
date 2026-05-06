@@ -130,6 +130,15 @@ async def chat_endpoint(
         caps = TIER_CAPS.get(user_tier.lower(), TIER_CAPS["free"])
         cap = caps["tokens_req"]
         
+        # Step 3.5: Daily call limit check (DB-backed)
+        from rta_backend.db import check_and_update_daily_calls
+        allowed, remaining = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"])
+        if not allowed:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Daily call limit reached ({caps['calls_day']}/day). Upgrade your plan or wait until tomorrow."
+            )
+        
         # Silently cap max_tokens
         payload.max_tokens = min(payload.max_tokens, cap)
         
