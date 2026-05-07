@@ -38,6 +38,8 @@ export class RtaChatWidget extends ReactWidget {
 
     protected apiKey: string | undefined;
     protected backendUrl: string = RtaChatWidget.DEFAULT_BACKEND_URL;
+    protected sessionId: string = crypto.randomUUID();
+    protected turnIndex: number = 0;
 
     @postConstruct()
     protected init(): void {
@@ -156,7 +158,9 @@ export class RtaChatWidget extends ReactWidget {
                         content: m.text
                     })),
                     model: 'auto',
-                    stream: false
+                    stream: false,
+                    session_id: this.sessionId,
+                    turn_index: this.turn_index
                 })
             });
 
@@ -168,6 +172,7 @@ export class RtaChatWidget extends ReactWidget {
             const data = await response.json();
             const reply = data.choices?.[0]?.message?.content || 'No response from RTA.';
             this.messages.push({ text: reply, sender: 'bot' });
+            this.turnIndex += 2; // User + Assistant
         } catch (e: any) {
             this.messages.push({ text: `Error: ${e.message}`, sender: 'bot' });
         } finally {
