@@ -12,7 +12,12 @@ if (hashParams.has("access_token")) {
         refresh_token: hashParams.get("refresh_token"),
         api_key: hashParams.get("api_key") || null
     };
-    const existing = JSON.parse(localStorage.getItem("rta_user") || "{}");
+    let existing = null;
+    try {
+        existing = JSON.parse(localStorage.getItem("rta_user"));
+    } catch(e) {}
+    existing = existing || {};
+    
     const finalUser = { ...existing, ...oauthUser };
     if (!finalUser.api_key && existing.api_key) finalUser.api_key = existing.api_key;
     
