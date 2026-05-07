@@ -1,5 +1,6 @@
 import { h, render, Component } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
+import Dashboard from './dashboard.jsx';
 import { Router, Route, Link, useLocation } from 'wouter';
 import { BlogPage } from './blog.jsx';
 
@@ -57,13 +58,13 @@ const TerminalDemo = () => {
     const addInfoLine = async (label, value, delay = 0) => {
       await sleep(delay);
       if (!isRunning || !infoRef.current) return;
-      
+
       const line = createElement('div', "display: flex; justify-content: space-between; margin-bottom: 0.3rem; font-size: 10px; line-height: 1.4;");
       const labelSpan = createElement('span', "color: #a0a0a0;", label);
       const valSpan = createElement('span', "color: var(--neon-red);", value);
       line.appendChild(labelSpan);
       line.appendChild(valSpan);
-      
+
       infoRef.current.appendChild(line);
     };
 
@@ -106,13 +107,13 @@ const TerminalDemo = () => {
     const addTool = async (name) => {
       await sleep(400);
       if (!isRunning || !terminalRef.current) return;
-      
+
       const line = createElement('div', "color: #a0a0a0; margin-bottom: 0.4rem; font-size: 10px; display: flex; align-items: center; gap: 0.5rem;");
       const checkSpan = createElement('span', "color: var(--neon-red); font-weight: bold;", "[+]");
       const nameSpan = createElement('span', "", name);
       line.appendChild(checkSpan);
       line.appendChild(nameSpan);
-      
+
       terminalRef.current.appendChild(line);
       scrollToBottom();
 
@@ -170,7 +171,7 @@ const TerminalDemo = () => {
 
       await sleep(400);
       if (!isRunning || !terminalRef.current) return;
-      
+
       const prompt = createElement('div', "color: var(--neon-red); margin-bottom: 0.4rem; font-size: 10px; margin-top: 0.8rem;", "rta > ");
       terminalRef.current.appendChild(prompt);
 
@@ -206,7 +207,7 @@ const TerminalDemo = () => {
       <div style="display: flex; flex-direction: column; height: 100%; padding: 1.5rem; overflow: hidden; gap: 1rem;">
         <div style="display: flex; gap: 2rem; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-shrink: 0;">
           <pre style="font-family: monospace; font-size: 7px; line-height: 1.1; color: var(--neon-red); font-weight: bold; margin: 0;">
-{` _  .-')   .-') _      ('-.     
+            {` _  .-')   .-') _      ('-.     
 ( \\( -O ) (  OO) )    ( OO ).-. 
  ,------.  /     '._   / . --. / 
 |   /\`. '|'--...__)  | \\-.  \\  
@@ -229,7 +230,7 @@ const Hero = () => (
   <section class="hero container">
     <div class="hero-grid">
       <div class="hero-content">
-        <h1>BUILD <br/> FASTER.</h1>
+        <h1>BUILD <br /> FASTER.</h1>
         <p>High-performance code editing and automation for modern engineering teams. Engineered for precision.</p>
         <div class="hero-actions">
           <Link href="/auth" class="btn btn-primary">Initialize Core</Link>
@@ -269,7 +270,7 @@ const FeaturesSection = () => {
 
 const PricingPage = () => {
   const [currency, setCurrency] = useState('USD');
-  
+
   const priceMap = {
     INR: { starter: "₹0", basic: "₹75", pro: "₹299" },
     USD: { starter: "$0", basic: "$1.49", pro: "$4.49" }
@@ -344,7 +345,7 @@ const AuthPage = () => {
 
   useEffect(() => {
     if (captchaRef.current && window.hcaptcha) {
-      try { window.hcaptcha.render(captchaRef.current); } catch (e) {}
+      try { window.hcaptcha.render(captchaRef.current); } catch (e) { }
     }
   }, [isLogin]);
 
@@ -381,7 +382,7 @@ const AuthPage = () => {
         setAuthError("Signup successful! Please log in.");
       } else {
         localStorage.setItem("rta_user", JSON.stringify(result));
-        window.location.href = "/dashboard.html";
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       setAuthError(err.message);
@@ -390,18 +391,18 @@ const AuthPage = () => {
       if (window.hcaptcha) window.hcaptcha.reset();
     }
   };
-  
+
   return (
     <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
       <div class="auth-box">
         <h2 style="margin-bottom: 2rem; text-align: center;">{isLogin ? "AUTHENTICATE" : "REGISTER"}</h2>
-        
+
         {authError && <div style="color: var(--neon-red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--neon-red);">{authError}</div>}
-        
+
         <button class="btn" style="width: 100%; margin-bottom: 1.5rem;" onClick={() => window.location.href = `${API_BASE_URL}/v1/auth/github`}>
           Continue with GitHub
         </button>
-        
+
         <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; opacity: 0.5;">
           <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
           <span class="mono" style="font-size: 10px;">OR</span>
@@ -440,27 +441,27 @@ const LegalPage = () => (
 
 const RoadmapPage = () => (
   <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
-     <div class="section-header">
-        <h2>ROADMAP</h2>
-        <p class="mono">UPCOMING DEPLOYMENTS</p>
+    <div class="section-header">
+      <h2>ROADMAP</h2>
+      <p class="mono">UPCOMING DEPLOYMENTS</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon mono" style="font-size: 1rem; color: var(--text-main);">PHASE 01 [ACTIVE]</div>
+        <h3>Core CLI v1.0</h3>
+        <p>Auth, Telemetry, Project Indexing</p>
       </div>
-      <div class="features-grid">
-        <div class="feature-card">
-          <div class="feature-icon mono" style="font-size: 1rem; color: var(--text-main);">PHASE 01 [ACTIVE]</div>
-          <h3>Core CLI v1.0</h3>
-          <p>Auth, Telemetry, Project Indexing</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon mono" style="font-size: 1rem;">PHASE 02 [SOON]</div>
-          <h3>Public Beta</h3>
-          <p>Context Sync, AI Refactor Engine</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon mono" style="font-size: 1rem;">PHASE 03 [FUTURE]</div>
-          <h3>Mobile App</h3>
-          <p>iOS/Android, Desktop Sync</p>
-        </div>
+      <div class="feature-card">
+        <div class="feature-icon mono" style="font-size: 1rem;">PHASE 02 [SOON]</div>
+        <h3>Public Beta</h3>
+        <p>Context Sync, AI Refactor Engine</p>
       </div>
+      <div class="feature-card">
+        <div class="feature-icon mono" style="font-size: 1rem;">PHASE 03 [FUTURE]</div>
+        <h3>Mobile App</h3>
+        <p>iOS/Android, Desktop Sync</p>
+      </div>
+    </div>
   </div>
 );
 
@@ -480,25 +481,25 @@ const ReleasesPage = () => {
       <div class="status-board">
         <div class="status-header">
           <span class="mono">v1.4.2 [STABLE]</span>
-          <a 
-            href={os === 'linux' ? "/rta" : "/rta.exe"} 
-            download={os === 'linux' ? "rta" : "rta.exe"} 
+          <a
+            href={os === 'linux' ? "/rta" : "/rta.exe"}
+            download={os === 'linux' ? "rta" : "rta.exe"}
             class="btn btn-primary"
             style="text-decoration: none;"
           >
             Download for {os === 'linux' ? 'Linux' : 'Windows'}
           </a>
         </div>
-      <div style="padding: 2rem;">
-        <h4 class="mono" style="margin-bottom: 1rem;">QUICK INSTALL</h4>
-        <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px;">
-{os === 'linux' ? `chmod +x rta
+        <div style="padding: 2rem;">
+          <h4 class="mono" style="margin-bottom: 1rem;">QUICK INSTALL</h4>
+          <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px;">
+            {os === 'linux' ? `chmod +x rta
 sudo mv rta /usr/local/bin/
 rta chat` : `rta.exe chat`}
-        </pre>
+          </pre>
+        </div>
       </div>
     </div>
-  </div>
   );
 };
 
@@ -548,6 +549,7 @@ const Home = () => (
 );
 
 const App = () => {
+  console.log("App rendering");
   return (
     <div class="app-container">
       <Navbar />
@@ -561,6 +563,7 @@ const App = () => {
           <Route path="/auth" component={AuthPage} />
           <Route path="/legal" component={LegalPage} />
           <Route path="/blog" component={BlogPage} />
+          <Route path="/dashboard" component={Dashboard} />
         </Router>
       </main>
       <AppFooter />
