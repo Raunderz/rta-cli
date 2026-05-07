@@ -208,7 +208,7 @@ const ChatView = ({ user }) => {
 };
 
 const Dashboard = () => {
-    console.log("Dashboard rendering, user:", JSON.stringify(user));
+    // console.log("Dashboard rendering, user:", JSON.stringify(user));
     const [activeTab, setActiveTab] = useState("dashboard");
     const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("rta_user") || "null"));
     const [keyVisible, setKeyVisible] = useState(false);
@@ -218,15 +218,12 @@ const Dashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
 
     const logout = () => {
-        console.log("Logging out");
         localStorage.removeItem("rta_user");
         window.location.href = "/";
     };
 
     useEffect(() => {
-        console.log("useEffect running, user:", user);
         if (!user) {
-            console.log("No user, redirecting to /");
             window.location.href = "/";
             return;
         }
@@ -242,7 +239,6 @@ const Dashboard = () => {
                 }
 
                 const res = await fetch(`${API_BASE_URL}/v1/dashboard`, { headers });
-                console.log("Dashboard response:", res.status);
                 if (!res.ok) {
                     if (res.status === 401) logout();
                     throw new Error("Failed to load dashboard data");
@@ -375,5 +371,14 @@ const Dashboard = () => {
         </div>
     );
 };
+
+// For standalone (loaded by dashboard.html): render to #dash-app
+if (typeof window !== "undefined") {
+    const dashApp = document.getElementById("dash-app");
+    if (dashApp) {
+        document.body.classList.add("dashboard-body");
+        render(<Dashboard />, dashApp);
+    }
+}
 
 export default Dashboard;

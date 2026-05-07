@@ -549,7 +549,6 @@ const Home = () => (
 );
 
 const App = () => {
-  console.log("App rendering");
   return (
     <div class="app-container">
       <Navbar />
