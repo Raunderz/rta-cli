@@ -1,5 +1,6 @@
 import { render, h, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
+import { marked } from 'marked';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
@@ -106,7 +107,102 @@ const SupportBot = ({ user }) => {
     );
 };
 
+const ChatView = ({ user }) => {
+    const [messages, setMessages] = useState([]);
+    const [input, setInput] = useState("");
+    const [isTyping, setIsTyping] = useState(false);
+
+    const sendMessage = async () => {
+        if (!input.trim() || isTyping) return;
+        const newMsgs = [...messages, { role: "user", content: input }];
+        setMessages(newMsgs);
+        setInput("");
+        setIsTyping(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL}/v1/chat`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-API-KEY": user?.api_key || "",
+                    "ngrok-skip-browser-warning": "true"
+                },
+                body: JSON.stringify({
+                    messages: [
+                        { role: "system", content: "You are an expert software architect and project planner. When a user presents a project idea, generate a detailed, phase-wise implementation plan. Use markdown. Be concise and technical." },
+                        ...newMsgs
+                    ],
+                    model: "auto",
+                    provider: "auto"
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.detail || "Chat failed");
+            
+            setMessages(prev => [...prev, { role: "assistant", content: data.choices[0].message.content }]);
+        } catch (e) {
+            setMessages(prev => [...prev, { role: "assistant", content: "Error: " + e.message }]);
+        } finally {
+            setIsTyping(false);
+        }
+    };
+
+    return (
+        <div style="display: flex; flex-direction: column; height: 100%; max-width: 800px; margin: 0 auto; width: 100%;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px; border-bottom: 1px solid var(--border);">
+                <div>
+                    <h2 style="margin: 0; font-size: 18px;">Project Planner</h2>
+                    <span style="font-size: 12px; color: var(--text-muted);">Chat is not saved across sessions.</span>
+                </div>
+                {messages.length > 0 && (
+                    <button class="btn-ghost" onClick={() => setMessages([])} style="font-size: 12px; padding: 4px 8px;">
+                        Clear Chat
+                    </button>
+                )}
+            </div>
+            <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
+                {messages.length === 0 ? (
+                    <div style="text-align: center; color: var(--text-muted); margin-top: 50px;">
+                        <Icon d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" size="48" />
+                        <h2>Project Planner</h2>
+                        <p>Share your project idea to get a phase-wise implementation plan.</p>
+                    </div>
+                ) : (
+                    messages.map((m, i) => (
+                        <div key={i} style={`align-self: ${m.role === 'user' ? 'flex-end' : 'flex-start'}; max-width: 80%; background: ${m.role === 'user' ? 'var(--primary)' : 'transparent'}; color: ${m.role === 'user' ? 'white' : 'var(--text)'}; padding: 12px 16px; border-radius: 8px; font-family: var(--font-sans); ${m.role !== 'user' ? 'border: 1px solid var(--border);' : ''}`}>
+                            {m.role === 'user' ? (
+                                <div style="white-space: pre-wrap;">{m.content}</div>
+                            ) : (
+                                <div class="markdown-body" dangerouslySetInnerHTML={{ __html: marked.parse(m.content) }} />
+                            )}
+                        </div>
+                    ))
+                )}
+                {isTyping && <div style="align-self: flex-start; color: var(--text-muted); font-size: 14px;">Thinking...</div>}
+            </div>
+            <div style="padding: 20px; border-top: 1px solid var(--border);">
+                <div style="display: flex; gap: 8px; background: var(--bg-alt); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+                    <input 
+                        style="flex: 1; background: transparent; border: none; color: var(--text); padding: 8px; outline: none; font-family: var(--font-sans);"
+                        placeholder="Message Rta..."
+                        value={input}
+                        onInput={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    />
+                    <button class="btn-ghost active" onClick={sendMessage} style="border: none;">
+                        <Icon d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+                    </button>
+                </div>
+                <div style="text-align: center; color: var(--text-muted); font-size: 11px; margin-top: 8px;">
+                    Chats count towards your daily calls and token limits.
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const Dashboard = () => {
+    const [activeTab, setActiveTab] = useState("dashboard");
     const [user, setUser] = useState(() => JSON.parse(localStorage.getItem("rta_user") || "null"));
     const [keyVisible, setKeyVisible] = useState(false);
     const [selectedOS, setSelectedOS] = useState("linux");
@@ -166,8 +262,11 @@ const Dashboard = () => {
                     <a href="/" class="sidebar-logo">rta</a>
                     <div class="nav-group">
                         <div class="nav-label">Overview</div>
-                        <div class="nav-item active">
+                        <div class={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
                             <Icon d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /> Dashboard
+                        </div>
+                        <div class={`nav-item ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
+                            <Icon d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /> Chat
                         </div>
                         <div class="nav-item">
                             <Icon d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> Projects
@@ -178,9 +277,6 @@ const Dashboard = () => {
                         <div class="nav-item">
                             <Icon d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /> Profile
                         </div>
-                        <div class="nav-item">
-                            <Icon d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /> Alerts
-                        </div>
                     </div>
                     <div style="margin-top: auto;">
                         <div class="nav-item" onClick={logout}>
@@ -190,7 +286,9 @@ const Dashboard = () => {
                 </nav>
 
                 <main class="main-canvas">
-                    {isLoading ? (
+                    {activeTab === "chat" ? (
+                        <ChatView user={user} />
+                    ) : isLoading ? (
                         <div style="color: var(--text-muted); font-size: 14px;">Loading...</div>
                     ) : error ? (
                         <div style="color: #EF4444;">Error: {error}</div>
