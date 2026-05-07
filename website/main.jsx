@@ -309,6 +309,27 @@ const PricingPage = () => {
 };
 
 const StatusPage = () => {
+  const [status, setStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then(res => res.json())
+      .then(data => {
+        setStatus(data);
+        setLoading(false);
+      })
+      .catch(() => {
+        setStatus({ status: "offline", services: { database: "offline", api: "offline", proxy: "offline" } });
+        setLoading(false);
+      });
+  }, []);
+
+  const getBadge = (val) => {
+    const isOk = val === "operational" || val === "online";
+    return <span class={`status-badge ${isOk ? 'operational' : 'degraded'}`}>{val?.toUpperCase() || "UNKNOWN"}</span>;
+  };
+
   return (
     <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
       <div class="section-header">
@@ -318,21 +339,32 @@ const StatusPage = () => {
       <div class="status-board">
         <div class="status-header">
           <span class="mono">Global Status</span>
-          <span class="status-badge operational">OPERATIONAL</span>
+          {loading ? <span class="mono">CHECKING...</span> : getBadge(status?.status)}
         </div>
         <div class="status-row">
           <span class="mono">API Endpoint</span>
-          <span class="mono" style="color: #33ff33;">ONLINE</span>
+          <span class="mono" style={{ color: status?.services?.api === 'operational' ? '#33ff33' : '#ff3333' }}>
+            {loading ? "..." : status?.services?.api?.toUpperCase()}
+          </span>
         </div>
         <div class="status-row">
-          <span class="mono">Inference Engine</span>
-          <span class="mono" style="color: #33ff33;">ONLINE</span>
+          <span class="mono">Database Cluster</span>
+          <span class="mono" style={{ color: status?.services?.database === 'operational' ? '#33ff33' : '#ff3333' }}>
+            {loading ? "..." : status?.services?.database?.toUpperCase()}
+          </span>
         </div>
         <div class="status-row">
-          <span class="mono">Database Cache</span>
-          <span class="mono" style="color: #33ff33;">ONLINE</span>
+          <span class="mono">Proxy Mesh</span>
+          <span class="mono" style={{ color: status?.services?.proxy === 'operational' ? '#33ff33' : '#ff3333' }}>
+            {loading ? "..." : status?.services?.proxy?.toUpperCase()}
+          </span>
         </div>
       </div>
+      {!loading && status?.version && (
+        <p class="mono" style="font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center;">
+          v{status.version} • LAST CHECK: {new Date(status.timestamp * 1000).toLocaleTimeString()}
+        </p>
+      )}
     </div>
   );
 };
