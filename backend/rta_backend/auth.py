@@ -98,7 +98,7 @@ async def auth_callback(request: Request):
         
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
         # Pass session to frontend via hash params (secure)
-        redirect_url = f"{frontend_url}/dashboard.html#access_token={res.session.access_token}&refresh_token={res.session.refresh_token}"
+        redirect_url = f"{frontend_url}/dashboard#access_token={res.session.access_token}&refresh_token={res.session.refresh_token}"
         if new_api_key:
             redirect_url += f"&api_key={new_api_key}"
             
