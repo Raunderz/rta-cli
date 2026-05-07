@@ -37,6 +37,8 @@ const SupportBot = ({ user }) => {
     const [chatMessages, setChatMessages] = useState([{ role: "assistant", content: "Hello! I'm the Rta assistant. How can I help you today?" }]);
     const [chatInput, setChatInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [sessionId] = useState(() => crypto.randomUUID());
+    const [turnIndex, setTurnIndex] = useState(0);
 
     const sendChatMessage = async () => {
         if (!chatInput.trim() || isTyping) return;
@@ -61,12 +63,15 @@ const SupportBot = ({ user }) => {
                         ...newMessages
                     ],
                     model: "auto",
-                    provider: "auto"
+                    provider: "auto",
+                    session_id: sessionId,
+                    turn_index: turnIndex
                 })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || "Chat failed");
             
+            setTurnIndex(prev => prev + 2); // User + Assistant
             const assistantMsg = data.choices[0].message.content;
             setChatMessages(prev => [...prev, { role: "assistant", content: assistantMsg }]);
         } catch (e) {
@@ -117,6 +122,8 @@ const ChatView = ({ user }) => {
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState("");
     const [isTyping, setIsTyping] = useState(false);
+    const [sessionId] = useState(() => crypto.randomUUID());
+    const [turnIndex, setTurnIndex] = useState(0);
 
     const sendMessage = async () => {
         if (!input.trim() || isTyping) return;
@@ -139,12 +146,15 @@ const ChatView = ({ user }) => {
                         ...newMsgs
                     ],
                     model: "auto",
-                    provider: "auto"
+                    provider: "auto",
+                    session_id: sessionId,
+                    turn_index: turnIndex
                 })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.detail || "Chat failed");
             
+            setTurnIndex(prev => prev + 2);
             setMessages(prev => [...prev, { role: "assistant", content: data.choices[0].message.content }]);
         } catch (e) {
             setMessages(prev => [...prev, { role: "assistant", content: "Error: " + e.message }]);
@@ -161,7 +171,7 @@ const ChatView = ({ user }) => {
                     <span style="font-size: 12px; color: var(--text-muted);">Chat is not saved across sessions.</span>
                 </div>
                 {messages.length > 0 && (
-                    <button class="btn-ghost" onClick={() => setMessages([])} style="font-size: 12px; padding: 4px 8px;">
+                    <button class="btn-ghost" onClick={() => { setMessages([]); setTurnIndex(0); }} style="font-size: 12px; padding: 4px 8px;">
                         Clear Chat
                     </button>
                 )}

@@ -8,8 +8,14 @@ from rta_backend.utils import Sanitizer
 router = APIRouter(prefix="/telemetry", tags=["telemetry"])
 
 class TelemetryPayload(BaseModel):
+    model_config = {"protected_namespaces": ()}
+    session_id: str | None = None
+    turn_index: int | None = None
+    role: str | None = None
     ai_prompt: str | None = None
     ai_response: str | None = None
+    model_used: str | None = None
+    is_fallback: bool = False
     tokens_in: int = 0
     tokens_out: int = 0
     file_info: dict | None = None
@@ -23,64 +29,88 @@ async def collect_telemetry(
     """
     Ingest telemetry data via BackgroundTask.
     """
-    background_tasks.add_task(insert_telemetry, {
+    data = {
         "user_id": user_id,
+        "session_id": payload.session_id,
+        "turn_index": payload.turn_index,
+        "role": payload.role,
         "ai_prompt": Sanitizer.strip_secrets(payload.ai_prompt) if payload.ai_prompt else None,
         "ai_response": Sanitizer.strip_secrets(payload.ai_response) if payload.ai_response else None,
+        "model_used": payload.model_used,
+        "is_fallback": payload.is_fallback,
         "tokens_in": payload.tokens_in,
         "tokens_out": payload.tokens_out,
-        "file_info": payload.file_info
-    })
+        "file_info": payload.file_info,
+        "created_at": "now()"
+    }
+    background_tasks.add_task(insert_telemetry, data)
     
     return {"status": "Accepted", "user_id": user_id}
 
 async def log_telemetry_task(user_id: str, request, result):
     """Background task to log enriched AI interaction telemetry."""
     try:
-        # Sanitize prompt - find last non-empty user message
-        prompt = ""
-        if request.messages:
-            # Try to find the last user message with content
-            user_msgs = [m for m in request.messages if m.get("role") == "user" and m.get("content")]
+        session_id = result.session_id
+        turn_index = result.turn_index
+        
+        # 1. Log the triggering message(s)
+        # If turn_index is 0, log the user message.
+        # If turn_index > 0, log any new tool results since the last assistant turn.
+        
+        trigger_messages = []
+        if turn_index == 0:
+            user_msgs = [m for m in request.messages if m.get("role") == "user"]
             if user_msgs:
-                prompt = Sanitizer.strip_secrets(user_msgs[-1]["content"])
-            else:
-                # Fallback to last message if no non-empty user message found
-                last_msg = request.messages[-1]
-                prompt = Sanitizer.strip_secrets(last_msg.get("content", ""))
+                trigger_messages.append(user_msgs[-1])
+        else:
+            # Find all tool messages at the end of the conversation
+            for m in reversed(request.messages):
+                if m.get("role") == "tool":
+                    trigger_messages.insert(0, m)
+                elif m.get("role") == "assistant":
+                    break
+        
+        current_idx = turn_index
+        for msg in trigger_messages:
+            role = msg.get("role", "user")
+            content = msg.get("content", "")
             
-        # Extract response text
+            data = {
+                "user_id": user_id,
+                "session_id": session_id,
+                "turn_index": current_idx,
+                "role": role,
+                "ai_prompt": Sanitizer.strip_secrets(content) if role in ["user", "tool"] else None,
+                "file_info": {"workspace_path": request.workspace_path},
+                "created_at": "now()"
+            }
+            insert_telemetry(data)
+            current_idx += 1
+
+        # 2. Log the Assistant response
         response_text = ""
         if result.choices:
             msg = result.choices[0].get("message", {})
             content = msg.get("content")
-            
             if content:
                 response_text = content
             
-            # If there are tool calls, append/use them for response_text visibility
             tool_calls = msg.get("tool_calls")
             if tool_calls:
-                tool_summaries = []
-                for tc in tool_calls:
-                    fn = tc.get("function", {})
-                    name = fn.get("name", "unknown")
-                    args = fn.get("arguments", "{}")
-                    tool_summaries.append(f"[Tool Call: {name}({args})]")
-                
+                tool_summaries = [f"[Tool Call: {tc.get('function', {}).get('name', 'unknown')}({tc.get('function', {}).get('arguments', '{}')})]" for tc in tool_calls]
                 tool_str = "\n".join(tool_summaries)
-                if response_text:
-                    response_text = f"{response_text}\n\n{tool_str}"
-                else:
-                    response_text = tool_str
-            
+                response_text = f"{response_text}\n\n{tool_str}" if response_text else tool_str
+
         data = {
             "user_id": user_id,
-            "ai_prompt": prompt,
+            "session_id": session_id,
+            "turn_index": current_idx,
+            "role": "assistant",
             "ai_response": response_text,
             "provider": result.provider_used,
             "model_used": result.model,
             "models_tried": result.models_tried,
+            "is_fallback": result.fallback_used,
             "tokens_in": result.usage.get("prompt_tokens", 0),
             "tokens_out": result.usage.get("completion_tokens", 0),
             "tokens_cached": result.usage.get("cached_tokens", 0),

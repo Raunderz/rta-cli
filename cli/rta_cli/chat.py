@@ -96,6 +96,10 @@ class RtaChat:
         self.rta_dir = os.path.join(self.workspace, ".rta")
         self.history_path = os.path.join(self.rta_dir, "history.json")
 
+        import uuid
+        self.session_id = str(uuid.uuid4())
+        self.turn_index = 0
+
         self.start_mem = self._get_memory_usage()
         self.session_usage = {"input": 0, "output": 0, "total": 0, "cached": 0, "start_time": time.time()}
 
@@ -260,7 +264,17 @@ class RtaChat:
                 msg = random.choice(LOADING_MESSAGES)
                 
                 with console.status(f"[bold #ff3333]{msg}[/bold #ff3333]", spinner="dots"):
-                    res, usage = run_agent(user_input, self.workspace, self.messages, self.provider, self.model, think=think_mode)
+                    res, usage, new_turn = run_agent(
+                        user_input, 
+                        self.workspace, 
+                        self.messages, 
+                        self.provider, 
+                        self.model, 
+                        think=think_mode,
+                        session_id=self.session_id,
+                        turn_index=self.turn_index
+                    )
+                    self.turn_index = new_turn
 
                 self._trim_messages()
                 self._save_history()

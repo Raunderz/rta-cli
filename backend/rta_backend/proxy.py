@@ -26,6 +26,7 @@ TIER_TOKEN_CAPS = {
 
 # Models
 class ChatRequest(BaseModel):
+    model_config = {"protected_namespaces": ()}
     messages: List[Dict[str, Any]]
     model: str
     provider: str = "auto"
@@ -34,8 +35,11 @@ class ChatRequest(BaseModel):
     stream: bool = False
     workspace_path: str = ""
     max_tokens: int = 2000
+    session_id: str = ""
+    turn_index: int = 0
 
 class ProxyResult(BaseModel):
+    model_config = {"protected_namespaces": ()}
     choices: List[Dict]
     usage: Dict
     model: str
@@ -44,6 +48,8 @@ class ProxyResult(BaseModel):
     latency_ms: float
     tool_calls_log: List[Dict]
     fallback_used: bool
+    session_id: str = ""
+    turn_index: int = 0
 
 class AllProvidersExhaustedError(Exception):
     def __init__(self, models_tried: List[str], last_error: Optional[Exception]):
@@ -247,7 +253,9 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
                 models_tried=models_tried,
                 latency_ms=latency_ms,
                 tool_calls_log=result.get("tool_calls_log", []),
-                fallback_used=(len(models_tried) > 1)
+                fallback_used=(len(models_tried) > 1),
+                session_id=request.session_id,
+                turn_index=request.turn_index
             )
             
         except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
@@ -285,7 +293,9 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
                     models_tried=models_tried,
                     latency_ms=latency_ms,
                     tool_calls_log=result.get("tool_calls_log", []),
-                    fallback_used=True
+                    fallback_used=True,
+                    session_id=request.session_id,
+                    turn_index=request.turn_index
                 )
             except Exception as e:
                 logging.error(f"Last resort model {model_name} failed: {e}")

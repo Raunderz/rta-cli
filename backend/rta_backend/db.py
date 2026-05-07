@@ -102,6 +102,7 @@ def insert_telemetry(data: dict):
 DB Schema Reference:
 - profiles: id (uuid), username (text), subscription_tier (text), credits (int)
 - api_keys: id (uuid), user_id (uuid), key_hash (text), key_hint (text)
-- telemetry: id (uuid), user_id (uuid), ai_prompt (text), ai_response (text), 
-             tokens_in (int), tokens_out (int), file_info (jsonb)
+- telemetry: id (uuid), user_id (uuid), session_id (text), turn_index (int), role (text),
+             ai_prompt (text), ai_response (text), model_used (text), is_fallback (bool),
+             tokens_in (int), tokens_out (int), file_info (jsonb), created_at (timestamp)
 """

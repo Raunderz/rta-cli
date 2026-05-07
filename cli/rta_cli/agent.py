@@ -102,6 +102,8 @@ def _call_backend(
     tools: list[dict],
     workspace_path: str,
     api_key: str,
+    session_id: str = "",
+    turn_index: int = 0,
     max_tokens: int = 2000,
 ) -> dict:
     """Single POST to /v1/chat. Returns parsed JSON or raises."""
@@ -120,6 +122,8 @@ def _call_backend(
                     "stream": False,
                     "workspace_path": workspace_path,
                     "max_tokens": max_tokens,
+                    "session_id": session_id,
+                    "turn_index": turn_index,
                 },
             )
     except httpx.ConnectError:
@@ -145,6 +149,8 @@ def stream_agent(
     model_name: str = "auto",
     max_iterations: int = 20,
     think: bool = False,
+    session_id: str = "",
+    turn_index: int = 0,
 ) -> Generator[dict, None, None]:
     """
     Agentic loop. Each iteration:
@@ -168,14 +174,31 @@ def stream_agent(
     if not any(m.get("role") == "user" for m in messages):
         messages.append({"role": "user", "content": prompt})
 
+    current_turn = turn_index
     for _ in range(max_iterations):
+        # Determine how many telemetry rows backend will insert
+        if current_turn == 0:
+            num_new_rows = 2 # User + Assistant
+        else:
+            # Count tools since last assistant turn
+            num_tools = 0
+            for m in reversed(messages):
+                if m.get("role") == "tool":
+                    num_tools += 1
+                elif m.get("role") == "assistant":
+                    break
+            num_new_rows = num_tools + 1
+
         try:
             data = _call_backend(
                 messages=messages,
                 tools=AVAILABLE_TOOLS,
                 workspace_path=workspace_dir,
                 api_key=api_key,
+                session_id=session_id,
+                turn_index=current_turn,
             )
+            current_turn += num_new_rows
         except RuntimeError as e:
             yield {"type": "error", "content": str(e)}
             return
@@ -208,7 +231,7 @@ def stream_agent(
         messages.append(assistant_msg)
 
         if not tool_calls:
-            yield {"type": "usage", "content": usage}
+            yield {"type": "usage", "content": usage, "turn_index": current_turn}
             return
 
         # Execute tools, build tool result messages
@@ -236,7 +259,7 @@ def stream_agent(
             })
 
     yield {"type": "error", "content": "Max iterations reached."}
-    yield {"type": "usage", "content": usage}
+    yield {"type": "usage", "content": usage, "turn_index": current_turn}
 
 
 def run_agent(
@@ -247,12 +270,15 @@ def run_agent(
     model_name: str = "auto",
     max_iterations: int = 20,
     think: bool = False,
-) -> tuple[str, dict]:
-    """Compatibility wrapper: collects stream_agent events → (text, usage)."""
+    session_id: str = "",
+    turn_index: int = 0,
+) -> tuple[str, dict, int]:
+    """Compatibility wrapper: collects stream_agent events → (text, usage, turn_index)."""
     final_text = ""
     last_usage: dict = {}
+    last_turn = turn_index
 
-    for event in stream_agent(prompt, workspace_dir, messages, provider, model_name, max_iterations, think):
+    for event in stream_agent(prompt, workspace_dir, messages, provider, model_name, max_iterations, think, session_id, turn_index):
         if event["type"] == "text":
             final_text += event["content"] + "\n\n"
         elif event["type"] == "tool_start":
@@ -261,7 +287,8 @@ def run_agent(
             final_text += f"> *{event['content']}*\n\n"
         elif event["type"] == "usage":
             last_usage = event["content"]
+            last_turn = event.get("turn_index", last_turn)
         elif event["type"] == "error":
-            return f"Error: {event['content']}", {}
+            return f"Error: {event['content']}", {}, last_turn
 
-    return final_text.strip(), last_usage
+    return final_text.strip(), last_usage, last_turn
