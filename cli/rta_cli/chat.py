@@ -111,21 +111,12 @@ class RtaChat:
             return "N/A"
 
     def _load_history(self):
-        if os.path.exists(self.history_path):
-            try:
-                with open(self.history_path, 'r') as f:
-                    self.messages = json.load(f)
-            except:
-                self.messages = []
+        from rta_cli.context import load_context
+        self.messages = load_context(self.workspace, max_turns=10)
 
     def _save_history(self):
-        if not os.path.exists(self.rta_dir):
-            os.makedirs(self.rta_dir, exist_ok=True)
-        try:
-            with open(self.history_path, 'w') as f:
-                json.dump(self.messages, f, indent=2)
-        except:
-            pass
+        from rta_cli.context import save_context
+        save_context(self.workspace, self.messages)
 
     def _trim_messages(self, max_msgs=10):
         """Aggressively prune and truncate history to keep payloads small."""
@@ -200,15 +191,15 @@ class RtaChat:
         if cmd_name in ["clear", "cls"]:
             os.system('cls' if os.name == 'nt' else 'clear')
             self.messages = []
-            if os.path.exists(self.history_path): os.remove(self.history_path)
-            self._save_history()
+            from rta_cli.context import clear_context
+            clear_context(self.workspace)
             self.print_header()
             return
 
         if cmd_name == "cclear":
             self.messages = []
-            if os.path.exists(self.history_path): os.remove(self.history_path)
-            self._save_history()
+            from rta_cli.context import clear_context
+            clear_context(self.workspace)
             console.print("[bold green]Conversation context cleared.[/bold green]")
             return
 
@@ -247,6 +238,7 @@ class RtaChat:
     def run(self):
         signal.signal(signal.SIGINT, self.handle_sigint)
         os.system('cls' if os.name == 'nt' else 'clear')
+        self._load_history()
         self.print_header()
         
         while True:
