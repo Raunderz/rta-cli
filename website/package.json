@@ -9,11 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "htm": "^3.1.1",
     "lucide-static": "^1.9.0",
     "marked": "^18.0.3",
-    "vanjs-core": "^1.6.0"
+    "preact": "^10.29.1",
+    "wouter": "^3.9.0"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.10.5",
     "vite": "^8.0.7"
   }
 }
