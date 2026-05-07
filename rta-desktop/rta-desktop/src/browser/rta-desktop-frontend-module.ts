@@ -2,6 +2,7 @@
  * Generated using theia-extension-generator
  */
 import { RtaDesktopCommandContribution, RtaDesktopMenuContribution } from './rta-desktop-contribution';
+import { RtaStatusContribution } from './rta-status-contribution';
 import { CommandContribution, MenuContribution } from '@theia/core/lib/common';
 import { ContainerModule } from '@theia/core/shared/inversify';
 import { RtaChatWidget } from './rta-chat-widget';
@@ -12,6 +13,9 @@ export default new ContainerModule(bind => {
     // add your contribution bindings here
     bind(CommandContribution).to(RtaDesktopCommandContribution);
     bind(MenuContribution).to(RtaDesktopMenuContribution);
+
+    bind(RtaStatusContribution).toSelf().inSingletonScope();
+    bind(FrontendApplicationContribution).toService(RtaStatusContribution);
 
     bindViewContribution(bind, RtaChatContribution);
     bind(FrontendApplicationContribution).toDynamicValue(ctx => ctx.container.get(RtaChatContribution));
