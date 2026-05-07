@@ -160,7 +160,7 @@ export class RtaChatWidget extends ReactWidget {
                     model: 'auto',
                     stream: false,
                     session_id: this.sessionId,
-                    turn_index: this.turn_index
+                    turn_index: this.turnIndex
                 })
             });
 
