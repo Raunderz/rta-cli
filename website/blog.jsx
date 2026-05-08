@@ -1,8 +1,10 @@
 import { h } from 'preact';
-import { useState } from 'preact/hooks';
+import { useState, useEffect } from 'preact/hooks';
+import { Link } from 'wouter';
 import { marked } from 'marked';
 
-export const BlogPage = () => {
+export const BlogPage = ({ params }) => {
+  const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
       slug: "why-built-rta",
@@ -59,7 +61,15 @@ To speed up operations, we implemented a dependency graph for tool execution. If
     }
   ];
 
-  const [selectedArticle, setSelectedArticle] = useState(null);
+  useEffect(() => {
+    if (params?.slug) {
+      const article = articles.find(a => a.slug === params.slug);
+      setSelectedArticle(article || null);
+      if (article) window.scrollTo(0, 0);
+    } else {
+      setSelectedArticle(null);
+    }
+  }, [params?.slug]);
 
   if (selectedArticle) {
     const htmlContent = marked(selectedArticle.body);
@@ -67,7 +77,7 @@ To speed up operations, we implemented a dependency graph for tool execution. If
     return (
       <div class="container" style="padding-top: 120px; padding-bottom: 80px; max-width: 800px;">
         <div style="margin-bottom: 2rem;">
-          <a href="#" class="nav-link" onClick={(e) => { e.preventDefault(); setSelectedArticle(null); }}>← Back to Blog</a>
+          <Link href="/blog" class="nav-link">← Back to Blog</Link>
         </div>
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
           {selectedArticle.tags.map(tag => (
@@ -92,7 +102,7 @@ To speed up operations, we implemented a dependency graph for tool execution. If
       </div>
       <div style="display: flex; flex-direction: column; gap: 2rem; max-width: 800px; margin: 0 auto;">
         {articles.map(article => (
-          <div class="feature-card" style="cursor: pointer;" onClick={() => { setSelectedArticle(article); window.scrollTo(0,0); }}>
+          <div class="feature-card" style="cursor: pointer;" onClick={() => window.location.href = `/blog/${article.slug}`}>
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1.2rem;">
               {article.tags.map(tag => (
                 <span class="mono" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-color); color: var(--text-muted);">{tag}</span>
