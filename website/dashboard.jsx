@@ -178,10 +178,10 @@ const ChatView = ({ user }) => {
             </div>
             <div style="flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px;">
                 {messages.length === 0 ? (
-                    <div style="text-align: center; color: var(--text-muted); margin-top: 50px;">
+                    <div style="text-align: center; color: var(--text-muted); flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
                         <Icon d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" size="48" />
-                        <h2>Project Planner</h2>
-                        <p>Share your project idea to get a phase-wise implementation plan.</p>
+                        <h2 style="margin: 0; font-size: 18px; color: var(--text);">Project Planner</h2>
+                        <p style="margin: 0; font-size: 13px;">Share your project idea to get a phase-wise implementation plan.</p>
                     </div>
                 ) : (
                     messages.map((m, i) => (
@@ -306,7 +306,7 @@ const Dashboard = () => {
                     {activeTab === "chat" ? (
                         <ChatView user={user} />
                     ) : isLoading ? (
-                        <div style="color: var(--text-muted); font-size: 14px;">Loading...</div>
+                        <div style="color: var(--text-muted); font-size: 14px; text-align: center; margin: auto;">Loading...</div>
                     ) : error ? (
                         <div style="color: #EF4444;">Error: {error}</div>
                     ) : dashData ? (
