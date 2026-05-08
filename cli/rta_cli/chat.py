@@ -126,11 +126,16 @@ class RtaChat:
         from rta_cli.context import save_context
         save_context(self.workspace, self.messages)
 
-    def _trim_messages(self, max_msgs=10):
+    def _trim_messages(self, max_msgs=20):
         """Aggressively prune and truncate history to keep payloads small."""
         if len(self.messages) > max_msgs:
-            # Keep first 2 (often system/intro) and last 8
-            self.messages = self.messages[:2] + self.messages[-(max_msgs-2):]
+            # Preserve system prompt if present at index 0
+            if self.messages and self.messages[0].get("role") == "system":
+                system_msg = self.messages[0]
+                # Keep system prompt + last N-1 messages
+                self.messages = [system_msg] + self.messages[-(max_msgs-1):]
+            else:
+                self.messages = self.messages[-max_msgs:]
         
         for msg in self.messages:
             content = msg.get("content", "")
