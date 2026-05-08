@@ -12,18 +12,49 @@ console = Console()
 
 
 @app.command()
-def chat():
+def chat(
+    prompt: str = typer.Argument(None, help="Initial prompt for the chat"),
+    clear_context: bool = typer.Option(False, "--clear-context", help="Clear chat history"),
+    workspace: str = typer.Option(None, "--workspace", help="Working directory"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
+):
     """Start the Rta chat interface"""
-    from rta_cli.chat import start_chat
-    start_chat()
+    from rta_cli.chat import RtaChat
+    chat_obj = RtaChat(workspace=workspace)
+    
+    if clear_context or no_cache:
+        from rta_cli.context import clear_context as cc
+        cc(chat_obj.workspace)
+        if not no_cache:
+            chat_obj.messages = []
+
+    if prompt:
+        # Run a single turn or start chat with prompt
+        chat_obj.run(initial_prompt=prompt)
+    else:
+        chat_obj.run()
 
 
 @app.callback(invoke_without_command=True)
-def callback(ctx: typer.Context):
+def callback(
+    ctx: typer.Context,
+    prompt: str = typer.Argument(None, help="Initial prompt for the chat"),
+    clear_context: bool = typer.Option(False, "--clear-context", help="Clear chat history"),
+    workspace: str = typer.Option(None, "--workspace", help="Working directory"),
+    no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
+):
     """Rta - AI-assisted code editor CLI"""
     if ctx.invoked_subcommand is None:
-        from rta_cli.chat import start_chat
-        start_chat()
+        from rta_cli.chat import RtaChat
+        chat_obj = RtaChat(workspace=workspace)
+        
+        if clear_context or no_cache:
+            from rta_cli.context import clear_context as cc
+            cc(chat_obj.workspace)
+            if not no_cache:
+                chat_obj.messages = []
+
+        chat_obj.run(initial_prompt=prompt)
 
 
 @app.command()

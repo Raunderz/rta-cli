@@ -52,7 +52,7 @@ rta/
 │   └── package.json
 │
 ├── mobile-backend/               # ALL backend code
-│   ├── python/                   # FastAPI auth service (your existing)
+│   ├── python/                   # FastAPI auth service (your existing) in our backend folder in root. no need to remake its the same api cli and desktop ide use
 │   │   ├── main.py
 │   │   └── requirements.txt
 │   │

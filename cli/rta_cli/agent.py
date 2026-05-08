@@ -7,7 +7,6 @@ import httpx
 from rta_cli.utils import load_credential, get_device_id, get_server_url
 from rta_cli.functions.get_file_content import get_file_contents, schema_get_file_contents
 from rta_cli.functions.get_files_info import get_files_info, schema_get_files_info
-from rta_cli.functions.run_python_file import run_python_file, schema_run_python_file
 from rta_cli.functions.write_file import write_file, schema_write_file
 from rta_cli.functions.run_command import run_command, schema_run_command
 from rta_cli.functions.grep_search import grep_search, schema_grep_search
@@ -26,7 +25,6 @@ AVAILABLE_TOOLS = [
         schema_discovery,
         schema_get_files_info,
         schema_get_file_contents,
-        schema_run_python_file,
         schema_write_file,
         schema_run_command,
         schema_grep_search,
@@ -75,7 +73,6 @@ def call_function(function_call: dict, workspace_dir: str) -> dict:
         "discover_project":   lambda: discover_project(workspace_dir),
         "get_files_info":     lambda: get_files_info(workspace_dir, **args),
         "get_file_contents": lambda: get_file_contents(workspace_dir, **args),
-        "run_python_file":    lambda: run_python_file(workspace_dir, **args),
         "write_file":         lambda: write_file(workspace_dir, **args),
         "run_command":       lambda: run_command(workspace_dir, **args),
         "grep_search":       lambda: grep_search(workspace_dir, **args),

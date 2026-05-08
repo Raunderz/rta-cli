@@ -1,86 +1,82 @@
-# RTA Agent Porting Plan (Python to TypeScript)
+# RTA Agent Implementation Plan (Odin)
 
-This document outlines the detailed roadmap for porting the RTA Python CLI logic into the TypeScript-based Desktop backend (Theia).
+This document outlines the roadmap for implementing the RTA Agent in the Odin programming language. The agent will run as a high-performance binary sidecar managed by the TypeScript-based Desktop backend (Theia).
 
 ## 1. Architectural Strategy
 
-The goal is to replicate the agentic loop and tool capabilities found in the `cli/` directory while adapting to the Node.js/Theia environment. The implementation will be split into a core Agent Service, a Tool Execution layer, and a Persistence/Auth layer.
+The agent will be a standalone, statically linked Odin binary. It communicates with the TypeScript backend via JSON-RPC over Standard Input/Output (Stdin/Stdout).
 
-## 2. Phase 1: Core Definitions & Protocols
+- **Odin Agent**: Handles the agentic loop, tool execution (FS, Search, Shell), and state management.
+- **TypeScript Bridge**: A thin wrapper in `rta-desktop` that spawns the Odin process and marshals JSON-RPC calls.
 
-Establish the shared types between the frontend and backend to ensure type safety across the JSON-RPC bridge.
+## 2. Phase 1: Core Definitions & Odin Setup
 
-- **Agent Protocol**: Define interfaces for `Message` (role, content), `ToolCall`, `ToolResult`, and `UsageStats`. This should mirror the OpenAI/Rta-Backend message format used in `agent.py`.
-- **Stream Events**: Define an interface for the streaming response types: `text`, `tool_start`, `thought`, `usage`, and `error`.
+Establish the foundation using Odin's `core` and `vendor` libraries.
 
-## 3. Phase 2: Configuration & Auth Layer
+- **Project Layout**:
+  - `src/main.odin`: Entry point and JSON-RPC loop.
+  - `src/agent/`: Core loop logic.
+  - `src/tools/`: Tool implementations.
+  - `src/protocol/`: JSON mappings for Messages, ToolCalls, and Usage.
+- **JSON Handling**: Use `core:encoding/json` for fast parsing of LLM responses and tool results.
 
-Port the logic from `rta_cli/utils.py` and `rta_cli/auth.py`.
+## 3. Phase 2: Configuration & Auth (Odin)
 
-- **Storage**: Implement a cross-platform credential manager that stores the API key in `~/.rta/credentials` (or platform equivalent) to maintain compatibility with the CLI.
-- **Fingerprinting**: Re-implement the stable device ID generation (UUID) logic.
-- **Environment**: Create a configuration manager to handle `SERVER_URL` and other constants, allowing for overrides via local config files.
+Port logic from `rta_cli/utils.py`.
 
-## 4. Phase 3: Tool Execution Layer (Surgical Port)
+- **Persistence**: Use `core:os` to read/write API keys in `~/.rta/credentials`.
+- **Platform Abstraction**: Use Odin's `when ODIN_OS == .Windows` etc. for cross-platform path handling.
+- **Networking**: Use a library like `odin-http` or raw sockets for communicating with the Rta backend (`/v1/chat`).
 
-Port the 11 core tools from `rta_cli/functions/` to a structured TypeScript hierarchy.
+## 4. Phase 3: High-Performance Tool Layer
 
-- **Base Tool Class**: Create an abstract base class or interface that defines the tool schema (matching the Python dictionaries) and the execution signature.
-- **File System Tools**: Port `get_file_contents`, `write_file`, `edit_file`, `delete_file`, `create_dir`, `list_directory`, and `get_files_info` using Node's `fs-extra` or native `fs` module. Ensure absolute path validation to prevent workspace escapes.
-- **Search Tools**: Port `grep_search` and `glob_search`. For `grep`, use `child_process.exec` or a library like `ripgrep-js`. For `glob`, use the `fast-glob` package.
-- **Execution Tools**: Port `run_command` and `run_python_file` using `child_process.spawn`. Handle timeouts and output streaming (STDOUT/STDERR) correctly.
+Implement the 11 core tools using Odin's low-level primitives.
 
-## 5. Phase 4: The Agent Loop
+- **File System**: Use `core:os` and `core:path/filepath`. Direct syscalls where performance is critical.
+- **Project Discovery**: Port `discovery.py` logic to Odin. Scan for `package.json`, `pyproject.toml`, etc., to auto-detect test/build commands.
+- **Search**:
+  - `grep_search`: Implement using a fast multi-threaded buffer scan or wrap `ripgrep` as a dependency.
+  - `glob_search`: Use `core:path/filepath` matching.
+- **Execution**: Use `core:os/process` to spawn sub-processes for `run_command`.
 
-Port the recursive logic from `rta_cli/agent.py`.
+## 5. Phase 4: The Agent Loop (The "Brain")
 
-- **State Management**: Manage the conversation history, including message pruning/truncation logic found in `chat.py`.
-- **The Loop**: Implement the async `for` loop that calls the Rta backend, handles tool calls, executes them via the Tool Executor, and feeds the results back.
-- **Streaming**: Ensure the loop emits events in real-time to the frontend.
-- **Error Handling**: Implement the retry logic and specific status code handling (401, 429, 502).
+- **Memory Management**: Use Odin's explicit allocators (e.g., `Arena` or `Pool`) for per-turn message processing to prevent leaks and fragmentation.
+- **Recursive Loop**: Implementation of the `for` loop that calls the backend, parses tool requests, executes tools, and recurses. This must handle multi-turn tool interactions (Agent -> Tool -> Backend -> Agent) as seen in `agent.py`.
+- **Telemetry**: Log performance metrics (latency, memory usage) to the backend.
 
-## 6. Phase 5: Theia Integration
+## 6. Phase 5: Desktop Integration (TS Bridge)
 
-Hook the new agent into the Theia application lifecycle.
+- **Process Manager**: TS class to manage the lifecycle of the `rta-agent` binary.
+- **JSON-RPC Link**: Use `child_process.spawn` with `ndjson` (newline-delimited JSON) for low-latency communication.
+- **Frontend Hook**: Map `RtaChatWidget` calls through the TS Bridge to the Odin process.
 
-- **Backend Module**: Register the `AgentService` in the `rta-desktop-backend-module.ts`.
-- **JSON-RPC**: Expose the agent's `chat` and `auth` methods over the JSON-RPC connection.
-- **Frontend Connection**: Update the `RtaChatWidget` to call the new TypeScript service instead of communicating with a separate process.
-
-## 7. Projected Directory Structure
-
-After implementation, the `src/node/agent/` directory should look like this:
+## 7. Projected Directory Structure (Odin Project)
 
 ```text
-rta-desktop/src/node/agent/
-├── agent-protocol.ts        # Shared interfaces and types
-├── agent-service.ts         # Main agentic loop and state management
-├── auth-manager.ts          # API key and device ID handling
-├── config-manager.ts        # Server URL and system settings
-├── tool-executor.ts         # Dispatcher for all tools
-├── migration_plan.md        # This document
-└── tools/                   # Individual tool implementations
-    ├── base-tool.ts         # Abstract base/interface
-    ├── filesystem/          # FS-related tools
-    │   ├── read-file.ts
-    │   ├── write-file.ts
-    │   ├── edit-file.ts
-    │   ├── delete-file.ts
-    │   ├── create-dir.ts
-    │   ├── list-directory.ts
-    │   └── get-files-info.ts
-    ├── search/              # Search-related tools
-    │   ├── grep-search.ts
-    │   └── glob-search.ts
-    └── execution/           # Shell/Python execution
-        ├── run-command.ts
-        └── run-python-file.ts
+agent-odin/
+├── build.bat / build.sh      # Build scripts
+├── src/
+│   ├── main.odin             # CLI Entry + RPC Loop
+│   ├── agent/
+│   │   ├── loop.odin         # Core recursion
+│   │   └── state.odin        # Conversation history
+│   ├── tools/
+│   │   ├── filesystem.odin   # Read/Write/Edit/Delete/List
+│   │   ├── search.odin       # Grep/Glob
+│   │   └── execution.odin    # Process spawning
+│   ├── protocol/
+│   │   └── types.odin        # JSON mappings
+│   └── shared/
+│       ├── auth.odin         # Credential management
+│       └── config.odin       # URL/Settings
+└── tests/                    # Tool validation tests
 ```
 
 ## 8. Success Criteria
 
-- The Desktop Agent uses the same `~/.rta/credentials` as the CLI.
-- All 11 tools behave identically to their Python counterparts.
-- The agent loop handles multi-turn tool interactions autonomously.
-- Streaming UI updates are smooth and handle terminal output correctly.
+- Odin binary starts in <10ms.
+- Memory footprint remains stable under heavy multi-turn tool usage.
+- Parity with Python CLI for all 11 tool behaviors.
+- Seamless integration with `~/.rta/credentials`.
 
