@@ -594,6 +594,7 @@ const App = () => {
           <Route path="/auth" component={AuthPage} />
           <Route path="/legal" component={LegalPage} />
           <Route path="/blog" component={BlogPage} />
+          <Route path="/blog/:slug" component={BlogPage} />
           <Route path="/dashboard" component={Dashboard} />
         </Router>
       </main>
