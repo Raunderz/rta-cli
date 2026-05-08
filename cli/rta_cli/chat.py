@@ -55,12 +55,16 @@ LOADING_MESSAGES = [
 ]
 
 class RtaChat:
-    def __init__(self):
+    def __init__(self, workspace=None):
         self.last_ctrl_c = 0
-        self.workspace = os.path.abspath(os.getcwd())
+        self.workspace = os.path.abspath(workspace or os.getcwd())
         self.workspace_name = os.path.basename(self.workspace)
         self.version = "v0.2.0"
         self.ascii_art = ASCII_ART
+
+        # Project Discovery on startup
+        from rta_cli.discovery import discover_project
+        self.project_info = discover_project(self.workspace)
 
         from rta_cli.utils import load_credential
         api_key = load_credential("rta_api_key")
@@ -239,15 +243,32 @@ class RtaChat:
     def get_prompt(self):
         return "\001\x1b[1;37;48;2;136;0;0m\002 rta \001\x1b[0m\002\001\x1b[1;38;2;255;51;51m\002 ❯ \001\x1b[0m\002 "
 
-    def run(self):
+    def run(self, initial_prompt=None):
         signal.signal(signal.SIGINT, self.handle_sigint)
         os.system('cls' if os.name == 'nt' else 'clear')
         self._load_history()
         self.print_header()
+
+        # Add system prompt if messages are empty or just started
+        if not self.messages or not any(m.get("role") == "system" for m in self.messages):
+            system_prompt = f"You are an expert developer CLI assistant. You are working in: {self.workspace}\n"
+            system_prompt += f"Project Info: {json.dumps(self.project_info, indent=2)}\n"
+            system_prompt += "Guidelines:\n"
+            system_prompt += "- Use run_command for shell commands, not Python\n"
+            system_prompt += "- Prefer glob + get_file_contents before editing\n"
+            system_prompt += "- Always verify after edit (get_file_contents)\n"
+            system_prompt += "- Explain errors in user-friendly terms\n"
+            system_prompt += "- Ask before destructive operations (use your judgment)\n"
+            self.messages.insert(0, {"role": "system", "content": system_prompt})
         
         while True:
             try:
-                user_input = input(self.get_prompt()).strip()
+                if initial_prompt:
+                    user_input = initial_prompt
+                    initial_prompt = None # Only use once
+                else:
+                    user_input = input(self.get_prompt()).strip()
+                
                 if not user_input: continue
                 if user_input.startswith("/"):
                     cmd = user_input[1:].lower()
