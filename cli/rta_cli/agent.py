@@ -166,15 +166,18 @@ def stream_agent(
     }
 
     # Normalise incoming messages to flat OpenAI format for backend
-    if not messages:
+    if messages is None:
         messages = []
-    if not any(m.get("role") == "user" for m in messages):
+    
+    # Ensure the new prompt is added if it's not already the most recent user message
+    if prompt and (not messages or messages[-1].get("role") != "user" or messages[-1].get("content") != prompt):
         messages.append({"role": "user", "content": prompt})
 
     current_turn = turn_index
-    for _ in range(max_iterations):
+    for i in range(max_iterations):
         # Determine how many telemetry rows backend will insert
-        if current_turn == 0:
+        last_msg = messages[-1] if messages else {}
+        if last_msg.get("role") == "user":
             num_new_rows = 2 # User + Assistant
         else:
             # Count tools since last assistant turn

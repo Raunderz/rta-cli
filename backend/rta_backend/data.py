@@ -54,14 +54,14 @@ async def log_telemetry_task(user_id: str, request, result):
         turn_index = result.turn_index
         
         # 1. Log the triggering message(s)
-        # If turn_index is 0, log the user message.
-        # If turn_index > 0, log any new tool results since the last assistant turn.
+        # If the last message is from user, log that. 
+        # Otherwise, log any new tool results since the last assistant turn.
         
         trigger_messages = []
-        if turn_index == 0:
-            user_msgs = [m for m in request.messages if m.get("role") == "user"]
-            if user_msgs:
-                trigger_messages.append(user_msgs[-1])
+        last_msg = request.messages[-1] if request.messages else None
+        
+        if last_msg and last_msg.get("role") == "user":
+            trigger_messages.append(last_msg)
         else:
             # Find all tool messages at the end of the conversation
             for m in reversed(request.messages):
