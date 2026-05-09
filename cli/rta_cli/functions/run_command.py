@@ -2,7 +2,7 @@ import subprocess
 import os
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command
 
-def run_command(working_directory, command):
+def run_command(working_directory, command, timeout=120):
     abs_working_dir = os.path.abspath(working_directory)
     
     cmd_lower = command.lower().strip()
@@ -21,7 +21,7 @@ def run_command(working_directory, command):
 
     try:
         # We run the command via shell for flexibility, but within the working directory
-        output = subprocess.run(command, shell=True, cwd=abs_working_dir, timeout=60, capture_output=True, text=True)
+        output = subprocess.run(command, shell=True, cwd=abs_working_dir, timeout=timeout, capture_output=True, text=True)
 
         final_string = (
             f"STDOUT : {output.stdout}\n"
@@ -35,7 +35,7 @@ def run_command(working_directory, command):
         return final_string
 
     except subprocess.TimeoutExpired:
-        return "Error: Command timed out after 60 seconds."
+        return f"Error: Command timed out after {timeout} seconds."
     except Exception as e:
         return f"Error executing command : {e}"
 

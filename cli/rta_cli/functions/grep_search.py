@@ -1,7 +1,7 @@
 import subprocess
 import os
 
-def grep_search(working_directory, pattern, path="."):
+def grep_search(working_directory, pattern, path=".", timeout=30):
     abs_working_dir = os.path.abspath(working_directory)
     abs_path = os.path.abspath(os.path.join(abs_working_dir, path))
     
@@ -12,7 +12,7 @@ def grep_search(working_directory, pattern, path="."):
         # Use grep -rn (recursive, line numbers)
         # We use a list for security, though we are in a controlled environment
         command = ["grep", "-rn", pattern, abs_path]
-        output = subprocess.run(command, capture_output=True, text=True, timeout=30)
+        output = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
 
         if output.returncode == 0:
             return output.stdout

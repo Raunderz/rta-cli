@@ -1,5 +1,7 @@
 """Agent: routes all AI calls through Rta backend middleware."""
 import sys
+import json as _json
+from concurrent.futures import ThreadPoolExecutor
 from typing import Generator
 
 import httpx
@@ -65,9 +67,51 @@ def _request_headers(api_key: str) -> dict:
     }
 
 
-def call_function(function_call: dict, workspace_dir: str) -> dict:
+def explain_error(tool: str, error: str, args: dict) -> str:
+    """Enhanced error messages for the agent."""
+    if not error.lower().startswith("error"):
+        return error
+
+    if tool == "run_command":
+        if "not found" in error or "no such file" in error.lower():
+            cmd = args.get("command", "").split()[0] if args.get("command") else "command"
+            return f"{error} - Suggestion: Check if '{cmd}' is installed or use full path."
+    
+    if tool == "edit_file":
+        if "old_string not found" in error:
+            return f"{error} - Hint: whitespace/indentation must match exactly. Use get_file_contents to verify content first."
+    
+    if tool == "get_file_contents":
+        if "not found" in error or "no such file" in error.lower():
+            return f"{error} - Hint: Check path with list_directory or get_files_info."
+
+    return error
+
+
+def call_function(function_call: dict, workspace_dir: str, default_timeout: int = 120) -> dict:
     name = function_call.get("name")
     args = function_call.get("args", {})
+
+    # Plan 2.3: Per-tool timeouts
+    TIMEOUTS = {
+        "get_file_contents": 10,
+        "run_command": default_timeout,
+        "glob_search": 10,
+        "grep_search": 30,
+        "edit_file": 10,
+        "write_file": 10,
+        "delete_file": 10,
+        "create_dir": 10,
+        "list_directory": 10,
+        "discover_project": 10,
+        "get_files_info": 20,
+    }
+    
+    timeout = TIMEOUTS.get(name, 10)
+
+    # Pass timeout to tools that support it
+    if name in ["run_command", "grep_search"]:
+        args["timeout"] = timeout
 
     dispatch = {
         "discover_project":   lambda: discover_project(workspace_dir),
@@ -85,6 +129,10 @@ def call_function(function_call: dict, workspace_dir: str) -> dict:
 
     fn = dispatch.get(name)
     result = fn() if fn else f"Error: function '{name}' not found"
+
+    # Apply error explanation
+    if isinstance(result, str) and result.startswith("Error:"):
+        result = explain_error(name, result, args)
 
     return {
         "functionResponse": {
@@ -148,6 +196,7 @@ def stream_agent(
     think: bool = False,
     session_id: str = "",
     turn_index: int = 0,
+    timeout: int = 120,
 ) -> Generator[dict, None, None]:
     """
     Agentic loop. Each iteration:
@@ -235,28 +284,77 @@ def stream_agent(
             return
 
         # Execute tools, build tool result messages
+        INDEPENDENT_TOOLS = {
+            "get_files_info",
+            "get_file_contents",
+            "grep_search",
+            "glob_search",
+            "list_directory",
+            "discover_project",
+        }
+
+        # Group tool calls: contiguous independent tools can run in parallel
+        groups = []
+        current_group = []
         for tc in tool_calls:
+            name = tc.get("function", {}).get("name")
+            if name in INDEPENDENT_TOOLS:
+                current_group.append(tc)
+            else:
+                if current_group:
+                    groups.append(("parallel", current_group))
+                    current_group = []
+                groups.append(("sequential", [tc]))
+        if current_group:
+            groups.append(("parallel", current_group))
+
+        def execute_one(tc):
             fn = tc.get("function", {})
             name = fn.get("name")
             call_id = tc.get("id", "call_unknown")
 
-            import json as _json
             args = {}
             try:
                 args = _json.loads(fn.get("arguments", "{}"))
             except Exception:
                 pass
 
-            yield {"type": "tool_start", "content": name}
-            result = call_function({"name": name, "args": args}, workspace_dir)
-            content = str(result["functionResponse"]["response"]["content"])
+            # Plan 2.4: Retry logic
+            import time as _time
+            max_retries = 2
+            for attempt in range(max_retries + 1):
+                result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout)
+                content = str(result["functionResponse"]["response"]["content"])
+                
+                # Check for transient failure (timeout)
+                is_transient = "timed out" in content.lower()
+                
+                if is_transient and attempt < max_retries:
+                    # Exponential backoff: 1s, 2s
+                    _time.sleep(2**attempt)
+                    continue
+                break
 
-            messages.append({
+            return {
                 "role": "tool",
                 "tool_call_id": call_id,
                 "name": name,
                 "content": content,
-            })
+            }
+
+        for mode, group_tcs in groups:
+            if mode == "parallel" and len(group_tcs) > 1:
+                for tc in group_tcs:
+                    yield {"type": "tool_start", "content": tc.get("function", {}).get("name")}
+                
+                with ThreadPoolExecutor(max_workers=min(len(group_tcs), 10)) as executor:
+                    results = list(executor.map(execute_one, group_tcs))
+                    messages.extend(results)
+            else:
+                for tc in group_tcs:
+                    yield {"type": "tool_start", "content": tc.get("function", {}).get("name")}
+                    res = execute_one(tc)
+                    messages.append(res)
 
     yield {"type": "error", "content": "Max iterations reached."}
     yield {"type": "usage", "content": usage, "turn_index": current_turn}
@@ -272,13 +370,14 @@ def run_agent(
     think: bool = False,
     session_id: str = "",
     turn_index: int = 0,
+    timeout: int = 120,
 ) -> tuple[str, dict, int]:
     """Compatibility wrapper: collects stream_agent events → (text, usage, turn_index)."""
     final_text = ""
     last_usage: dict = {}
     last_turn = turn_index
 
-    for event in stream_agent(prompt, workspace_dir, messages, provider, model_name, max_iterations, think, session_id, turn_index):
+    for event in stream_agent(prompt, workspace_dir, messages, provider, model_name, max_iterations, think, session_id, turn_index, timeout=timeout):
         if event["type"] == "text":
             final_text += event["content"] + "\n\n"
         elif event["type"] == "tool_start":
