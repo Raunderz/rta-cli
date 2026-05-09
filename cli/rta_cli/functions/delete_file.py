@@ -8,6 +8,11 @@ def delete_file(working_directory, file_path, force=False):
     if not os.path.isfile(abs_file_path):
         return f"Error: {file_path} is not a file"
 
+    if not force:
+        from rta_cli.safety import confirm_destructive
+        if not confirm_destructive("delete_file", file_path):
+            return "Cancelled: delete_file was not confirmed"
+
     try:
         os.remove(abs_file_path)
         return f"Successfully deleted {file_path}"
