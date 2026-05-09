@@ -1,5 +1,6 @@
 import typer
-from rta_cli.ui import Console, panel, table
+import os
+from rta_cli.ui import Console
 
 app = typer.Typer(
     name="rta",
@@ -40,17 +41,10 @@ def chat(
             console.print("[yellow]No saved sessions found.[/yellow]")
             return
         
-        cols = ["Session ID", "Workspace", "Last Updated", "Msgs"]
-        rows = []
+        console.print("\n[bold]Recent Chat Sessions[/bold]")
+        console.print("-" * 50)
         for s in sessions[:15]:
-            rows.append([
-                s["session_id"],
-                os.path.basename(s["workspace"]),
-                s["last_updated"].split("T")[0],
-                str(s["message_count"])
-            ])
-        
-        console.print(table("Recent Chat Sessions", cols, rows))
+            console.print(f"{s['session_id']} | {os.path.basename(s['workspace'])} | {s['last_updated'].split('T')[0]}")
         console.print("\nRun: [bold]rta chat --resume <ID>[/bold] to continue a session.")
         return
 
@@ -91,17 +85,10 @@ def callback(
                 console.print("[yellow]No saved sessions found.[/yellow]")
                 return
             
-            cols = ["Session ID", "Workspace", "Last Updated", "Msgs"]
-            rows = []
+            console.print("\n[bold]Recent Chat Sessions[/bold]")
+            console.print("-" * 50)
             for s in sessions[:15]:
-                rows.append([
-                    s["session_id"],
-                    os.path.basename(s["workspace"]),
-                    s["last_updated"].split("T")[0],
-                    str(s["message_count"])
-                ])
-            
-            console.print(table("Recent Chat Sessions", cols, rows))
+                console.print(f"{s['session_id']} | {os.path.basename(s['workspace'])} | {s['last_updated'].split('T')[0]}")
             return
 
         from rta_cli.chat import RtaChat
