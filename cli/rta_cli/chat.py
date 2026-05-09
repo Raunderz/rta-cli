@@ -57,7 +57,22 @@ LOADING_MESSAGES = [
 class RtaChat:
     def __init__(self, workspace=None, session_id=None, timeout=120, force=False):
         self.last_ctrl_c = 0
-        self.workspace = os.path.abspath(workspace or os.getcwd())
+        
+        from rta_cli.config import get_last_workspace, set_last_workspace
+        if workspace:
+            self.workspace = os.path.abspath(workspace)
+        else:
+            # If current dir is not a git repo or something, maybe use last workspace?
+            # Actually, standard behavior: use current dir if it looks like a project, 
+            # otherwise fallback to last workspace.
+            # For now, let's just prioritize provided > last > current.
+            last = get_last_workspace()
+            if last and not os.path.exists(".git") and not os.path.exists("package.json"):
+                self.workspace = last
+            else:
+                self.workspace = os.path.abspath(os.getcwd())
+        
+        set_last_workspace(self.workspace)
         self.workspace_name = os.path.basename(self.workspace)
         self.version = "v0.2.0"
         self.ascii_art = ASCII_ART
