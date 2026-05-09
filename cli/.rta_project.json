@@ -1,1 +1,1 @@
-{"language": "python", "framework": null, "test_framework": null, "linter": null, "typechecker": "mypy", "build_command": null, "test_pattern": "test_*.py", "src_pattern": "*.py", "package_manager": null}
+{"language": null, "framework": null, "test_framework": null, "linter": null, "typechecker": null, "build_command": null, "test_pattern": null, "src_pattern": null, "package_manager": null}

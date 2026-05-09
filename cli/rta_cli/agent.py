@@ -149,7 +149,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_status":        lambda: git_status(workspace_dir),
         "git_diff":          lambda: git_diff(workspace_dir, **args),
         "git_log":           lambda: git_log(workspace_dir, **args),
-        "git_commit":        lambda: git_commit(workspace_dir, **args),
+        "git_commit":        lambda: git_commit(workspace_dir, **args, force=force),
         "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
         "git_branch":        lambda: git_branch(workspace_dir, **args),
     }

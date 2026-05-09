@@ -19,14 +19,40 @@ def chat(
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
     timeout: int = typer.Option(120, "--timeout", help="Timeout for shell commands in seconds"),
     force: bool = typer.Option(False, "--force", help="Skip destructive action confirmations"),
+    resume: str = typer.Option(None, "--resume", help="Resume a previous session by ID"),
+    list_sessions: bool = typer.Option(False, "--list-sessions", help="List previous chat sessions"),
 ):
     """Start the Rta chat interface"""
+    if list_sessions:
+        from rta_cli.context import list_sessions as ls
+        sessions = ls(workspace)
+        if not sessions:
+            console.print("[yellow]No saved sessions found.[/yellow]")
+            return
+        
+        table = Table(title="Recent Chat Sessions", box=box.ROUNDED)
+        table.add_column("Session ID", style="cyan")
+        table.add_column("Workspace", style="green")
+        table.add_column("Last Updated", style="dim")
+        table.add_column("Msgs", justify="right")
+        
+        for s in sessions[:15]: # Show last 15
+            table.add_row(
+                s["session_id"],
+                os.path.basename(s["workspace"]),
+                s["last_updated"].split("T")[0],
+                str(s["message_count"])
+            )
+        console.print(table)
+        console.print("\nRun: [bold]rta chat --resume <ID>[/bold] to continue a session.")
+        return
+
     from rta_cli.chat import RtaChat
-    chat_obj = RtaChat(workspace=workspace, timeout=timeout, force=force)
+    chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force)
     
     if clear_context or no_cache:
         from rta_cli.context import clear_context as cc
-        cc(chat_obj.workspace)
+        cc(chat_obj.workspace, session_id=resume)
         if not no_cache:
             chat_obj.messages = []
 
@@ -46,15 +72,40 @@ def callback(
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
     timeout: int = typer.Option(120, "--timeout", help="Timeout for shell commands in seconds"),
     force: bool = typer.Option(False, "--force", help="Skip destructive action confirmations"),
+    resume: str = typer.Option(None, "--resume", help="Resume a previous session by ID"),
+    list_sessions: bool = typer.Option(False, "--list-sessions", help="List previous chat sessions"),
 ):
     """Rta - AI-assisted code editor CLI"""
     if ctx.invoked_subcommand is None:
+        if list_sessions:
+            from rta_cli.context import list_sessions as ls
+            sessions = ls(workspace)
+            if not sessions:
+                console.print("[yellow]No saved sessions found.[/yellow]")
+                return
+            
+            table = Table(title="Recent Chat Sessions", box=box.ROUNDED)
+            table.add_column("Session ID", style="cyan")
+            table.add_column("Workspace", style="green")
+            table.add_column("Last Updated", style="dim")
+            table.add_column("Msgs", justify="right")
+            
+            for s in sessions[:15]:
+                table.add_row(
+                    s["session_id"],
+                    os.path.basename(s["workspace"]),
+                    s["last_updated"].split("T")[0],
+                    str(s["message_count"])
+                )
+            console.print(table)
+            return
+
         from rta_cli.chat import RtaChat
-        chat_obj = RtaChat(workspace=workspace, timeout=timeout, force=force)
+        chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force)
         
         if clear_context or no_cache:
             from rta_cli.context import clear_context as cc
-            cc(chat_obj.workspace)
+            cc(chat_obj.workspace, session_id=resume)
             if not no_cache:
                 chat_obj.messages = []
 

@@ -55,7 +55,7 @@ LOADING_MESSAGES = [
 ]
 
 class RtaChat:
-    def __init__(self, workspace=None, timeout=120, force=False):
+    def __init__(self, workspace=None, session_id=None, timeout=120, force=False):
         self.last_ctrl_c = 0
         self.workspace = os.path.abspath(workspace or os.getcwd())
         self.workspace_name = os.path.basename(self.workspace)
@@ -103,7 +103,7 @@ class RtaChat:
         self.history_path = os.path.join(self.rta_dir, "history.json")
 
         import uuid
-        self.session_id = str(uuid.uuid4())
+        self.session_id = session_id or str(uuid.uuid4())
         self.turn_index = 0
 
         self.start_mem = self._get_memory_usage()
@@ -122,11 +122,18 @@ class RtaChat:
 
     def _load_history(self):
         from rta_cli.context import load_context
-        self.messages = load_context(self.workspace, max_turns=10)
+        msgs, sid = load_context(workspace_dir=self.workspace, session_id=self.session_id, max_turns=10)
+        self.messages = msgs
+        if sid:
+            self.session_id = sid
+            # Calculate turn index based on message count
+            # Each pair is 2 messages + tool messages. 
+            # Simple heuristic: total non-system messages
+            self.turn_index = sum(1 for m in self.messages if m.get("role") != "system")
 
     def _save_history(self):
         from rta_cli.context import save_context
-        save_context(self.workspace, self.messages)
+        save_context(self.workspace, self.session_id, self.messages)
 
     def _trim_messages(self, max_msgs=20):
         """Aggressively prune and truncate history to keep payloads small."""
