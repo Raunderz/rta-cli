@@ -15,6 +15,7 @@ from rta_cli.functions.grep_search import grep_search, schema_grep_search
 from rta_cli.functions.glob_search import glob_search, schema_glob_search
 from rta_cli.functions.edit_file import edit_file, schema_edit_file
 from rta_cli.functions.edit_file_ast import edit_file_ast, schema_edit_file_ast
+from rta_cli.functions.apply_diff import apply_diff, schema_apply_diff
 from rta_cli.functions.delete_file import delete_file, schema_delete_file
 from rta_cli.functions.create_dir import create_dir, schema_create_dir
 from rta_cli.functions.list_directory import list_directory, schema_list_directory
@@ -40,6 +41,7 @@ AVAILABLE_TOOLS = [
         schema_glob_search,
         schema_edit_file,
         schema_edit_file_ast,
+        schema_apply_diff,
         schema_delete_file,
         schema_create_dir,
         schema_list_directory,
@@ -145,6 +147,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "glob_search":        lambda: glob_search(workspace_dir, **args),
         "edit_file":         lambda: edit_file(workspace_dir, **args),
         "edit_file_ast":     lambda: edit_file_ast(workspace_dir, **args),
+        "apply_diff":        lambda: apply_diff(workspace_dir, **args),
         "delete_file":      lambda: delete_file(workspace_dir, **args, force=force),
         "create_dir":        lambda: create_dir(workspace_dir, **args),
         "list_directory":    lambda: list_directory(workspace_dir, **args),
