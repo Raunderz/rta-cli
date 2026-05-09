@@ -1,7 +1,5 @@
 import typer
-from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
+from rta_cli.ui import Console, panel, table
 
 app = typer.Typer(
     name="rta",
@@ -42,20 +40,17 @@ def chat(
             console.print("[yellow]No saved sessions found.[/yellow]")
             return
         
-        table = Table(title="Recent Chat Sessions", box=box.ROUNDED)
-        table.add_column("Session ID", style="cyan")
-        table.add_column("Workspace", style="green")
-        table.add_column("Last Updated", style="dim")
-        table.add_column("Msgs", justify="right")
-        
-        for s in sessions[:15]: # Show last 15
-            table.add_row(
+        cols = ["Session ID", "Workspace", "Last Updated", "Msgs"]
+        rows = []
+        for s in sessions[:15]:
+            rows.append([
                 s["session_id"],
                 os.path.basename(s["workspace"]),
                 s["last_updated"].split("T")[0],
                 str(s["message_count"])
-            )
-        console.print(table)
+            ])
+        
+        console.print(table("Recent Chat Sessions", cols, rows))
         console.print("\nRun: [bold]rta chat --resume <ID>[/bold] to continue a session.")
         return
 
@@ -96,20 +91,17 @@ def callback(
                 console.print("[yellow]No saved sessions found.[/yellow]")
                 return
             
-            table = Table(title="Recent Chat Sessions", box=box.ROUNDED)
-            table.add_column("Session ID", style="cyan")
-            table.add_column("Workspace", style="green")
-            table.add_column("Last Updated", style="dim")
-            table.add_column("Msgs", justify="right")
-            
+            cols = ["Session ID", "Workspace", "Last Updated", "Msgs"]
+            rows = []
             for s in sessions[:15]:
-                table.add_row(
+                rows.append([
                     s["session_id"],
                     os.path.basename(s["workspace"]),
                     s["last_updated"].split("T")[0],
                     str(s["message_count"])
-                )
-            console.print(table)
+                ])
+            
+            console.print(table("Recent Chat Sessions", cols, rows))
             return
 
         from rta_cli.chat import RtaChat

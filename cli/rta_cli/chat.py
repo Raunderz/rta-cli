@@ -16,13 +16,7 @@ try:
 except (ImportError, AttributeError):
     pass # Windows or incomplete readline install
 
-from rich.console import Console
-from rich.panel import Panel
-from rich.text import Text
-from rich.columns import Columns
-from rich import box
-from rich.markdown import Markdown
-
+from rta_cli.ui import Console, panel, markdown, Text
 console = Console()
 
 ASCII_ART = r""" _  .-')   .-') _      ('-.     
@@ -173,33 +167,20 @@ class RtaChat:
 
     def print_header(self):
         ascii_lines = self.ascii_art.splitlines()
-        styled_ascii = Text()
+        styled_ascii = ""
         for i, line in enumerate(ascii_lines):
-            color = f"#{max(50, 200 - i*20):02x}0000"
-            styled_ascii.append(line + "\n", style=f"bold {color}")
+            styled_ascii += f"\033[1;31m{line}\033[0m\n"
         
-        info_text = Text()
-        info_text.append(f"\n   Rta Cli {self.version}\n", style="bold #ff3333")
-        info_text.append(f"   User:     ", style="#880000")
-        info_text.append(f"{self.user}\n", style="#cc0000")
-        info_text.append(f"   Provider: ", style="#880000")
-        info_text.append(f"{self.provider}\n", style="#cc0000")
-        info_text.append(f"   Model:    ", style="#880000")
-        info_text.append(f"{self.model}\n", style="#cc0000")
-        info_text.append(f"   RAM:      ", style="#880000")
-        info_text.append(f"{self.start_mem}\n", style="#cc0000")
-        
-        header_content = Columns([styled_ascii, info_text], expand=False)
-        header_panel = Panel(
-            header_content,
-            box=box.HORIZONTALS,
-            style="on #050000",
-            border_style="#440000",
-            padding=(1, 2)
+        info = (
+            f"\033[1;31mRta Cli {self.version}\033[0m\n"
+            f"User:     {self.user}\n"
+            f"Provider: {self.provider}\n"
+            f"Model:    {self.model}\n"
+            f"RAM:      {self.start_mem}"
         )
-        console.print(header_panel)
-        console.print(Text(f" 󱂵 {self.workspace}", style="dim #660000"), justify="center")
-        console.print("")
+        
+        console.print(panel(styled_ascii + "\n" + info, title="WELCOME"))
+        console.print(f" 󱂵 {self.workspace}\n")
 
     def handle_sigint(self, sig, frame):
         current_time = time.time()
@@ -261,13 +242,13 @@ class RtaChat:
         total_in = self.session_usage.get("input", 0)
         saved_pct = (cached / total_in * 100) if total_in > 0 else 0
         
-        summary = Text()
-        summary.append("\n ──────────────── Session Summary ────────────────\n", style="dim #440000")
-        summary.append(f"   Model:     {self.model}\n   Duration:  {mins}m {secs}s\n", style="#cc0000")
-        summary.append(f"   Tokens:    In: {total_in} | Out: {self.session_usage['output']}\n", style="#cc0000")
-        summary.append(f"   Caching:   {cached} tokens ({saved_pct:.1f}% saved)\n", style="#cc0000")
-        summary.append(" ─────────────────────────────────────────────────\n", style="dim #440000")
-        console.print(Panel(summary, border_style="#440000", box=box.ROUNDED, padding=(1, 2)))
+        summary = (
+            f"Model:     {self.model}\n"
+            f"Duration:  {mins}m {secs}s\n"
+            f"Tokens:    In: {total_in} | Out: {self.session_usage['output']}\n"
+            f"Caching:   {cached} tokens ({saved_pct:.1f}% saved)"
+        )
+        console.print(panel(summary, title="SESSION SUMMARY"))
 
     def get_prompt(self):
         return "\001\x1b[1;37;48;2;136;0;0m\002 rta \001\x1b[0m\002\001\x1b[1;38;2;255;51;51m\002 ❯ \001\x1b[0m\002 "
@@ -337,10 +318,10 @@ class RtaChat:
                 self.session_usage["total"] += usage.get("total_tokens", 0)
                 self.session_usage["cached"] += usage.get("cached_tokens", 0)
 
-                console.print(f"\n[bold #ff3333]Rta[/bold #ff3333]")
-                console.print(Panel(Markdown(res), border_style="#440000", padding=(1, 2)))
+                console.print(f"\n[bold red]Rta[/bold red]")
+                console.print(panel(markdown(res)))
 
-                console.print(f"\n[dim #440000]─── {self.workspace_name} ───[/dim #440000]\n")
+                console.print(f"\n[dim]─── {self.workspace_name} ───[/dim]\n")
                 
             except (EOFError, KeyboardInterrupt): break
             except Exception as e: console.print(f"[red]Error: {e}[/red]")

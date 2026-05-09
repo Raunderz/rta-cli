@@ -1,7 +1,7 @@
 import os
 import sys
 
-from rich.console import Console
+from rta_cli.ui import Console
 console = Console()
 
 

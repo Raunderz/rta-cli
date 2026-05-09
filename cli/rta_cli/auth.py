@@ -3,7 +3,7 @@ import getpass
 import sys
 
 import httpx
-from rich.console import Console
+from rta_cli.ui import Console
 
 from rta_cli.utils import save_credential, load_credential, delete_credential, get_device_id, get_server_url
 
