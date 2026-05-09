@@ -151,13 +151,13 @@ def git_log(working_directory, n=10):
     return _run_git(working_directory, "log", f"-{n}", "--oneline")
 
 
-def git_commit(working_directory, message=None, auto_add=True):
+def git_commit(working_directory, message=None, auto_add=True, force=False):
     if not message:
         return "Error: Commit message is required"
     if not os.path.isdir(os.path.join(working_directory, ".git")):
         return "Error: Not a git repository"
     
-    if auto_add:
+    if auto_add and not force:
         staged = _run_git(working_directory, "diff", "--cached", "--name-only", check=False)
         unstaged = _run_git(working_directory, "diff", "--name-only", check=False)
         untracked = _run_git(working_directory, "ls-files", "--others", "--exclude-standard", check=False)

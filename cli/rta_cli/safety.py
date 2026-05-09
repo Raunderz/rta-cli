@@ -38,3 +38,24 @@ def confirm_destructive(action, path, force=False):
     finally:
         if _active_status:
             _active_status.start()
+
+
+def is_dangerous_command(command):
+    dangerous_patterns = [
+        "rm -rf",
+        "rm -r",
+        "del /f",
+        "del /s",
+        "format ",
+        "mkfs",
+        "dd ",
+        "> /dev/sd",
+        ":(){ :|:& };:",
+        "chmod -R 777",
+        "chown -R",
+    ]
+    cmd_clean = command.lower().strip()
+    for pattern in dangerous_patterns:
+        if pattern in cmd_clean:
+            return True
+    return False
