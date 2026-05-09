@@ -18,6 +18,12 @@ from rta_cli.functions.delete_file import delete_file, schema_delete_file
 from rta_cli.functions.create_dir import create_dir, schema_create_dir
 from rta_cli.functions.list_directory import list_directory, schema_list_directory
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command, get_build_command, schema_discovery
+from rta_cli.questions import ask_question, schema_question
+from rta_cli.git import (
+    git_status, git_diff, git_log, git_commit, git_create_pr, git_branch,
+    schema_git_status, schema_git_diff, schema_git_log, schema_git_commit,
+    schema_git_create_pr, schema_git_branch,
+)
 
 CLI_VERSION = "2.0.0"
 
@@ -35,6 +41,13 @@ AVAILABLE_TOOLS = [
         schema_delete_file,
         schema_create_dir,
         schema_list_directory,
+        schema_question,
+        schema_git_status,
+        schema_git_diff,
+        schema_git_log,
+        schema_git_commit,
+        schema_git_create_pr,
+        schema_git_branch,
     ]
 ]
 
@@ -88,7 +101,7 @@ def explain_error(tool: str, error: str, args: dict) -> str:
     return error
 
 
-def call_function(function_call: dict, workspace_dir: str, default_timeout: int = 120) -> dict:
+def call_function(function_call: dict, workspace_dir: str, default_timeout: int = 120, force: bool = False) -> dict:
     name = function_call.get("name")
     args = function_call.get("args", {})
 
@@ -105,6 +118,13 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "list_directory": 10,
         "discover_project": 10,
         "get_files_info": 20,
+        "question": 60,
+        "git_status": 10,
+        "git_diff": 30,
+        "git_log": 10,
+        "git_commit": 60,
+        "git_create_pr": 120,
+        "git_branch": 10,
     }
     
     timeout = TIMEOUTS.get(name, 10)
@@ -118,13 +138,20 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "get_files_info":     lambda: get_files_info(workspace_dir, **args),
         "get_file_contents": lambda: get_file_contents(workspace_dir, **args),
         "write_file":         lambda: write_file(workspace_dir, **args),
-        "run_command":       lambda: run_command(workspace_dir, **args),
+        "run_command":       lambda: run_command(workspace_dir, **args, force=force),
         "grep_search":       lambda: grep_search(workspace_dir, **args),
         "glob_search":        lambda: glob_search(workspace_dir, **args),
         "edit_file":         lambda: edit_file(workspace_dir, **args),
-        "delete_file":      lambda: delete_file(workspace_dir, **args),
+        "delete_file":      lambda: delete_file(workspace_dir, **args, force=force),
         "create_dir":        lambda: create_dir(workspace_dir, **args),
         "list_directory":    lambda: list_directory(workspace_dir, **args),
+        "question":          lambda: ask_question(workspace_dir, **args),
+        "git_status":        lambda: git_status(workspace_dir),
+        "git_diff":          lambda: git_diff(workspace_dir, **args),
+        "git_log":           lambda: git_log(workspace_dir, **args),
+        "git_commit":        lambda: git_commit(workspace_dir, **args),
+        "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
+        "git_branch":        lambda: git_branch(workspace_dir, **args),
     }
 
     fn = dispatch.get(name)
@@ -190,13 +217,14 @@ def stream_agent(
     prompt: str,
     workspace_dir: str,
     messages: list[dict],
-    provider: str = "rta",   # kept for compat but ignored; always uses backend
+    provider: str = "rta",
     model_name: str = "auto",
     max_iterations: int = 20,
     think: bool = False,
     session_id: str = "",
     turn_index: int = 0,
     timeout: int = 120,
+    force: bool = False,
 ) -> Generator[dict, None, None]:
     """
     Agentic loop. Each iteration:
@@ -308,7 +336,7 @@ def stream_agent(
         if current_group:
             groups.append(("parallel", current_group))
 
-        def execute_one(tc):
+        def execute_one(tc, force_flag=False):
             fn = tc.get("function", {})
             name = fn.get("name")
             call_id = tc.get("id", "call_unknown")
@@ -319,11 +347,10 @@ def stream_agent(
             except Exception:
                 pass
 
-            # Plan 2.4: Retry logic
             import time as _time
             max_retries = 2
             for attempt in range(max_retries + 1):
-                result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout)
+                result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout, force=force_flag)
                 content = str(result["functionResponse"]["response"]["content"])
                 
                 # Check for transient failure (timeout)
@@ -348,12 +375,12 @@ def stream_agent(
                     yield {"type": "tool_start", "content": tc.get("function", {}).get("name")}
                 
                 with ThreadPoolExecutor(max_workers=min(len(group_tcs), 10)) as executor:
-                    results = list(executor.map(execute_one, group_tcs))
+                    results = list(executor.map(lambda tc: execute_one(tc, force), group_tcs))
                     messages.extend(results)
             else:
                 for tc in group_tcs:
                     yield {"type": "tool_start", "content": tc.get("function", {}).get("name")}
-                    res = execute_one(tc)
+                    res = execute_one(tc, force)
                     messages.append(res)
 
     yield {"type": "error", "content": "Max iterations reached."}
@@ -371,13 +398,14 @@ def run_agent(
     session_id: str = "",
     turn_index: int = 0,
     timeout: int = 120,
+    force: bool = False,
 ) -> tuple[str, dict, int]:
     """Compatibility wrapper: collects stream_agent events → (text, usage, turn_index)."""
     final_text = ""
     last_usage: dict = {}
     last_turn = turn_index
 
-    for event in stream_agent(prompt, workspace_dir, messages, provider, model_name, max_iterations, think, session_id, turn_index, timeout=timeout):
+    for event in stream_agent(prompt, workspace_dir, messages, provider, model_name, max_iterations, think, session_id, turn_index, timeout=timeout, force=force):
         if event["type"] == "text":
             final_text += event["content"] + "\n\n"
         elif event["type"] == "tool_start":
