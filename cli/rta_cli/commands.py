@@ -17,10 +17,11 @@ def chat(
     clear_context: bool = typer.Option(False, "--clear-context", help="Clear chat history"),
     workspace: str = typer.Option(None, "--workspace", help="Working directory"),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
+    timeout: int = typer.Option(120, "--timeout", help="Timeout for shell commands in seconds"),
 ):
     """Start the Rta chat interface"""
     from rta_cli.chat import RtaChat
-    chat_obj = RtaChat(workspace=workspace)
+    chat_obj = RtaChat(workspace=workspace, timeout=timeout)
     
     if clear_context or no_cache:
         from rta_cli.context import clear_context as cc
@@ -42,11 +43,12 @@ def callback(
     clear_context: bool = typer.Option(False, "--clear-context", help="Clear chat history"),
     workspace: str = typer.Option(None, "--workspace", help="Working directory"),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
+    timeout: int = typer.Option(120, "--timeout", help="Timeout for shell commands in seconds"),
 ):
     """Rta - AI-assisted code editor CLI"""
     if ctx.invoked_subcommand is None:
         from rta_cli.chat import RtaChat
-        chat_obj = RtaChat(workspace=workspace)
+        chat_obj = RtaChat(workspace=workspace, timeout=timeout)
         
         if clear_context or no_cache:
             from rta_cli.context import clear_context as cc
