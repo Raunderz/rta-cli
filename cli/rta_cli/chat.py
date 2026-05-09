@@ -55,13 +55,14 @@ LOADING_MESSAGES = [
 ]
 
 class RtaChat:
-    def __init__(self, workspace=None, timeout=120):
+    def __init__(self, workspace=None, timeout=120, force=False):
         self.last_ctrl_c = 0
         self.workspace = os.path.abspath(workspace or os.getcwd())
         self.workspace_name = os.path.basename(self.workspace)
         self.version = "v0.2.0"
         self.ascii_art = ASCII_ART
         self.timeout = timeout
+        self.force = force
 
         # Project Discovery on startup
         from rta_cli.discovery import discover_project
@@ -300,7 +301,8 @@ class RtaChat:
                         think=think_mode,
                         session_id=self.session_id,
                         turn_index=self.turn_index,
-                        timeout=self.timeout
+                        timeout=self.timeout,
+                        force=self.force,
                     )
                     self.turn_index = new_turn
 
