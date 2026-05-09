@@ -1,26 +1,40 @@
 import os
+import sys
+
+from rich.console import Console
+console = Console()
+
+
+_active_status = None
+
+
+def set_active_status(status):
+    global _active_status
+    _active_status = status
+
 
 def confirm_destructive(action, path, force=False):
-    return None
+    if force:
+        return True
 
-def is_dangerous_command(command):
-    dangerous_patterns = [
-        r"rm\s+-rf",
-        r"del\s+/?[fqs]",
-        r"rmdir\s+/s",
-        r"format\s+",
-        r"dd\s+.*of=",
-    ]
-    import re
-    for pattern in dangerous_patterns:
-        if re.search(pattern, command, re.IGNORECASE):
-            return True
-    return False
+    msg = {
+        "delete_file": f"Delete {path}?",
+        "delete_dir": f"Delete {path} and contents?",
+        "run_dangerous": f"Run potentially dangerous command?",
+    }.get(action, f"Confirm {action}?")
 
+    global _active_status
+    if _active_status:
+        _active_status.stop()
 
-def needs_confirmation(action):
-    return {
-        "delete_file": "This file will be permanently deleted.",
-        "delete_dir": "This directory and all contents will be deleted.",
-        "run_dangerous": "This command may modify or delete files.",
-    }.get(action, None)
+    try:
+        response = console.input(
+            f"\n[bold red]\u26a0 WARNING:[/bold red] {msg}\n"
+            f"[yellow]Type 'yes' to confirm, 'no' to cancel: [/yellow]"
+        )
+        return response.lower().strip() in ("yes", "y")
+    except (KeyboardInterrupt, EOFError):
+        return False
+    finally:
+        if _active_status:
+            _active_status.start()

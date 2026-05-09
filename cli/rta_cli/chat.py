@@ -289,9 +289,11 @@ class RtaChat:
                     console.print(f" [dim]Prompt:[/dim] {user_input.replace('think_it', hl)}")
 
                 from rta_cli.agent import run_agent
+                from rta_cli.safety import set_active_status
                 msg = random.choice(LOADING_MESSAGES)
                 
-                with console.status(f"[bold #ff3333]{msg}[/bold #ff3333]", spinner="dots"):
+                with console.status(f"[bold #ff3333]{msg}[/bold #ff3333]", spinner="dots") as status:
+                    set_active_status(status)
                     res, usage, new_turn = run_agent(
                         user_input, 
                         self.workspace, 

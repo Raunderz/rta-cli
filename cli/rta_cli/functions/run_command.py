@@ -20,6 +20,14 @@ def run_command(working_directory, command, timeout=120, force=False):
             print(f"Auto-discovered lint command: {command}")
 
     try:
+        from rta_cli.safety import confirm_destructive, is_dangerous_command
+        if is_dangerous_command(command) and not force:
+            if not confirm_destructive("run_dangerous", command):
+                return "Cancelled: dangerous command was not confirmed"
+    except ImportError:
+        pass
+
+    try:
         output = subprocess.run(command, shell=True, cwd=abs_working_dir, timeout=timeout, capture_output=True, text=True)
 
         final_string = (
