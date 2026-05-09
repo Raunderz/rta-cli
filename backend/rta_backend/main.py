@@ -190,16 +190,13 @@ async def usage_endpoint(
     supabase = __import__("rta_backend.db", fromlist=["get_supabase_client"]).get_supabase_client()
     tier = get_user_tier(user_id)
 
-    # Calls today
+    # Calls today (from profile, same source as enforcement)
+    profile_res = supabase.table("profiles").select("calls_used_today, calls_reset_date").eq("id", user_id).execute()
     today = datetime.now(timezone.utc).date().isoformat()
-    calls_today_res = (
-        supabase.table("telemetry")
-        .select("id", count="exact")
-        .eq("user_id", user_id)
-        .gte("created_at", today)
-        .execute()
-    )
-    calls_today = calls_today_res.count or 0
+    if profile_res.data and profile_res.data[0].get("calls_reset_date") == today:
+        calls_today = profile_res.data[0].get("calls_used_today", 0) or 0
+    else:
+        calls_today = 0
 
     # Tokens this calendar month
     month_start = datetime.now(timezone.utc).replace(day=1).date().isoformat()
@@ -258,15 +255,12 @@ async def dashboard_endpoint(
         key_res = supabase.table("api_keys").select("key_hint, created_at").eq("user_id", user_id).execute()
         key_hint = key_res.data[0].get("key_hint", "") if key_res.data else ""
 
-        # Calls today
-        calls_today_res = (
-            supabase.table("telemetry")
-            .select("id", count="exact")
-            .eq("user_id", user_id)
-            .gte("created_at", today)
-            .execute()
-        )
-        calls_today = calls_today_res.count or 0
+        # Calls today (from profile, same source as enforcement)
+        profile_res = supabase.table("profiles").select("calls_used_today, calls_reset_date").eq("id", user_id).execute()
+        if profile_res.data and profile_res.data[0].get("calls_reset_date") == today:
+            calls_today = profile_res.data[0].get("calls_used_today", 0) or 0
+        else:
+            calls_today = 0
 
         # Tokens this month
         tokens_res = (
