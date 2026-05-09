@@ -1,8 +1,118 @@
 import { h, render, Component } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import Dashboard from './dashboard.jsx';
-import { Router, Route, Link, useLocation } from 'wouter';
+import { Router, Route, Link, useLocation, Switch } from 'wouter';
 import { BlogPage } from './blog.jsx';
+
+const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
+  const rotations = [0, 45, 90, 135, 180, 225, 270, 315];
+  
+  // Galaxy Palette
+  const nebulaPink = "#ff71ce";
+  const nebulaBlue = "#01cdfe";
+  const nebulaPurple = "#b967ff";
+  const starWhite = "#fffbfe";
+
+  return (
+    <svg 
+      width={size} 
+      height={size} 
+      viewBox="0 0 400 400" 
+      fill="none" 
+      xmlns="http://www.w3.org/2000/svg" 
+      style={{ verticalAlign: 'middle', ...style }}
+    >
+      <defs>
+        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="2" result="blur" />
+          <feComposite in="SourceGraphic" in2="blur" operator="over" />
+        </filter>
+        
+        <g id="petal-shape">
+          <path 
+            d="M0,-20 C35,-90 85,-90 100,-10 C85,70 35,70 0,0 C-35,70 -85,70 -100,-10 C-85,-90 -35,-90 0,-20 Z" 
+            stroke={nebulaPurple}
+            strokeWidth="2"
+            fill={nebulaPurple}
+            fillOpacity="0.03"
+          />
+          <g stroke={nebulaBlue} strokeWidth="2">
+            <path d="M0,-10 C0,-30 0,-55 0,-75" />
+            <path d="M0,-20 C20,-35 40,-45 65,-55" />
+            <path d="M0,-20 C-20,-35 -40,-45 -65,-55" />
+            <path d="M0,0 C20,10 40,20 60,35" />
+            <path d="M0,0 C-20,10 -40,20 -60,35" />
+          </g>
+        </g>
+      </defs>
+
+      <style>
+        {`
+          @keyframes bloom {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+          }
+          @keyframes slowRotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          .flower-anim-group { 
+            transform-origin: center;
+            transform-box: fill-box;
+            animation: bloom 4s ease-in-out infinite; 
+          }
+          .petals-only { 
+            transform-origin: center;
+            transform-box: fill-box;
+            animation: slowRotate 30s linear infinite; 
+          }
+          .star {
+            animation: twinkle 2s ease-in-out infinite;
+          }
+          @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(0.8); }
+            50% { opacity: 1; transform: scale(1.1); }
+          }
+        `}
+      </style>
+
+      <g transform="translate(200, 200)">
+        {/* Background Stars */}
+        <g fill={starWhite} opacity="0.3">
+          {[
+            { x: -120, y: -100, r: 1 }, { x: 140, y: -130, r: 1.5 },
+            { x: -150, y: 120, r: 1 }, { x: 130, y: 150, r: 0.8 },
+            { x: 50, y: -160, r: 1.2 }, { x: -80, y: 140, r: 1 },
+            { x: 170, y: 0, r: 0.9 }, { x: -160, y: -40, r: 1.1 }
+          ].map((s, i) => (
+            <circle key={i} className="star" cx={s.x} cy={s.y} r={s.r} style={{ animationDelay: `${i * 0.4}s`, transformOrigin: `${s.x}px ${s.y}px` }} />
+          ))}
+        </g>
+
+        <g className="flower-anim-group">
+          <g className="petals-only">
+            {rotations.map(deg => (
+              <use key={deg} href="#petal-shape" transform={`rotate(${deg})`} />
+            ))}
+          </g>
+
+          <g fill="none">
+            <circle cx="0" cy="0" r="35" stroke={nebulaBlue} strokeWidth="1" strokeDasharray="5 5" opacity="0.5"/>
+            <circle cx="0" cy="0" r="28" stroke={nebulaPink} strokeWidth="2" filter="url(#glow)"/>
+            <g fill={starWhite} stroke="none">
+              <circle className="star" cx="-10" cy="-8" r="2" style={{ animationDelay: '0s', transformOrigin: '-10px -8px' }}/>
+              <circle className="star" cx="12" cy="-6" r="2" style={{ animationDelay: '0.5s', transformOrigin: '12px -6px' }}/>
+              <circle className="star" cx="-6" cy="10" r="2" style={{ animationDelay: '1s', transformOrigin: '-6px 10px' }}/>
+              <circle className="star" cx="9" cy="12" r="2" style={{ animationDelay: '1.5s', transformOrigin: '9px 12px' }}/>
+              <circle className="star" cx="0" cy="0" r="2.5" filter="url(#glow)" style={{ transformOrigin: '0 0' }}/>
+            </g>
+          </g>
+        </g>
+      </g>
+    </svg>
+  );
+};
+
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
@@ -13,7 +123,10 @@ const Navbar = () => {
   return (
     <nav class="navbar">
       <div class="container nav-content">
-        <Link href="/" class="logo">RTA</Link>
+        <Link href="/" class="logo">
+          <FlowerIcon size={28} color="var(--text-main)" style={{ marginRight: '8px' }} />
+          RTA
+        </Link>
         <div class="nav-links">
           <Link href="/pricing" class={`nav-link ${isActive('/pricing')}`}>Pricing</Link>
           <Link href="/roadmap" class={`nav-link ${isActive('/roadmap')}`}>Roadmap</Link>
@@ -258,7 +371,9 @@ const FeaturesSection = () => {
       <div class="features-grid">
         {features.map(f => (
           <div class="feature-card" key={f.id}>
-            <div class="feature-icon">{f.id}</div>
+            <div class="feature-icon">
+              <FlowerIcon size={48} color="var(--text-main)" />
+            </div>
             <h3>{f.title}</h3>
             <p>{f.desc}</p>
           </div>
@@ -540,7 +655,10 @@ const AppFooter = () => (
     <div class="container">
       <div class="footer-grid">
         <div class="footer-col">
-          <Link href="/" class="logo" style="margin-bottom: 1rem;">RTA</Link>
+          <Link href="/" class="logo" style="margin-bottom: 1rem;">
+            <FlowerIcon size={24} color="var(--text-main)" style={{ marginRight: '8px' }} />
+            RTA
+          </Link>
           <p style="color: var(--text-muted); font-size: 14px;">The high-performance developer toolkit for the next era of computing.</p>
         </div>
         <div class="footer-col">
@@ -588,13 +706,7 @@ const NotFoundPage = () => (
         <p class="mono">RESOURCE_NOT_FOUND</p>
       </div>
       <div style="margin-bottom: 3rem; opacity: 0.8; display: flex; justify-content: center;">
-        <pre style="font-family: monospace; font-size: 8px; line-height: 1.2; color: var(--neon-red); font-weight: bold; background: transparent; border: none; padding: 0; text-align: left;">
-          {`  _  _    ___   _  _ 
- | || |  / _ \\ | || |
- | || |_| | | | | || |_
- |__   _| |_| | |__   _|
-    |_|  \\___/     |_| `}
-        </pre>
+        <FlowerIcon size={120} color="var(--text-main)" />
       </div>
       <div style="display: flex; gap: 1rem; justify-content: center;">
         <Link href="/" class="btn btn-primary">Return to Base</Link>
@@ -613,17 +725,19 @@ const App = () => {
       <Navbar />
       <main class="main-content">
         <Router>
-          <Route path="/" component={Home} />
-          <Route path="/pricing" component={PricingPage} />
-          <Route path="/roadmap" component={RoadmapPage} />
-          <Route path="/status" component={StatusPage} />
-          <Route path="/releases" component={ReleasesPage} />
-          <Route path="/auth" component={AuthPage} />
-          <Route path="/legal" component={LegalPage} />
-          <Route path="/blog" component={BlogPage} />
-          <Route path="/blog/:slug" component={BlogPage} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route component={NotFoundPage} />
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/pricing" component={PricingPage} />
+            <Route path="/roadmap" component={RoadmapPage} />
+            <Route path="/status" component={StatusPage} />
+            <Route path="/releases" component={ReleasesPage} />
+            <Route path="/auth" component={AuthPage} />
+            <Route path="/legal" component={LegalPage} />
+            <Route path="/blog" component={BlogPage} />
+            <Route path="/blog/:slug" component={BlogPage} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route component={NotFoundPage} />
+          </Switch>
         </Router>
       </main>
       <AppFooter />
