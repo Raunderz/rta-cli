@@ -16,7 +16,7 @@ try:
 except (ImportError, AttributeError):
     pass # Windows or incomplete readline install
 
-from rta_cli.ui import Console, panel, markdown, Text
+from rta_cli.ui import Console, markdown, Text
 console = Console()
 
 ASCII_ART = r""" _  .-')   .-') _      ('-.     
@@ -68,7 +68,7 @@ class RtaChat:
         
         set_last_workspace(self.workspace)
         self.workspace_name = os.path.basename(self.workspace)
-        self.version = "v0.2.0"
+        self.version = "v0.3.0"
         self.ascii_art = ASCII_ART
         self.timeout = timeout
         self.force = force
@@ -166,21 +166,8 @@ class RtaChat:
                     msg["content"] = content[:15000] + "\n[... TOOL RESULT TRUNCATED ...]"
 
     def print_header(self):
-        ascii_lines = self.ascii_art.splitlines()
-        styled_ascii = ""
-        for i, line in enumerate(ascii_lines):
-            styled_ascii += f"\033[1;31m{line}\033[0m\n"
-        
-        info = (
-            f"\033[1;31mRta Cli {self.version}\033[0m\n"
-            f"User:     {self.user}\n"
-            f"Provider: {self.provider}\n"
-            f"Model:    {self.model}\n"
-            f"RAM:      {self.start_mem}"
-        )
-        
-        console.print(panel(styled_ascii + "\n" + info, title="WELCOME"))
-        console.print(f" 󱂵 {self.workspace}\n")
+        print(self.ascii_art)
+        console.print(f"\nRta Cli {self.version} | {self.user} | {self.workspace}\n")
 
     def handle_sigint(self, sig, frame):
         current_time = time.time()
@@ -237,21 +224,13 @@ class RtaChat:
     def print_summary(self):
         duration = time.time() - self.session_usage["start_time"]
         mins, secs = divmod(int(duration), 60)
-        
-        cached = self.session_usage.get("cached", 0)
         total_in = self.session_usage.get("input", 0)
-        saved_pct = (cached / total_in * 100) if total_in > 0 else 0
+        total_out = self.session_usage.get("output", 0)
         
-        summary = (
-            f"Model:     {self.model}\n"
-            f"Duration:  {mins}m {secs}s\n"
-            f"Tokens:    In: {total_in} | Out: {self.session_usage['output']}\n"
-            f"Caching:   {cached} tokens ({saved_pct:.1f}% saved)"
-        )
-        console.print(panel(summary, title="SESSION SUMMARY"))
+        console.print(f"\n[dim]─ Session: {mins}m {secs}s | In: {total_in} | Out: {total_out} ─[/]\n")
 
     def get_prompt(self):
-        return "\001\x1b[1;37;48;2;136;0;0m\002 rta \001\x1b[0m\002\001\x1b[1;38;2;255;51;51m\002 ❯ \001\x1b[0m\002 "
+        return ">> "
 
     def run(self, initial_prompt=None):
         signal.signal(signal.SIGINT, self.handle_sigint)
@@ -319,7 +298,7 @@ class RtaChat:
                 self.session_usage["cached"] += usage.get("cached_tokens", 0)
 
                 console.print(f"\n[bold red]Rta[/bold red]")
-                console.print(panel(markdown(res)))
+                console.print(markdown(res))
 
                 console.print(f"\n[dim]─── {self.workspace_name} ───[/dim]\n")
                 

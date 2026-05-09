@@ -32,17 +32,12 @@ class Console:
             for p in parts:
                 if p in colors:
                     codes.append(colors[p])
-                elif p.startswith("#"):
-                    codes.append("1")
-            
             if not codes:
                 return match.group(0)
             return f"\033[{';'.join(codes)}m"
 
-        text = re.sub(r"\[([a-z0-9 #]+)\]", replace_tag, text)
+        text = re.sub(r"\[([a-z0-9 ]+)\]", replace_tag, text)
         text = text.replace("[/]", "\033[0m")
-        if "\033[" in text and not text.endswith("\033[0m"):
-            text += "\033[0m"
         return text
 
     def status(self, message, spinner="dots"):
@@ -53,43 +48,11 @@ class Console:
             def stop(self): pass
         return StatusContext()
 
-
 def markdown(text):
-    # Very basic Markdown to ANSI
-    text = re.sub(r"^# (.*)$", r"\033[1;31m\1\033[0m", text, flags=re.M)
-    text = re.sub(r"^## (.*)$", r"\033[1;32m\1\033[0m", text, flags=re.M)
-    text = re.sub(r"^### (.*)$", r"\033[1;36m\1\033[0m", text, flags=re.M)
+    # Just basic bold and code highlighting, no headers or blocks
     text = re.sub(r"\*\*(.*?)\*\*", r"\033[1m\1\033[0m", text)
     text = re.sub(r"`(.*?)`", r"\033[33m\1\033[0m", text)
-    text = re.sub(r"```(.*?)\n(.*?)```", r"\033[36m\2\033[0m", text, flags=re.S)
     return text
 
-
-def panel(text, title=None, border_style=""):
-    lines = str(text).splitlines()
-    width = max(len(l) for l in lines) if lines else 0
-    if title:
-        width = max(width, len(title) + 4)
-    
-    output = []
-    top = f"┌─ {title} " if title else "┌─"
-    output.append(top + "─" * (width - len(top) + 2) + "┐")
-    for l in lines:
-        output.append(f"│ {l:<{width}} │")
-    output.append("└" + "─" * (width + 2) + "┘")
-    return "\n".join(output)
-
-
-def table(title, columns, rows):
-    output = [f"\n=== {title} ==="]
-    header = " | ".join(columns)
-    output.append(header)
-    output.append("-" * len(header))
-    for r in rows:
-        output.append(" | ".join(map(str, r)))
-    return "\n".join(output)
-
 class Text(str):
-    def append(self, text, style=None):
-        # Dummy for rich compatibility
-        return self + text
+    def append(self, text, style=None): return self + text
