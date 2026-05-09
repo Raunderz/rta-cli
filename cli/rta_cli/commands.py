@@ -12,6 +12,18 @@ console = Console()
 
 
 @app.command()
+def cd(path: str = typer.Argument(..., help="Path to the new workspace")):
+    """Change the tracked workspace"""
+    from rta_cli.config import set_last_workspace
+    abs_path = os.path.abspath(path)
+    if not os.path.isdir(abs_path):
+        console.print(f"[bold red]Error: {path} is not a directory.[/bold red]")
+        return
+    set_last_workspace(abs_path)
+    console.print(f"[bold green]Workspace changed to: {abs_path}[/bold green]")
+
+
+@app.command()
 def chat(
     prompt: str = typer.Argument(None, help="Initial prompt for the chat"),
     clear_context: bool = typer.Option(False, "--clear-context", help="Clear chat history"),
