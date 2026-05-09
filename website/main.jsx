@@ -580,6 +580,33 @@ const Home = () => (
   </div>
 );
 
+const NotFoundPage = () => (
+  <div class="container" style="padding-top: 120px; padding-bottom: 80px; min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+    <div class="status-board" style="max-width: 600px; width: 100%; text-align: center; padding: 4rem 2rem;">
+      <div class="section-header" style="margin-bottom: 2rem;">
+        <h2 style="font-size: 80px; margin-bottom: 0;">404</h2>
+        <p class="mono">RESOURCE_NOT_FOUND</p>
+      </div>
+      <div style="margin-bottom: 3rem; opacity: 0.8; display: flex; justify-content: center;">
+        <pre style="font-family: monospace; font-size: 8px; line-height: 1.2; color: var(--neon-red); font-weight: bold; background: transparent; border: none; padding: 0; text-align: left;">
+          {`  _  _    ___   _  _ 
+ | || |  / _ \\ | || |
+ | || |_| | | | | || |_
+ |__   _| |_| | |__   _|
+    |_|  \\___/     |_| `}
+        </pre>
+      </div>
+      <div style="display: flex; gap: 1rem; justify-content: center;">
+        <Link href="/" class="btn btn-primary">Return to Base</Link>
+        <Link href="/status" class="btn">Diagnostics</Link>
+      </div>
+    </div>
+    <p class="mono" style="margin-top: 2rem; color: var(--text-muted); font-size: 12px; letter-spacing: 0.2em;">
+      TERMINATED_SESSION_ID: {Math.random().toString(16).slice(2, 10).toUpperCase()}
+    </p>
+  </div>
+);
+
 const App = () => {
   return (
     <div class="app-container">
@@ -596,6 +623,7 @@ const App = () => {
           <Route path="/blog" component={BlogPage} />
           <Route path="/blog/:slug" component={BlogPage} />
           <Route path="/dashboard" component={Dashboard} />
+          <Route component={NotFoundPage} />
         </Router>
       </main>
       <AppFooter />
@@ -604,3 +632,4 @@ const App = () => {
 };
 
 render(<App />, document.body);
+
