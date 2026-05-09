@@ -29,7 +29,6 @@ def get_last_workspace():
     return get_user_config().get("last_workspace")
 
 def get_config_path():
-...
     if hasattr(sys, '_MEIPASS'):
         return os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')
     return os.path.join(os.path.dirname(__file__), 'config.json')
