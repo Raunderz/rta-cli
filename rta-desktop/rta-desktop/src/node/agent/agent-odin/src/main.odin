@@ -15,6 +15,28 @@ import str "core:string" // what this does is instead of typing "core:string" we
 // compile time constants
 ENABLE_LOGGING :: #config(ENABLE_LOGGING,false)
 
+// generics ( parametric polymoprhism ) what this does is that it allows us to write code that can work with multiple types
+// kind of like templates in c++ but much better and type safe
+Generic_Array:: struct($T:typeid){
+    data: []T, // i dont understand a single word of this
+}
+
+
+// built in data structures
+File_Mode :: enum {
+    READ,
+    WRITE,
+    EXECUTE,
+}
+
+add::proc(a:$T,b:T)-> T{
+    return a+b
+    // explanation : this is a generic procedure that can work with multiple types , as you can see we have $T:typeid which is a type parameter , it can be any type
+    // example : let result := add(1,2) // here $T is inferred as int , let result := add(1.0,2.0) // here $T is inferred as f32
+    // is it like auto in cpp ?? the answer is kinda no , because it is type safe
+    // but its kinda like templates in c++ 
+    // i hope you understood , yeah sure gemini i do i guess , lol 
+}
 
 
 // structs
@@ -326,12 +348,82 @@ main :: proc() {
         fmt.println("Logging is enabled")
     }
 
+    sum_int := add(10,20) // T becomes int
+    sum_float := add(1.0,2.0) // T becomes f32
+
+    permissions: bit_set[File_Mode] // idk yet
+    // right now th ebitset looks like {.}
+    permissions += {.READ,.WRITE} // add values to bitset
+    permissions -= {.WRITE}
+    has_read := .READ in permissions
+    is_readonly := permissions == {.READ}
+    is_write_only := permissions == {.WRITE}
+    
+
+    // complex numbers
+    z1 := complex64(3+4i)
+    z2 := complex64(1-2i)
+    sum_comp := z1+z2
+    magnitude := abs(z1)
+
+
+    // matrices for linear algebra
+    transform:= matrix[3,3]f32{
+        1,0,5, // trnalstate to x= 5
+        0,1,3, // y = 3
+        0,0,1, // homoegnous coordinate
+    }
+
+    point := [3]f32{10,20,1} // this is a 2d point (10,20) with 1 as the homoegnous coordinate , homo coord means it can be anything i guess but most commonly used for points in space
+    
+    transformed := transform*point
+    // quaternion for 3d rotation , wtf is quaternions ? 
+    identity_rot := quaternion(w=1,x=0,y=0,z=0) // no rotation
+    rotation_90_z := quaternion(w=0.707,x=0,y=0,z=0.707) // 90 degree around z
+
+
+    // context system and defer . last topic yaya
+    // odin has an implicit contex ssytem that makes it easy to use
+    // idk what that means
+    // temporary allocations in loops without manual cleanip
+    // i will make the fucntion extetnally
+
+
+
+
 	fmt.println("\nHello World")
 }
 
-add::proc(a:int,b:int)->int{ // add is function name, proc means procedure or function, params passed with their typed , -> int means it will send int as return
-    return a+b
+// context system and defer
+process_files :: proc(filenames:[]string){ // []string makes a empty slice while ...string wouldve made a array of strings, difference : []<T> vs ...T : if its just <T> it means a empty slice and you can add as many as you want, while ...T means it will take 0 or more arguments
+    
+    defer free_all(context.temp_allocator) // clear the arena wehn done
+    for filename in filenames {
+        // each iteration allocates temporaty data
+        data:=make([]u8,1024,context.temp_allocator) // no defer is needed here
+        fmt.printf("processing %s with %d bytes\n",filename,len(data))
+        // after the loop finishes the defer will free the temp_allocator and all the data that was allocated in it
+        // no invidual clean up needed
+    }
 }
+// defer ensures cleanup on scope exit
+resource_example :: proc(){
+    buffer:=make([]u8,1024)
+    defer delete(buffer) // clean up
+    // using the buffer 
+}
+
+
+
+// and now i have completed the odin basic tutorial 
+// inmy not so great expereience in world of coding, i think this resembels golang a lot
+// now the main reason to learn this was to make the ai agent , for RTA , and since i wanted to make it in some low level language ( its currently in python ) for speed and less size , i googled , ofc i could have picked up c++ as i already know it well but i feel like i will keep c++ for leetcode and other stuff only , for dev i'll try new languages. like after odin i think i will port this to zig, alr done bye
+
+
+// add::proc(a:int,b:int)->int{ // add is function name, proc means procedure or function, params passed with their typed , -> int means it will send int as return
+//     return a+b
+// } 
+// commenting out since we T now
 
 // with multiple return values
 divide::proc(a:int,b:int)->(int,bool){
