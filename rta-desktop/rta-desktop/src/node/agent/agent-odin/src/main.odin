@@ -1,6 +1,62 @@
 package main
+// every .odin file starts with package declaration
 
 import "core:fmt"
+// import core libraries
+import "core:string"
+import "core:os"
+
+// import with alias
+import str "core:string" // what this does is instead of typing "core:string" we can just type "str"
+
+// import frmo vendor packages ( external lib)
+// import vendor::raylib
+
+// compile time constants
+ENABLE_LOGGING :: #config(ENABLE_LOGGING,false)
+
+
+
+// structs
+Person::struct{
+    name:string,
+    age:int,
+    height:f32,
+}
+
+// struct instances
+person1 := Person{
+    name= "alice",
+    age = 30,
+    height=5.6,
+}
+
+// partial initialiation
+person2:=Person{
+    name="bob",
+    // age and height defeault to 0
+}
+
+// enums and unions
+Colour :: enum{
+    RED,
+    GREEN,
+    BLUE,
+    YELLOW,
+}
+
+Status::enum u8{
+    // enums with explicit values
+    OK = 0,
+    ERROR = 1,
+    WARNING = 2,
+}
+
+Value :: union{int,bool} // the c++ equivalent of this is std::variant<int,bool> , basically it can hold either int or bool at a time but not both
+
+v:Value // in odin , unioons have a default state of `nil`
+
+
 
 main :: proc() {
 
@@ -105,9 +161,9 @@ main :: proc() {
 	}
 
 	// conditions are optional
-	for {
-		fmt.println("This will loop forever.")
-	}
+	// for {
+	// 	fmt.println("This will loop forever.")
+	// }
 
 	for i in 0 ..< 5 {
 		fmt.println(i) // i am never gonna use ts
@@ -153,6 +209,188 @@ main :: proc() {
     }
 
     // procedures / functiomns
+    // doing outside main function
 
-	fmt.println("Hello World")
+// Using the procedure
+    sum := add(5, 3)                    // 8
+    quotient_good, ok := divide(10, 2)       // 5, true
+    quotient_bad, ok_bad := divide(10, 0) // 0, false
+
+    // proceure grouping
+    greet("John") // calls greet_string
+    greet() // calls greet_nothing
+
+    // Variadic Procedures
+    sum_result:=sum_all(1,2,3,4,5)
+    fmt.printf("%d", sum_result) // sum = 15
+    fmt.printf("%d", sum_all()) // sum = 0
+
+
+    // accessing struct fields
+    fmt.printf("%s", person1.name)
+    fmt.printf("%d", person1.age)
+    fmt.printf("%f", person1.height)
+
+    fmt.printf("%s", person2.name)
+    fmt.printf("%d", person2.age)
+    fmt.printf("%f", person2.height)
+
+    // modifying struct fields
+    person1.age = 31
+
+    celebrate_birthday(&person1)
+
+    my_color := Colour.RED
+
+    // pattern matchig with unions
+    switch _ in v {
+        case int: fmt.println("int")
+        case bool: fmt.println("bool")
+        case:
+            fmt.println("Unknown")
+    }
+
+    // map declaration
+    scores:map[string]int // in c++ it would be std::map<string,int>
+
+    scores = make(map[string]int) // initialize map , idk why we need to do this but we need to do this
+    defer delete(scores) // clean up when done
+
+    // add key value pairs
+    scores["alice"] = 95
+    scores["bob"] = 87
+    scores["Charlie"] = 92
+
+    // access values
+    alice_score := scores["alice"]
+    
+    // check if key exists
+    bob_score, exists := scores["bob"]
+    if exists{
+        fmt.printf("bob's scores: %d\n",bob_score)
+    }
+
+    // iterate over map
+    for name,score in scores {
+        fmt.printf("%s: %d\n",name,score)
+    }
+
+    // pointers and memory management
+    // pointers
+    number := 42
+    number_ptr := &number
+    value := number_ptr^ // dereferencing 
+
+    fmt.printf("value: %d, address:%p\n",value,number_ptr)
+
+    // dynamic memory allocation
+    // new() allocaed and reutns a pointer
+    int_ptr := new(int)
+    int_ptr^=100
+    defer free(int_ptr) // clean up memeory
+
+    // make() for complex types
+    my_slice:=make([]int,5) // create slice with length 5 , reminder slice is a view , so this will make a array that will look like this {0,0,0,0,0}
+    defer delete(my_slice)
+
+    // error handling
+    // oding uses multiple return values for error handling
+    // wil lmake th function outisde
+    content,success:=read_file("myfile.txt")
+    if !success{
+        fmt.printf("failed to read file")
+    }else{
+        fmt.printf("file content: %s\n",content)
+    }
+
+
+    // using imported prorcudes
+    text:="Hellow rold"
+    upper_text := strings.to_upper(text)
+    // using alias
+    upper_text_alias := str.to_upper(text)
+    fmt.println(upper_text)
+
+
+    // compile time conditionals
+    when ODIN_OS == .Windows{
+        fmt.println("Windows")
+    }else when ODIN_OS == .Linux{
+        fmt.println("Linux")
+    }else{
+        fmt.println("Mac")
+    }
+
+
+    when ENABLE_LOGGING{
+        fmt.println("Logging is enabled")
+    }
+
+	fmt.println("\nHello World")
+}
+
+add::proc(a:int,b:int)->int{ // add is function name, proc means procedure or function, params passed with their typed , -> int means it will send int as return
+    return a+b
+}
+
+// with multiple return values
+divide::proc(a:int,b:int)->(int,bool){
+    if b==0{
+        return 0,false
+    }
+    return a/b,true
+}
+
+// someting similar to overloading can be mimicked by using procedure groups
+greet_string :: proc(name:string){
+    fmt.printf("Hello %s\n",name)
+}
+
+greet_nothing :: proc(){
+    greet_string("World")
+}
+
+greet::proc{ // procedure group
+    greet_string,
+    greet_nothing,
+}
+
+// variadivc producees ( variable number of arguments)
+sum_all::proc(numbers:..int) -> int{ // numbers is of type slice of int
+    total:=0
+    for number in numbers{
+        total+=number
+    }
+    return total
+}
+
+// procedure that works with structs
+celebrate_birthday::proc(person:^Person){
+    // ^ means pointer btw
+    person.age +=1
+    fmt.printf("Happy Birthday %s\n", person.name)
+}
+
+read_file :: proc(filename:string)->(string,bool){
+    // simulate file reading
+    if filename == ""{
+        return "",false
+    }
+    return "file content",true
+}
+
+// common pattern with or_return
+parse_number :: proc(s:string) -> (int,bool){
+    if s=="42"{
+        return 42,true
+    }
+    return 0,false
+}
+
+example_with_error_handling :: proc() -> bool {
+    // or_return automatically returns false if the second value is false
+    num := parse_number("42") or_return // what this does is checks if the second value is false , if it is false , it will return false from the current procedure
+    // i find it very useless
+    fmt.printf("Parsed number: %d\n",num)
+    return true
 }
