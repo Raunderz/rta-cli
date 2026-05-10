@@ -24,6 +24,10 @@ def load_context(workspace_dir: str = None, session_id: str = None, max_turns: i
     if session_id:
         if session_id in data:
             session_data = data[session_id]
+            # Enforce workspace isolation
+            if workspace_dir and session_data.get("workspace_dir") != os.path.abspath(workspace_dir):
+                return [], None
+                
             messages = session_data.get("messages", [])
             if max_turns > 0:
                 messages = messages[-(max_turns * 2):]
@@ -34,27 +38,17 @@ def load_context(workspace_dir: str = None, session_id: str = None, max_turns: i
         if len(matches) == 1:
             sid = matches[0]
             session_data = data[sid]
+            # Enforce workspace isolation
+            if workspace_dir and session_data.get("workspace_dir") != os.path.abspath(workspace_dir):
+                return [], None
+            
             messages = session_data.get("messages", [])
             if max_turns > 0:
                 messages = messages[-(max_turns * 2):]
             return messages, sid
 
-    # If no session_id or no prefix match, find the most recent session for this workspace
-    if workspace_dir:
-        abs_dir = os.path.abspath(workspace_dir)
-        matching_sessions = [
-            (sid, sdata) for sid, sdata in data.items() 
-            if sdata.get("workspace_dir") == abs_dir
-        ]
-        if matching_sessions:
-            # Sort by last_updated
-            matching_sessions.sort(key=lambda x: x[1].get("last_updated", ""), reverse=True)
-            sid, sdata = matching_sessions[0]
-            messages = sdata.get("messages", [])
-            if max_turns > 0:
-                messages = messages[-(max_turns * 2):]
-            return messages, sid
-
+    # If no session_id or no prefix match, we don't auto-resume by workspace anymore.
+    # The user wants distinct sessions. They must use --resume to continue.
     return [], None
 
 def save_context(workspace_dir: str, session_id: str, messages: list[dict]) -> None:
@@ -81,19 +75,20 @@ def save_context(workspace_dir: str, session_id: str, messages: list[dict]) -> N
     _save_all_contexts(data)
 
 def list_sessions(workspace_dir: str = None) -> list[dict]:
-    """List all saved sessions, optionally filtered by workspace."""
+    """List saved sessions for a workspace. Defaults to current directory if None."""
     data = _load_all_contexts()
     sessions = []
+    
+    target_dir = os.path.abspath(workspace_dir) if workspace_dir else os.path.abspath(os.getcwd())
+    
     for sid, sdata in data.items():
-        if workspace_dir:
-            if sdata.get("workspace_dir") != os.path.abspath(workspace_dir):
-                continue
-        sessions.append({
-            "session_id": sid,
-            "workspace": sdata.get("workspace_dir"),
-            "last_updated": sdata.get("last_updated"),
-            "message_count": len(sdata.get("messages", []))
-        })
+        if sdata.get("workspace_dir") == target_dir:
+            sessions.append({
+                "session_id": sid,
+                "workspace": sdata.get("workspace_dir"),
+                "last_updated": sdata.get("last_updated"),
+                "message_count": len(sdata.get("messages", []))
+            })
     return sorted(sessions, key=lambda x: x["last_updated"], reverse=True)
 
 def clear_context(workspace_dir: str = None, session_id: str = None) -> None:
