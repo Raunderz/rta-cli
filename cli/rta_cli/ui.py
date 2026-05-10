@@ -6,7 +6,8 @@ class Console:
         text = " ".join(map(str, args))
         text = self._colorize(text)
         file = kwargs.get("file", sys.stdout)
-        print(text, file=file)
+        end = kwargs.get("end", "\n")
+        print(text, file=file, end=end, flush=True)
 
     def input(self, prompt=""):
         prompt = self._colorize(prompt)
