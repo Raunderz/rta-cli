@@ -270,25 +270,48 @@ class RtaChat:
                     hl = "[bold #ff0000]t[/][bold #00ff00]h[/][bold #0000ff]i[/][bold #ffff00]n[/][bold #ff00ff]k[/][bold #00ffff]_[/][bold #ffffff]i[/][bold #ff8800]t[/]"
                     console.print(f" [dim]Prompt:[/dim] {user_input.replace('think_it', hl)}")
 
-                from rta_cli.agent import run_agent
-                from rta_cli.safety import set_active_status
-                msg = random.choice(LOADING_MESSAGES)
+                from rta_cli.agent import stream_agent
                 
-                with console.status(f"[bold #ff3333]{msg}[/bold #ff3333]", spinner="dots") as status:
-                    set_active_status(status)
-                    res, usage, new_turn = run_agent(
-                        user_input, 
-                        self.workspace, 
-                        self.messages, 
-                        self.provider, 
-                        self.model, 
-                        think=think_mode,
-                        session_id=self.session_id,
-                        turn_index=self.turn_index,
-                        timeout=self.timeout,
-                        force=self.force,
-                    )
-                    self.turn_index = new_turn
+                gen = stream_agent(
+                    user_input, 
+                    self.workspace, 
+                    self.messages, 
+                    self.provider, 
+                    self.model, 
+                    think=think_mode,
+                    session_id=self.session_id,
+                    turn_index=self.turn_index,
+                    timeout=self.timeout,
+                    force=self.force,
+                )
+                
+                full_text = ""
+                usage = {}
+                new_turn = self.turn_index
+                printed_header = False
+
+                for event in gen:
+                    if event["type"] == "text_chunk":
+                        if not printed_header:
+                            console.print(f"\n[bold red]Rta[/bold red]")
+                            printed_header = True
+                        console.print(event["content"], end="")
+                        full_text += event["content"]
+                    elif event["type"] == "text":
+                        if not printed_header:
+                            console.print(f"\n[bold red]Rta[/bold red]")
+                            printed_header = True
+                        full_text += event["content"]
+                    elif event["type"] == "tool_start":
+                        if printed_header:
+                            console.print(f"\n\n*(Executed tool: `{event['content']}`)*\n\n")
+                    elif event["type"] == "usage":
+                        usage = event["content"]
+                        new_turn = event.get("turn_index", new_turn)
+                    elif event["type"] == "error":
+                        console.print(f"\n[red]Error: {event['content']}[/red]")
+
+                self.turn_index = new_turn
 
                 self._trim_messages()
                 self._save_history()
@@ -296,9 +319,6 @@ class RtaChat:
                 self.session_usage["output"] += usage.get("candidate_tokens", 0)
                 self.session_usage["total"] += usage.get("total_tokens", 0)
                 self.session_usage["cached"] += usage.get("cached_tokens", 0)
-
-                console.print(f"\n[bold red]Rta[/bold red]")
-                console.print(markdown(res))
 
                 console.print(f"\n[dim]─── {self.workspace_name} ───[/dim]\n")
                 

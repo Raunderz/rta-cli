@@ -1,5 +1,7 @@
+import json
 from fastapi import FastAPI, Request, Header, BackgroundTasks, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
@@ -8,7 +10,7 @@ from contextvars import ContextVar
 from rta_backend.auth import router as auth_router, limiter
 from rta_backend.data import router as data_router, log_telemetry_task
 from rta_backend.billing import router as billing_router
-from rta_backend.proxy import ChatRequest, ProxyResult, route_chat_request, AllProvidersExhaustedError
+from rta_backend.proxy import ChatRequest, ProxyResult, route_chat_request, route_chat_request_stream, AllProvidersExhaustedError
 from rta_backend.security import require_api_key
 from rta_backend.db import get_user_tier
 
@@ -129,7 +131,7 @@ async def chat_endpoint(
         user_tier = get_user_tier(user_id)
         caps = TIER_CAPS.get(user_tier.lower(), TIER_CAPS["free"])
         cap = caps["tokens_req"]
-        
+
         # Step 3.5: Daily call limit check (DB-backed)
         from rta_backend.db import check_and_update_daily_calls
         allowed, remaining = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"])
@@ -138,17 +140,44 @@ async def chat_endpoint(
                 status_code=429,
                 detail=f"Daily call limit reached ({caps['calls_day']}/day). Upgrade your plan or wait until tomorrow."
             )
-        
+
         # Silently cap max_tokens
         payload.max_tokens = min(payload.max_tokens, cap)
-        
-        # Step 4: Call proxy router
+
+        if payload.stream:
+            async def event_stream():
+                collected_text = ""
+                collected_usage = {}
+                collected_provider = {}
+                try:
+                    async for event in route_chat_request_stream(payload, user_id, user_tier):
+                        if event["type"] == "text":
+                            collected_text += event["content"]
+                        elif event["type"] == "usage":
+                            collected_usage = event["content"]
+                        elif event["type"] == "provider":
+                            collected_provider = event["content"]
+                        yield f"data: {json.dumps(event)}\n\n"
+                except Exception as e:
+                    yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+            return StreamingResponse(
+                event_stream(),
+                media_type="text/event-stream",
+                headers={
+                    "Cache-Control": "no-cache",
+                    "Connection": "keep-alive",
+                    "X-Accel-Buffering": "no",
+                }
+            )
+
+        # Step 4: Call proxy router (non-streaming)
         result = await route_chat_request(
             request=payload,
             user_id=user_id,
             user_tier=user_tier
         )
-        
+
         # Step 5: Enqueue background telemetry
         background_tasks.add_task(
             log_telemetry_task,
@@ -156,9 +185,9 @@ async def chat_endpoint(
             request=payload,
             result=result
         )
-        
+
         return result
-        
+
     except AllProvidersExhaustedError:
         raise HTTPException(
             status_code=502, 

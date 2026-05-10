@@ -219,6 +219,62 @@ def _call_backend(
     return resp.json()
 
 
+def _call_backend_stream(
+    messages: list[dict],
+    tools: list[dict],
+    workspace_path: str,
+    api_key: str,
+    session_id: str = "",
+    turn_index: int = 0,
+    timeout: int = 120,
+) -> Generator[dict, None, None]:
+    """Streaming POST to /v1/chat. Yields SSE events as dicts."""
+    server_url = get_server_url()
+
+    try:
+        with httpx.Client(timeout=timeout) as client:
+            with client.stream("POST", f"{server_url}/v1/chat",
+                headers=_request_headers(api_key),
+                json={
+                    "messages": messages,
+                    "model": "auto",
+                    "provider": "auto",
+                    "tools": tools,
+                    "stream": True,
+                    "workspace_path": workspace_path,
+                    "max_tokens": 2000,
+                    "session_id": session_id,
+                    "turn_index": turn_index,
+                },
+            ) as resp:
+                if resp.status_code in ERROR_MESSAGES:
+                    yield {"type": "error", "content": ERROR_MESSAGES[resp.status_code]}
+                    return
+                if resp.status_code != 200:
+                    yield {"type": "error", "content": f"Server error ({resp.status_code})"}
+                    return
+
+                for line in resp.iter_lines():
+                    if not line:
+                        continue
+                    if line.startswith("data: "):
+                        data_str = line[6:].strip()
+                        if not data_str or data_str == "[DONE]":
+                            continue
+                        try:
+                            event = _json.loads(data_str)
+                            yield event
+                        except _json.JSONDecodeError:
+                            continue
+
+    except httpx.ConnectError:
+        yield {"type": "error", "content": "Cannot reach Rta server. Check your connection."}
+    except httpx.TimeoutException:
+        yield {"type": "error", "content": "Request timed out. Try again."}
+    except Exception as e:
+        yield {"type": "error", "content": f"Network error: {e}"}
+
+
 def stream_agent(
     prompt: str,
     workspace_dir: str,
@@ -261,9 +317,8 @@ def stream_agent(
         # Determine how many telemetry rows backend will insert
         last_msg = messages[-1] if messages else {}
         if last_msg.get("role") == "user":
-            num_new_rows = 2 # User + Assistant
+            num_new_rows = 2
         else:
-            # Count tools since last assistant turn
             num_tools = 0
             for m in reversed(messages):
                 if m.get("role") == "tool":
@@ -272,43 +327,58 @@ def stream_agent(
                     break
             num_new_rows = num_tools + 1
 
-        try:
-            data = _call_backend(
-                messages=messages,
-                tools=AVAILABLE_TOOLS,
-                workspace_path=workspace_dir,
-                api_key=api_key,
-                session_id=session_id,
-                turn_index=current_turn,
-            )
-            current_turn += num_new_rows
-        except RuntimeError as e:
-            yield {"type": "error", "content": str(e)}
+        # Stream the LLM call
+        text_buffer = ""
+        tool_calls = None
+        stream_usage = {}
+        stream_error = None
+
+        for event in _call_backend_stream(
+            messages=messages,
+            tools=AVAILABLE_TOOLS,
+            workspace_path=workspace_dir,
+            api_key=api_key,
+            session_id=session_id,
+            turn_index=current_turn,
+            timeout=timeout,
+        ):
+            if event["type"] == "text":
+                yield {"type": "text_chunk", "content": event["content"]}
+                text_buffer += event["content"]
+            elif event["type"] == "tool_calls":
+                tool_calls = event["content"]
+            elif event["type"] == "usage":
+                stream_usage = event["content"]
+            elif event["type"] == "error":
+                stream_error = event["content"]
+                yield {"type": "error", "content": stream_error}
+                break
+            elif event["type"] == "done":
+                break
+
+        if stream_error:
             return
+
+        if not text_buffer and not tool_calls and not stream_usage:
+            yield {"type": "error", "content": "Empty response from server (streaming not supported?)."}
+            return
+
+        current_turn += num_new_rows
 
         # Accumulate usage
-        u = data.get("usage", {})
-        usage["prompt_tokens"]    += u.get("prompt_tokens", 0)
-        usage["candidate_tokens"] += u.get("completion_tokens", 0)
-        usage["total_tokens"]     += u.get("prompt_tokens", 0) + u.get("completion_tokens", 0)
-        usage["cached_tokens"]    += u.get("cached_tokens", 0)
+        usage["prompt_tokens"]    += stream_usage.get("prompt_tokens", 0)
+        usage["candidate_tokens"] += stream_usage.get("completion_tokens", 0)
+        usage["total_tokens"]     += stream_usage.get("prompt_tokens", 0) + stream_usage.get("completion_tokens", 0)
+        usage["cached_tokens"]    += stream_usage.get("cached_tokens", 0)
 
-        choices = data.get("choices", [])
-        if not choices:
-            yield {"type": "error", "content": "Empty response from backend."}
-            return
-
-        msg = choices[0].get("message", {})
-        text = msg.get("content") or ""
-        tool_calls = msg.get("tool_calls") or []
-
-        if text:
-            yield {"type": "text", "content": text}
+        # Yield full text for backward compatibility
+        if text_buffer:
+            yield {"type": "text", "content": text_buffer}
 
         # Append assistant turn
         assistant_msg: dict = {"role": "assistant"}
-        if text:
-            assistant_msg["content"] = text
+        if text_buffer:
+            assistant_msg["content"] = text_buffer
         if tool_calls:
             assistant_msg["tool_calls"] = tool_calls
         messages.append(assistant_msg)
