@@ -240,14 +240,15 @@ class RtaChat:
 
         # Add system prompt if messages are empty or just started
         if not self.messages or not any(m.get("role") == "system" for m in self.messages):
-            system_prompt = f"You are an expert developer CLI assistant. You are working in: {self.workspace}\n"
-            system_prompt += f"Project Info: {json.dumps(self.project_info, indent=2)}\n"
-            system_prompt += "Guidelines:\n"
-            system_prompt += "- Use run_command for shell commands, not Python\n"
-            system_prompt += "- Prefer glob + get_file_contents before editing\n"
-            system_prompt += "- Always verify after edit (get_file_contents)\n"
-            system_prompt += "- Explain errors in user-friendly terms\n"
-            system_prompt += "- Ask before destructive operations (use your judgment)\n"
+            system_prompt = f"You are Rta, an expert developer CLI assistant. Working in: {self.workspace}\n"
+            system_prompt += f"Project: {json.dumps(self.project_info)}\n"
+            system_prompt += "Rules:\n"
+            system_prompt += "- Run shell commands via run_command tool, not Python\n"
+            system_prompt += "- Read files with glob + get_file_contents before editing\n"
+            system_prompt += "- Verify edits by reading the file back\n"
+            system_prompt += "- Use parallel tool execution for independent reads\n"
+            system_prompt += "- Ask before destructive ops (deletes, force-push, mass rewrites)\n"
+            system_prompt += "- Responses stream in real-time — lead with the answer, then details\n"
             self.messages.insert(0, {"role": "system", "content": system_prompt})
         
         while True:
