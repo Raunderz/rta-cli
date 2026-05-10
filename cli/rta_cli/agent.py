@@ -349,6 +349,10 @@ def stream_agent(
                 tool_calls = event["content"]
             elif event["type"] == "usage":
                 stream_usage = event["content"]
+            elif event["type"] == "provider":
+                yield event
+            elif event["type"] == "thought":
+                yield event
             elif event["type"] == "error":
                 stream_error = event["content"]
                 yield {"type": "error", "content": stream_error}

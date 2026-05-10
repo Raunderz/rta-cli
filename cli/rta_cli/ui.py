@@ -44,12 +44,56 @@ class Console:
         return text
 
     def status(self, message, spinner="dots"):
+        import threading
+        import time
+        
         class StatusContext:
-            def __enter__(self): return self
-            def __exit__(self, *args): pass
-            def start(self): pass
-            def stop(self): pass
-        return StatusContext()
+            def __init__(self, console, message):
+                self.console = console
+                self.message = message
+                self.running = False
+                self.thread = None
+                self.frames = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+                if spinner == "pacman":
+                    self.frames = ["ᗧ···", "ᗧ··", "ᗧ·", "ᗧ", " ᗧ", "  ᗧ"]
+
+            def _spin(self):
+                idx = 0
+                while self.running:
+                    frame = self.frames[idx % len(self.frames)]
+                    # Use \r to return to start of line, then print frame + message
+                    line = f"\r[bold cyan]{frame}[/bold cyan] [dim]{self.message}[/dim]"
+                    sys.stdout.write("\033[K" + self.console._colorize(line))
+                    sys.stdout.flush()
+                    idx += 1
+                    time.sleep(0.1)
+
+            def __enter__(self):
+                self.start()
+                return self
+
+            def __exit__(self, *args):
+                self.stop()
+
+            def start(self):
+                if not self.running:
+                    self.running = True
+                    self.thread = threading.Thread(target=self._spin)
+                    self.thread.daemon = True
+                    self.thread.start()
+
+            def stop(self):
+                if self.running:
+                    self.running = False
+                    if self.thread:
+                        self.thread.join(timeout=0.2)
+                    sys.stdout.write("\r\033[K")
+                    sys.stdout.flush()
+
+            def update(self, message):
+                self.message = message
+
+        return StatusContext(self, message)
 
 def markdown(text):
     # Very basic Markdown to ANSI

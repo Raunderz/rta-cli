@@ -45,11 +45,13 @@ LOADING_MESSAGES = [
     "Chasing bugs in the dark...",
     "Parsing complexity...",
     "Thinking in 4 Dimensions...",
-    "Looks stuck ? It probably isn't"
+    "Reticulating splines...",
+    "Consulting the digital oracle...",
+    "Synthesizing silicon wisdom..."
 ]
 
 class RtaChat:
-    def __init__(self, workspace=None, session_id=None, timeout=120, force=False):
+    def __init__(self, workspace=None, session_id=None, timeout=300, force=False):
         self.last_ctrl_c = 0
         
         from rta_cli.config import get_last_workspace, set_last_workspace
@@ -273,46 +275,74 @@ class RtaChat:
 
                 from rta_cli.agent import stream_agent
                 
-                gen = stream_agent(
-                    user_input, 
-                    self.workspace, 
-                    self.messages, 
-                    self.provider, 
-                    self.model, 
-                    think=think_mode,
-                    session_id=self.session_id,
-                    turn_index=self.turn_index,
-                    timeout=self.timeout,
-                    force=self.force,
-                )
-                
                 full_text = ""
                 usage = {}
                 new_turn = self.turn_index
                 printed_header = False
 
-                for event in gen:
-                    if event["type"] == "text_chunk":
-                        if not printed_header:
-                            console.print(f"\n[bold red]Rta[/bold red]")
-                            printed_header = True
-                        console.print(event["content"], end="")
-                        full_text += event["content"]
-                    elif event["type"] == "text":
-                        if not printed_header:
-                            console.print(f"\n[bold red]Rta[/bold red]")
-                            printed_header = True
-                        full_text += event["content"]
-                    elif event["type"] == "tool_start":
-                        if printed_header:
+                # Start spinner
+                status = console.status(random.choice(LOADING_MESSAGES), spinner="pacman")
+                status.start()
+
+                try:
+                    gen = stream_agent(
+                        user_input, 
+                        self.workspace, 
+                        self.messages, 
+                        self.provider, 
+                        self.model, 
+                        think=think_mode,
+                        session_id=self.session_id,
+                        turn_index=self.turn_index,
+                        timeout=self.timeout,
+                        force=self.force,
+                    )
+                    
+                    for event in gen:
+                        if event["type"] == "provider":
+                            creative_msgs = [
+                                "Tuning the neural arrays...",
+                                "Consulting the digital oracle...",
+                                "Synthesizing logic gates...",
+                                "Reticulating splines...",
+                                "Optimizing thought vectors...",
+                                "Gathering silicon wisdom...",
+                                "Architecting a solution...",
+                                "Traversing the latent space..."
+                            ]
+                            status.update(random.choice(creative_msgs))
+                            continue
+                        elif event["type"] == "thought":
+                            # If we see a thought, maybe stop spinner and show it?
+                            # For now, just update status message
+                            status.update(f"Thinking: {event['content'][:50]}...")
+                            continue
+                        
+                        # Once we get text or tool, stop the spinner
+                        if event["type"] in ["text_chunk", "text", "tool_start"]:
+                            status.stop()
+
+                        if event["type"] == "text_chunk":
+                            if not printed_header:
+                                console.print(f"\n[bold red]Rta[/bold red]")
+                                printed_header = True
+                            console.print(event["content"], end="")
+                            full_text += event["content"]
+                        elif event["type"] == "text":
+                            if not printed_header:
+                                console.print(f"\n[bold red]Rta[/bold red]")
+                                printed_header = True
+                            full_text += event["content"]
+                        elif event["type"] == "tool_start":
+                            if not printed_header:
+                                console.print(f"\n[bold red]Rta[/bold red]")
+                                printed_header = True
+                            
                             name = event["content"]
                             args = event.get("arguments", "{}")
                             try:
-                                # Prettify arguments if it's JSON
                                 args_obj = json.loads(args)
                                 args_str = json.dumps(args_obj, indent=2)
-                                # If it's a long string, maybe summarize? No, user wants to see it.
-                                # But let's keep it compact if it's small.
                                 if len(args) < 60:
                                     args_str = json.dumps(args_obj)
                             except:
@@ -321,11 +351,14 @@ class RtaChat:
                             console.print(f"\n\n[bold cyan]🔨 Executing tool:[/bold cyan] [green]{name}[/green]")
                             if args_str and args_str != "{}":
                                 console.print(f"[dim]{args_str}[/dim]\n")
-                    elif event["type"] == "usage":
-                        usage = event["content"]
-                        new_turn = event.get("turn_index", new_turn)
-                    elif event["type"] == "error":
-                        console.print(f"\n[red]Error: {event['content']}[/red]")
+                        elif event["type"] == "usage":
+                            usage = event["content"]
+                            new_turn = event.get("turn_index", new_turn)
+                        elif event["type"] == "error":
+                            status.stop()
+                            console.print(f"\n[red]Error: {event['content']}[/red]")
+                finally:
+                    status.stop()
 
                 self.turn_index = new_turn
 
