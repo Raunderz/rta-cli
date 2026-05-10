@@ -187,75 +187,69 @@ export class RtaChatWidget extends ReactWidget {
                 display: 'flex',
                 flexDirection: 'column',
                 height: '100%',
-                backgroundColor: 'var(--theia-layout-color1)',
+                backgroundColor: 'var(--theia-side-bar-background)',
                 color: 'var(--theia-ui-font-color1)',
                 fontFamily: 'var(--theia-ui-font-family)',
                 fontSize: 'var(--theia-ui-font-size1)'
             }}>
                 <div style={{
-                    padding: '16px',
-                    borderBottom: '1px solid var(--theia-border-color)',
-                    fontWeight: 'bold',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                }}>
-                    <i className="fa fa-robot" style={{ color: 'var(--theia-brand-color1)' }}></i>
-                    RTA AI Assistant
-                </div>
-
-                <div style={{
                     flex: 1,
                     overflowY: 'auto',
-                    padding: '16px',
+                    padding: '12px',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: '16px'
+                    gap: '4px'
                 }}>
                     {this.messages.map((m, i) => (
                         <div key={i} style={{
-                            alignSelf: m.sender === 'user' ? 'flex-end' : 'flex-start',
-                            backgroundColor: m.sender === 'user' ? '#007acc' : '#3c3c3c',
-                            color: 'white',
-                            padding: '10px 14px',
-                            borderRadius: '16px',
-                            border: '1px solid ' + (m.sender === 'user' ? '#005a9e' : '#555'),
-                            borderBottomRightRadius: m.sender === 'user' ? '2px' : '16px',
-                            borderBottomLeftRadius: m.sender === 'bot' ? '2px' : '16px',
-                            maxWidth: '80%',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            padding: '8px 12px',
+                            borderLeft: m.sender === 'user' ? '2px solid var(--theia-brand-color1)' : '2px solid transparent',
+                            backgroundColor: m.sender === 'bot' ? 'var(--theia-layout-color2)' : 'transparent',
+                            marginBottom: '8px',
                             wordBreak: 'break-word',
-                            lineHeight: '1.4'
+                            lineHeight: '1.5'
                         }}>
-                            {m.text}
+                            <div style={{
+                                fontSize: '10px',
+                                textTransform: 'uppercase',
+                                marginBottom: '4px',
+                                opacity: 0.6,
+                                fontWeight: 'bold',
+                                color: m.sender === 'user' ? 'var(--theia-brand-color1)' : 'inherit'
+                            }}>
+                                {m.sender === 'user' ? 'You' : 'RTA AI'}
+                            </div>
+                            <div style={{ whiteSpace: 'pre-wrap' }}>
+                                {m.text}
+                            </div>
                         </div>
                     ))}
                 </div>
                 
                 <div style={{
-                    padding: '16px',
+                    padding: '12px',
                     borderTop: '1px solid var(--theia-border-color)',
-                    backgroundColor: 'var(--theia-layout-color2)'
+                    backgroundColor: 'var(--theia-layout-color1)'
                 }}>
                     <div style={{ 
                         display: 'flex', 
-                        gap: '10px',
+                        flexDirection: 'column',
+                        gap: '8px',
                         backgroundColor: 'var(--theia-input-background)',
                         border: '1px solid var(--theia-input-border)',
-                        borderRadius: '24px',
-                        padding: '4px 4px 4px 16px',
-                        alignItems: 'center'
+                        padding: '8px'
                     }}>
-                        <input 
-                            type="text" 
+                        <textarea 
                             placeholder={this.state.isSending ? "RTA is thinking..." : "Ask RTA anything..."}
+                            rows={1}
                             style={{
-                                flex: 1,
-                                padding: '8px 0',
+                                width: '100%',
                                 backgroundColor: 'transparent',
                                 color: 'var(--theia-input-foreground)',
                                 border: 'none',
                                 outline: 'none',
+                                resize: 'none',
+                                fontFamily: 'inherit',
                                 fontSize: 'var(--theia-ui-font-size1)',
                                 opacity: this.state.isSending ? 0.5 : 1
                             }} 
@@ -263,52 +257,43 @@ export class RtaChatWidget extends ReactWidget {
                             disabled={this.state.isSending}
                             onChange={(e) => {
                                 this.state.inputValue = e.target.value;
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
                                 this.update();
                             }}
                             onKeyDown={(e) => {
-                                if (e.key === 'Enter' && this.state.inputValue.trim() && !this.state.isSending) {
+                                if (e.key === 'Enter' && !e.shiftKey && this.state.inputValue.trim() && !this.state.isSending) {
+                                    e.preventDefault();
                                     this.handleSendMessage(this.state.inputValue);
                                     this.state.inputValue = '';
                                     this.update();
                                 }
                             }}
                         />
-                        <button 
-                            disabled={this.state.isSending || !this.state.inputValue.trim()}
-                            onClick={() => {
-                                if (this.state.inputValue.trim() && !this.state.isSending) {
-                                    this.handleSendMessage(this.state.inputValue);
-                                    this.state.inputValue = '';
-                                    this.update();
-                                }
-                            }}
-                            style={{
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                backgroundColor: 'var(--theia-brand-color1)',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '50%',
-                                cursor: (this.state.isSending || !this.state.inputValue.trim()) ? 'default' : 'pointer',
-                                transition: 'opacity 0.2s',
-                                opacity: (this.state.isSending || !this.state.inputValue.trim()) ? 0.3 : 1
-                            }}
-                        >
-                            <i className={this.state.isSending ? "fa fa-spinner fa-spin" : "fa fa-paper-plane"}></i>
-                        </button>
-                    </div>
-                    <div style={{ 
-                        fontSize: '10px', 
-                        marginTop: '8px',
-                        opacity: 0.5, 
-                        textAlign: 'center',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                    }}>
-                        Powered by RTA Intelligence
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px' }}>
+                            {this.state.isSending && <i className="fa fa-spinner fa-spin" style={{ opacity: 0.5 }}></i>}
+                            <button 
+                                disabled={this.state.isSending || !this.state.inputValue.trim()}
+                                onClick={() => {
+                                    if (this.state.inputValue.trim() && !this.state.isSending) {
+                                        this.handleSendMessage(this.state.inputValue);
+                                        this.state.inputValue = '';
+                                        this.update();
+                                    }
+                                }}
+                                style={{
+                                    padding: '2px 12px',
+                                    backgroundColor: 'var(--theia-button-background)',
+                                    color: 'var(--theia-button-foreground)',
+                                    border: 'none',
+                                    cursor: (this.state.isSending || !this.state.inputValue.trim()) ? 'default' : 'pointer',
+                                    fontSize: '11px',
+                                    textTransform: 'uppercase'
+                                }}
+                            >
+                                Send
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

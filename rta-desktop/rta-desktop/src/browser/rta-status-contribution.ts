@@ -57,11 +57,12 @@ export class RtaStatusContribution implements FrontendApplicationContribution {
         }
 
         this.statusBar.setElement('rta-status', {
-            text: `Rta: ${isOnline ? 'Online' : 'Offline'}`,
+            text: `${isOnline ? '$(check)' : '$(x)'} Rta: ${isOnline ? 'Online' : 'Offline'}`,
             alignment: StatusBarAlignment.RIGHT,
             priority: 100,
-            color: isOnline ? '#33ff33' : '#ff3333',
-            tooltip: `Rta Server Status: ${isOnline ? 'Operational' : 'Disconnected'}`
+            color: isOnline ? 'var(--theia-debugIcon-breakpointForeground)' : 'var(--theia-errorForeground)',
+            tooltip: `Rta Server Status: ${isOnline ? 'Operational' : 'Disconnected'}`,
+            command: 'rta-chat:toggle'
         });
     }
 }
