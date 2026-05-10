@@ -110,9 +110,6 @@ class RtaChat:
         self.model = "auto"
 
         self.messages = []
-        self.rta_dir = os.path.join(self.workspace, ".rta")
-        self.history_path = os.path.join(self.rta_dir, "history.json")
-
         import uuid
         self.session_id = session_id or str(uuid.uuid4())
         self.turn_index = 0
@@ -191,7 +188,6 @@ class RtaChat:
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
             console.print("  /clear         - Clear chat history & screen")
             console.print("  /cclear        - Clear conversation context only")
-            console.print("  /load_history  - Load history from .rta/history.json")
             console.print("  /exit          - Exit the chat\n")
             return
 
