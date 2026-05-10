@@ -324,6 +324,7 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
 
     models_tried = []
     last_error = None
+    start_time = time.time()
 
     for entry in sequence:
         provider_name = entry["provider"]
@@ -341,6 +342,7 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
             models_tried.append(f"{provider_name}/{model_to_use}")
             yield {"type": "provider", "content": {"model": model_to_use, "provider_used": provider_name}}
 
+            has_yielded_content = False
             async for event in stream_func(
                 messages=messages,
                 model=model_to_use,
@@ -348,8 +350,20 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
                 api_key=api_key,
                 max_tokens=max_tokens
             ):
+                if event["type"] in ["text", "tool_calls", "usage"]:
+                    has_yielded_content = True
                 yield event
 
+            if not has_yielded_content:
+                logging.warning(f"Provider {provider_name} returned empty response. Falling back.")
+                continue
+
+            latency_ms = (time.time() - start_time) * 1000
+            yield {"type": "meta", "content": {
+                "models_tried": models_tried,
+                "latency_ms": latency_ms,
+                "fallback_used": len(models_tried) > 1
+            }}
             yield {"type": "done"}
             return
 
@@ -363,4 +377,8 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
             continue
 
     yield {"type": "error", "content": f"All providers failed: {models_tried}"}
+    meta = {"models_tried": models_tried, "latency_ms": 0, "fallback_used": True}
+    if last_error:
+        meta["last_error"] = str(last_error)
+    yield {"type": "meta", "content": meta}
     yield {"type": "done"}
