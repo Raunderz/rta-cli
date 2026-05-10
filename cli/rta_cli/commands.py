@@ -42,9 +42,13 @@ def chat(
             return
         
         console.print("\n[bold]Recent Chat Sessions[/bold]")
-        console.print("-" * 50)
+        console.print("-" * 60)
         for s in sessions[:15]:
-            console.print(f"{s['session_id']} | {os.path.basename(s['workspace'])} | {s['last_updated'].split('T')[0]}")
+            sid = s['session_id']
+            short_id = sid[:8] if len(sid) > 8 else sid
+            project = os.path.basename(s['workspace'])
+            date = s['last_updated'].split('T')[0]
+            console.print(f"ID: [cyan]{short_id}[/] | Project: [green]{project:<15}[/] | Date: {date}")
         console.print("\nRun: [bold]rta chat --resume <ID>[/bold] to continue a session.")
         return
 
@@ -86,9 +90,13 @@ def callback(
                 return
             
             console.print("\n[bold]Recent Chat Sessions[/bold]")
-            console.print("-" * 50)
+            console.print("-" * 60)
             for s in sessions[:15]:
-                console.print(f"{s['session_id']} | {os.path.basename(s['workspace'])} | {s['last_updated'].split('T')[0]}")
+                sid = s['session_id']
+                short_id = sid[:8] if len(sid) > 8 else sid
+                project = os.path.basename(s['workspace'])
+                date = s['last_updated'].split('T')[0]
+                console.print(f"ID: [cyan]{short_id}[/] | Project: [green]{project:<15}[/] | Date: {date}")
             return
 
         from rta_cli.chat import RtaChat

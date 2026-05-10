@@ -27,6 +27,9 @@ class Console:
         
         def replace_tag(match):
             tag = match.group(1)
+            if tag.startswith("/"):
+                return "\033[0m"
+            
             parts = tag.split()
             codes = []
             for p in parts:
@@ -36,8 +39,7 @@ class Console:
                 return match.group(0)
             return f"\033[{';'.join(codes)}m"
 
-        text = re.sub(r"\[([a-z0-9 ]+)\]", replace_tag, text)
-        text = text.replace("[/]", "\033[0m")
+        text = re.sub(r"\[([/a-z0-9 #]+)\]", replace_tag, text)
         return text
 
     def status(self, message, spinner="dots"):
@@ -49,9 +51,11 @@ class Console:
         return StatusContext()
 
 def markdown(text):
-    # Just basic bold and code highlighting, no headers or blocks
+    # Very basic Markdown to ANSI
     text = re.sub(r"\*\*(.*?)\*\*", r"\033[1m\1\033[0m", text)
     text = re.sub(r"`(.*?)`", r"\033[33m\1\033[0m", text)
+    # Code blocks
+    text = re.sub(r"```[a-z]*\n?(.*?)```", r"\033[36m\1\033[0m", text, flags=re.S)
     return text
 
 class Text(str):

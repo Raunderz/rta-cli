@@ -18,17 +18,28 @@ def _save_all_contexts(data: dict) -> None:
         json.dump(data, f, indent=2)
 
 def load_context(workspace_dir: str = None, session_id: str = None, max_turns: int = 10) -> tuple[list[dict], str]:
-    """Load chat history for a given workspace or session_id."""
+    """Load chat history for a given workspace or session_id (supports prefix matching)."""
     data = _load_all_contexts()
     
-    if session_id and session_id in data:
-        session_data = data[session_id]
-        messages = session_data.get("messages", [])
-        if max_turns > 0:
-            messages = messages[-(max_turns * 2):]
-        return messages, session_id
+    if session_id:
+        if session_id in data:
+            session_data = data[session_id]
+            messages = session_data.get("messages", [])
+            if max_turns > 0:
+                messages = messages[-(max_turns * 2):]
+            return messages, session_id
+        
+        # Try prefix matching
+        matches = [sid for sid in data.keys() if sid.startswith(session_id)]
+        if len(matches) == 1:
+            sid = matches[0]
+            session_data = data[sid]
+            messages = session_data.get("messages", [])
+            if max_turns > 0:
+                messages = messages[-(max_turns * 2):]
+            return messages, sid
 
-    # If no session_id, find the most recent session for this workspace
+    # If no session_id or no prefix match, find the most recent session for this workspace
     if workspace_dir:
         abs_dir = os.path.abspath(workspace_dir)
         matching_sessions = [
