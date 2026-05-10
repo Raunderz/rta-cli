@@ -42,6 +42,7 @@ In v0.3.0, Rta is now **Raw**.
 ## New SOTA Features
 
 Despite the UI diet, the engine is more powerful than ever. v0.3.0 introduces:
+- **Streaming Responses**: The agent no longer waits for a full completion — text streams to your terminal token by token, cutting perceived latency to near zero.
 - **apply_diff**: A new tool for atomic multi-file edits using standard unified diffs.
 - **Session Resume**: Use \`rta chat --resume <id>\` to pick up exactly where you left off.
 - **Workspace Tracking**: Rta now remembers your last workspace and tracks it across sessions.

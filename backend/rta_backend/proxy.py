@@ -5,15 +5,23 @@ from typing import List, Dict, Optional, Any
 from pydantic import BaseModel
 
 from rta_backend.providers import (
-    call_groq, 
-    call_cerebras, 
-    call_sambanova, 
-    call_openrouter, 
-    call_gemini,
+    call_groq, call_groq_stream,
+    call_cerebras, call_cerebras_stream,
+    call_sambanova, call_sambanova_stream,
+    call_openrouter, call_openrouter_stream,
+    call_gemini, call_gemini_stream,
     RateLimitError, 
     ProviderDownError, 
     ProviderTimeoutError
 )
+
+STREAM_DISPATCH = {
+    "groq": call_groq_stream,
+    "cerebras": call_cerebras_stream,
+    "sambanova": call_sambanova_stream,
+    "openrouter": call_openrouter_stream,
+    "gemini": call_gemini_stream,
+}
 
 from rta_backend.prompts import SYSTEM_PROMPT
 
@@ -303,3 +311,56 @@ async def route_chat_request(request: ChatRequest, user_id: str, user_tier: str)
                 
     # If loop completes without return, all failed
     raise AllProvidersExhaustedError(models_tried, last_error)
+
+
+async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tier: str):
+    """Streaming variant with automatic fallback. Yields normalized events."""
+    raw_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + request.messages
+    messages = truncate_messages(raw_messages)
+
+    sequence = get_routing_sequence(request.provider, request.model)
+    max_tokens = min(request.max_tokens, TIER_TOKEN_CAPS.get(user_tier.lower(), 2000))
+    keys = get_provider_keys()
+
+    models_tried = []
+    last_error = None
+
+    for entry in sequence:
+        provider_name = entry["provider"]
+        model_to_use = entry["model"]
+
+        api_key = keys.get(provider_name)
+        if not api_key:
+            continue
+
+        stream_func = STREAM_DISPATCH.get(provider_name)
+        if not stream_func:
+            continue
+
+        try:
+            models_tried.append(f"{provider_name}/{model_to_use}")
+            yield {"type": "provider", "content": {"model": model_to_use, "provider_used": provider_name}}
+
+            async for event in stream_func(
+                messages=messages,
+                model=model_to_use,
+                tools=request.tools,
+                api_key=api_key,
+                max_tokens=max_tokens
+            ):
+                yield event
+
+            yield {"type": "done"}
+            return
+
+        except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
+            models_tried.append(f"{provider_name}:{type(e).__name__}")
+            last_error = e
+            continue
+        except Exception as e:
+            models_tried.append(f"{provider_name}:unhandled_error")
+            last_error = e
+            continue
+
+    yield {"type": "error", "content": f"All providers failed: {models_tried}"}
+    yield {"type": "done"}
