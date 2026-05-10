@@ -118,7 +118,18 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 
 const Navbar = () => {
   const [location] = useLocation();
+  const [user, setUser] = useState(null);
   const isActive = (path) => location === path ? "active" : "";
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("rta_user");
+      if (saved) setUser(JSON.parse(saved));
+      else setUser(null);
+    } catch (e) {
+      setUser(null);
+    }
+  }, [location]);
 
   return (
     <nav class="navbar">
@@ -132,7 +143,9 @@ const Navbar = () => {
           <Link href="/roadmap" class={`nav-link ${isActive('/roadmap')}`}>Roadmap</Link>
           <Link href="/status" class={`nav-link ${isActive('/status')}`}>Status</Link>
           <Link href="/releases" class={`nav-link ${isActive('/releases')}`}>Releases</Link>
-          <Link href="/auth" class={`nav-link ${isActive('/auth')}`}>Account</Link>
+          <Link href={user ? "/dashboard" : "/auth"} class={`nav-link ${isActive(user ? '/dashboard' : '/auth')}`}>
+            {user ? "Dashboard" : "Account"}
+          </Link>
         </div>
       </div>
     </nav>
@@ -544,6 +557,15 @@ const AuthPage = () => {
       <div class="auth-box">
         <h2 style="margin-bottom: 2rem; text-align: center;">{isLogin ? "AUTHENTICATE" : "REGISTER"}</h2>
 
+        <div style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; padding: 12px 16px; margin-bottom: 24px;">
+          <p class="mono" style="font-size: 11px; color: #3b82f6; margin: 0; line-height: 1.5; font-weight: bold;">
+            [PROTOCOL_SUGGESTION]
+          </p>
+          <p class="mono" style="font-size: 11px; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.5;">
+            GitHub Authentication is recommended for optimal performance and CLI integration.
+          </p>
+        </div>
+
         {authError && <div style="color: var(--neon-red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--neon-red);">{authError}</div>}
 
         <button class="btn" style="width: 100%; margin-bottom: 1.5rem;" onClick={() => window.location.href = `${API_BASE_URL}/v1/auth/github`}>
@@ -604,9 +626,9 @@ const RoadmapPage = () => (
         <p>Context Sync, AI Refactor Engine</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 1rem;">PHASE 03 [FUTURE]</div>
+        <div class="feature-icon mono" style="font-size: 1rem; color: var(--text-main);">PHASE 03 [BETA]</div>
         <h3>Mobile App</h3>
-        <p>iOS/Android, Desktop Sync</p>
+        <p>Android Chat Interface, Account Sync</p>
       </div>
     </div>
   </div>
@@ -624,27 +646,45 @@ const ReleasesPage = () => {
       <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem;">
         <button class={`btn ${os === 'linux' ? 'btn-primary' : ''}`} onClick={() => setOs('linux')}>Linux</button>
         <button class={`btn ${os === 'windows' ? 'btn-primary' : ''}`} onClick={() => setOs('windows')}>Windows</button>
+        <button class={`btn ${os === 'android' ? 'btn-primary' : ''}`} onClick={() => setOs('android')}>Android</button>
       </div>
       <div class="status-board">
-        <div class="status-header">
-          <span class="mono">v1.4.2 [STABLE]</span>
-          <a
-            href={os === 'linux' ? "/rta" : "/rta.exe"}
-            download={os === 'linux' ? "rta" : "rta.exe"}
-            class="btn btn-primary"
-            style="text-decoration: none;"
-          >
-            Download for {os === 'linux' ? 'Linux' : 'Windows'}
-          </a>
-        </div>
-        <div style="padding: 2rem;">
-          <h4 class="mono" style="margin-bottom: 1rem;">QUICK INSTALL</h4>
-          <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px;">
-            {os === 'linux' ? `chmod +x rta
+        {os === 'android' ? (
+          <div style="padding: 3rem; text-align: center;">
+            <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-main);">MOBILE PROTOCOL [BETA]</h4>
+            <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);">
+              <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; display: block;" />
+            </div>
+            <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);">
+              <p class="mono" style="font-size: 11px; color: var(--neon-red); line-height: 1.6; margin: 0;">
+                [CLASSIFIED] Mobile deployment is restricted to Chat & Telemetry. 
+                Full Autonomous Agent capabilities (Code Execution/Refactoring) remain exclusive to CLI & Desktop nodes.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div class="status-header">
+              <span class="mono">v1.4.2 [STABLE]</span>
+              <a
+                href={os === 'linux' ? "/rta" : "/rta.exe"}
+                download={os === 'linux' ? "rta" : "rta.exe"}
+                class="btn btn-primary"
+                style="text-decoration: none;"
+              >
+                Download for {os === 'linux' ? 'Linux' : 'Windows'}
+              </a>
+            </div>
+            <div style="padding: 2rem;">
+              <h4 class="mono" style="margin-bottom: 1rem;">QUICK INSTALL</h4>
+              <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px;">
+                {os === 'linux' ? `chmod +x rta
 sudo mv rta /usr/local/bin/
 rta chat` : `rta.exe chat`}
-          </pre>
-        </div>
+              </pre>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
