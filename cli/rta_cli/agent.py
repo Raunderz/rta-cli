@@ -448,14 +448,18 @@ def stream_agent(
         for mode, group_tcs in groups:
             if mode == "parallel" and len(group_tcs) > 1:
                 for tc in group_tcs:
-                    yield {"type": "tool_start", "content": tc.get("function", {}).get("name")}
+                    name = tc.get("function", {}).get("name")
+                    args = tc.get("function", {}).get("arguments", "{}")
+                    yield {"type": "tool_start", "content": name, "arguments": args}
                 
                 with ThreadPoolExecutor(max_workers=min(len(group_tcs), 10)) as executor:
                     results = list(executor.map(lambda tc: execute_one(tc, force), group_tcs))
                     messages.extend(results)
             else:
                 for tc in group_tcs:
-                    yield {"type": "tool_start", "content": tc.get("function", {}).get("name")}
+                    name = tc.get("function", {}).get("name")
+                    args = tc.get("function", {}).get("arguments", "{}")
+                    yield {"type": "tool_start", "content": name, "arguments": args}
                     res = execute_one(tc, force)
                     messages.append(res)
 
@@ -485,7 +489,11 @@ def run_agent(
         if event["type"] == "text":
             final_text += event["content"] + "\n\n"
         elif event["type"] == "tool_start":
-            final_text += f"*(Executed tool: `{event['content']}`)*\n\n"
+            args = event.get("arguments", "")
+            if args and args != "{}":
+                final_text += f"*(Executed tool: `{event['content']}` with args: `{args}`)*\n\n"
+            else:
+                final_text += f"*(Executed tool: `{event['content']}`)*\n\n"
         elif event["type"] == "thought":
             final_text += f"> *{event['content']}*\n\n"
         elif event["type"] == "usage":

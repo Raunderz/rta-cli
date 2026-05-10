@@ -147,19 +147,50 @@ async def chat_endpoint(
         if payload.stream:
             async def event_stream():
                 collected_text = ""
+                collected_tool_calls = []
                 collected_usage = {}
                 collected_provider = {}
+                collected_meta = {}
                 try:
                     async for event in route_chat_request_stream(payload, user_id, user_tier):
                         if event["type"] == "text":
                             collected_text += event["content"]
+                        elif event["type"] == "tool_calls":
+                            collected_tool_calls = event["content"]
                         elif event["type"] == "usage":
                             collected_usage = event["content"]
                         elif event["type"] == "provider":
                             collected_provider = event["content"]
+                        elif event["type"] == "meta":
+                            collected_meta = event["content"]
                         yield f"data: {json.dumps(event)}\n\n"
                 except Exception as e:
                     yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+
+                try:
+                    if collected_provider:
+                        pr = ProxyResult(
+                            choices=[{
+                                "message": {
+                                    "role": "assistant", 
+                                    "content": collected_text,
+                                    "tool_calls": collected_tool_calls
+                                }
+                            }],
+                            usage=collected_usage,
+                            model=collected_provider.get("model", ""),
+                            provider_used=collected_provider.get("provider_used", ""),
+                            models_tried=collected_meta.get("models_tried", []),
+                            latency_ms=collected_meta.get("latency_ms", 0),
+                            tool_calls_log=collected_tool_calls,
+                            fallback_used=collected_meta.get("fallback_used", False),
+                            session_id=payload.session_id,
+                            turn_index=payload.turn_index,
+                        )
+                        await log_telemetry_task(user_id, payload, pr)
+                except Exception as te:
+                    import logging
+                    logging.error(f"Stream telemetry failed: {te}")
 
             return StreamingResponse(
                 event_stream(),

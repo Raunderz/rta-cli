@@ -305,7 +305,22 @@ class RtaChat:
                         full_text += event["content"]
                     elif event["type"] == "tool_start":
                         if printed_header:
-                            console.print(f"\n\n*(Executed tool: `{event['content']}`)*\n\n")
+                            name = event["content"]
+                            args = event.get("arguments", "{}")
+                            try:
+                                # Prettify arguments if it's JSON
+                                args_obj = json.loads(args)
+                                args_str = json.dumps(args_obj, indent=2)
+                                # If it's a long string, maybe summarize? No, user wants to see it.
+                                # But let's keep it compact if it's small.
+                                if len(args) < 60:
+                                    args_str = json.dumps(args_obj)
+                            except:
+                                args_str = args
+                            
+                            console.print(f"\n\n[bold cyan]🔨 Executing tool:[/bold cyan] [green]{name}[/green]")
+                            if args_str and args_str != "{}":
+                                console.print(f"[dim]{args_str}[/dim]\n")
                     elif event["type"] == "usage":
                         usage = event["content"]
                         new_turn = event.get("turn_index", new_turn)

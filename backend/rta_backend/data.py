@@ -48,64 +48,39 @@ async def collect_telemetry(
     return {"status": "Accepted", "user_id": user_id}
 
 async def log_telemetry_task(user_id: str, request, result):
-    """Background task to log enriched AI interaction telemetry."""
+    """Background task to log enriched AI interaction telemetry for fine-tuning."""
     try:
         session_id = result.session_id
         turn_index = result.turn_index
         
-        # 1. Log the triggering message(s)
-        # If the last message is from user, log that. 
-        # Otherwise, log any new tool results since the last assistant turn.
-        
+        # 1. Identify what triggered this response
         trigger_messages = []
-        last_msg = request.messages[-1] if request.messages else None
+        if request.messages:
+            last_msg = request.messages[-1]
+            if last_msg.get("role") == "user":
+                trigger_messages.append(last_msg)
+            else:
+                # Get all tool results since the last assistant message
+                for m in reversed(request.messages):
+                    if m.get("role") == "tool":
+                        trigger_messages.insert(0, m)
+                    elif m.get("role") == "assistant":
+                        break
         
-        if last_msg and last_msg.get("role") == "user":
-            trigger_messages.append(last_msg)
-        else:
-            # Find all tool messages at the end of the conversation
-            for m in reversed(request.messages):
-                if m.get("role") == "tool":
-                    trigger_messages.insert(0, m)
-                elif m.get("role") == "assistant":
-                    break
+        # 2. Log the Assistant response with full context in file_info for fine-tuning
+        assistant_msg = result.choices[0].get("message", {}) if result.choices else {}
+        response_text = assistant_msg.get("content") or ""
         
-        current_idx = turn_index
-        for msg in trigger_messages:
-            role = msg.get("role", "user")
-            content = msg.get("content", "")
-            
-            data = {
-                "user_id": user_id,
-                "session_id": session_id,
-                "turn_index": current_idx,
-                "role": role,
-                "ai_prompt": Sanitizer.strip_secrets(content) if role in ["user", "tool"] else None,
-                "file_info": {"workspace_path": request.workspace_path},
-                "created_at": "now()"
-            }
-            insert_telemetry(data)
-            current_idx += 1
-
-        # 2. Log the Assistant response
-        response_text = ""
-        if result.choices:
-            msg = result.choices[0].get("message", {})
-            content = msg.get("content")
-            if content:
-                response_text = content
-            
-            tool_calls = msg.get("tool_calls")
-            if tool_calls:
-                tool_summaries = [f"[Tool Call: {tc.get('function', {}).get('name', 'unknown')}({tc.get('function', {}).get('arguments', '{}')})]" for tc in tool_calls]
-                tool_str = "\n".join(tool_summaries)
-                response_text = f"{response_text}\n\n{tool_str}" if response_text else tool_str
-
+        # Structured tool calls
+        tool_calls = assistant_msg.get("tool_calls") or []
+        
+        # Log assistant turn
         data = {
             "user_id": user_id,
             "session_id": session_id,
-            "turn_index": current_idx,
+            "turn_index": turn_index,
             "role": "assistant",
+            "ai_prompt": Sanitizer.strip_secrets(trigger_messages[-1].get("content")) if trigger_messages else None,
             "ai_response": response_text,
             "provider": result.provider_used,
             "model_used": result.model,
@@ -114,12 +89,35 @@ async def log_telemetry_task(user_id: str, request, result):
             "tokens_in": result.usage.get("prompt_tokens", 0),
             "tokens_out": result.usage.get("completion_tokens", 0),
             "tokens_cached": result.usage.get("cached_tokens", 0),
-            "tool_calls": result.tool_calls_log,
-            "file_info": {"workspace_path": request.workspace_path},
+            "tool_calls": tool_calls,
             "latency_ms": int(result.latency_ms),
+            "file_info": {
+                "workspace_path": request.workspace_path,
+                "provider": result.provider_used,
+                "latency_ms": int(result.latency_ms),
+                "tool_calls": tool_calls,
+                "trigger_context": trigger_messages, # Crucial for fine-tuning
+                "full_history_count": len(request.messages)
+            },
             "created_at": "now()"
         }
         
         insert_telemetry(data)
+
+        # 3. Optional: Log individual trigger messages if they are tool results 
+        # (User messages are usually the 'ai_prompt' of the assistant turn, but tools can be multiple)
+        if len(trigger_messages) > 1 or (trigger_messages and trigger_messages[0].get("role") == "tool"):
+            for i, msg in enumerate(trigger_messages):
+                t_data = {
+                    "user_id": user_id,
+                    "session_id": session_id,
+                    "turn_index": turn_index - len(trigger_messages) + i,
+                    "role": msg.get("role"),
+                    "ai_prompt": Sanitizer.strip_secrets(msg.get("content")),
+                    "file_info": {"workspace_path": request.workspace_path, "is_trigger_part": True},
+                    "created_at": "now()"
+                }
+                insert_telemetry(t_data)
+
     except Exception as e:
         logging.error(f"Telemetry logging failed: {e}")
