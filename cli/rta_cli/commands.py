@@ -6,6 +6,7 @@ app = typer.Typer(
     name="rta",
     help="AI-assisted code editor CLI",
     add_completion=False,
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
 )
 console = Console()
 
@@ -71,7 +72,6 @@ def chat(
 @app.callback(invoke_without_command=True)
 def callback(
     ctx: typer.Context,
-    prompt: str = typer.Argument(None, help="Initial prompt for the chat"),
     clear_context: bool = typer.Option(False, "--clear-context", help="Clear chat history"),
     workspace: str = typer.Option(None, "--workspace", help="Working directory"),
     no_cache: bool = typer.Option(False, "--no-cache", help="Ignore context"),
@@ -108,6 +108,7 @@ def callback(
             if not no_cache:
                 chat_obj.messages = []
 
+        prompt = " ".join(ctx.args) if ctx.args else None
         chat_obj.run(initial_prompt=prompt)
 
 
