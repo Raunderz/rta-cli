@@ -27,7 +27,7 @@ from rta_cli.git import (
     schema_git_create_pr, schema_git_branch,
 )
 
-CLI_VERSION = "2.0.0"
+CLI_VERSION = "0.3.0"
 
 AVAILABLE_TOOLS = [
     {"type": "function", "function": f}

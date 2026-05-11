@@ -113,17 +113,17 @@ def callback(
 
 
 @app.command()
-def init():
+def init(project_name: str = typer.Argument(..., help="Name of the project to create")):
     """Initialize a new project"""
-    from rta_cli.cmd_init import init
-    init([])
+    from rta_cli.cmd_init import init as do_init
+    do_init([project_name])
 
 
 @app.command()
-def clone():
+def clone(repo_url: str = typer.Argument(..., help="Repository URL to clone")):
     """Clone a repository"""
-    from rta_cli.cmd_clone import clone
-    clone([])
+    from rta_cli.cmd_clone import clone as do_clone
+    do_clone([repo_url])
 
 
 @app.command()
