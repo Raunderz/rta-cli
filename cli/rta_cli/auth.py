@@ -9,7 +9,7 @@ from rta_cli.utils import save_credential, load_credential, delete_credential, g
 
 console = Console()
 
-CLI_VERSION = "0.2.0"
+CLI_VERSION = "0.3.0"
 
 
 def _headers(api_key: str) -> dict:
