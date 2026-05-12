@@ -33,6 +33,7 @@ def chat(
     force: bool = typer.Option(False, "--force", help="Skip destructive action confirmations"),
     resume: str = typer.Option(None, "--resume", help="Resume a previous session by ID"),
     list_sessions: bool = typer.Option(False, "--list-sessions", help="List previous chat sessions"),
+    privacy: bool = typer.Option(False, "--privacy", help="Hide email in header"),
 ):
     """Start the Rta chat interface"""
     if list_sessions:
@@ -54,7 +55,7 @@ def chat(
         return
 
     from rta_cli.chat import RtaChat
-    chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force)
+    chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force, privacy=privacy)
     
     if clear_context or no_cache:
         from rta_cli.context import clear_context as cc
@@ -79,6 +80,7 @@ def callback(
     force: bool = typer.Option(False, "--force", help="Skip destructive action confirmations"),
     resume: str = typer.Option(None, "--resume", help="Resume a previous session by ID"),
     list_sessions: bool = typer.Option(False, "--list-sessions", help="List previous chat sessions"),
+    privacy: bool = typer.Option(False, "--privacy", help="Hide email in header"),
 ):
     """Rta - AI-assisted code editor CLI"""
     if ctx.invoked_subcommand is None:
@@ -100,7 +102,7 @@ def callback(
             return
 
         from rta_cli.chat import RtaChat
-        chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force)
+        chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force, privacy=privacy)
         
         if clear_context or no_cache:
             from rta_cli.context import clear_context as cc
