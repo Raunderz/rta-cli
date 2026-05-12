@@ -51,22 +51,15 @@ LOADING_MESSAGES = [
 ]
 
 class RtaChat:
-    def __init__(self, workspace=None, session_id=None, timeout=300, force=False):
+    def __init__(self, workspace=None, session_id=None, timeout=300, force=False, privacy=False):
         self.last_ctrl_c = 0
         
         from rta_cli.config import get_last_workspace, set_last_workspace
         if workspace:
             self.workspace = os.path.abspath(workspace)
         else:
-            # If current dir is not a git repo or something, maybe use last workspace?
-            # Actually, standard behavior: use current dir if it looks like a project, 
-            # otherwise fallback to last workspace.
-            # For now, let's just prioritize provided > last > current.
-            last = get_last_workspace()
-            if last and not os.path.exists(".git") and not os.path.exists("package.json"):
-                self.workspace = last
-            else:
-                self.workspace = os.path.abspath(os.getcwd())
+            # Default to current working directory
+            self.workspace = os.path.abspath(os.getcwd())
         
         set_last_workspace(self.workspace)
         self.workspace_name = os.path.basename(self.workspace)
@@ -74,6 +67,7 @@ class RtaChat:
         self.ascii_art = ASCII_ART
         self.timeout = timeout
         self.force = force
+        self.privacy = privacy
 
         # Project Discovery on startup
         from rta_cli.discovery import discover_project
@@ -166,7 +160,8 @@ class RtaChat:
 
     def print_header(self):
         print(self.ascii_art)
-        console.print(f"\nRta Cli {self.version} | {self.user} | {self.workspace}\n")
+        user_display = "authenticated" if self.privacy else self.user
+        console.print(f"\nRta Cli {self.version} | {user_display} | {self.workspace}\n")
 
     def handle_sigint(self, sig, frame):
         current_time = time.time()
