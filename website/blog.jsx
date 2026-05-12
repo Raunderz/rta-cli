@@ -46,9 +46,11 @@ Despite the UI diet, the engine is more powerful than ever. v0.3.0 introduces:
 - **apply_diff**: A new tool for atomic multi-file edits using standard unified diffs.
 - **Session Resume**: Use \`rta chat --resume <id>\` to pick up exactly where you left off.
 - **Workspace Tracking**: Rta now remembers your last workspace and tracks it across sessions.
-- **AST-Aware Refactoring**: Surgical Python renames using \`libcst\`.
+- **AST-Aware Refactoring**: Surgical Python renames using `libcst`.
+- **Lean RAG (Semantic Search)**: A pure Python BM25 indexer that provides smart code search without heavy ML dependencies. No 100MB model downloads — just fast, local, keyword-relevance ranking.
 
 ## The Raw Philosophy
+
 
 A developer tool should be invisible. It should feel like an extension of your terminal, not a guest application running inside it. 
 
