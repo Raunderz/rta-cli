@@ -17,39 +17,31 @@ def _save_all_contexts(data: dict) -> None:
     with open(CONTEXT_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
-def load_context(workspace_dir: str = None, session_id: str = None, max_turns: int = 10) -> tuple[list[dict], str]:
-    """Load chat history for a given workspace or session_id (supports prefix matching)."""
+def load_context(workspace_dir: str = None, session_id: str = None, max_turns: int = 10) -> tuple[list[dict], str, str | None]:
+    """Load chat history. Returns (messages, session_id, session_workspace)."""
     data = _load_all_contexts()
     
     if session_id:
         if session_id in data:
             session_data = data[session_id]
-            # Enforce workspace isolation
-            if workspace_dir and session_data.get("workspace_dir") != os.path.abspath(workspace_dir):
-                return [], None
-                
             messages = session_data.get("messages", [])
+            sw = session_data.get("workspace_dir")
             if max_turns > 0:
                 messages = messages[-(max_turns * 2):]
-            return messages, session_id
+            return messages, session_id, sw
         
         # Try prefix matching
         matches = [sid for sid in data.keys() if sid.startswith(session_id)]
         if len(matches) == 1:
             sid = matches[0]
             session_data = data[sid]
-            # Enforce workspace isolation
-            if workspace_dir and session_data.get("workspace_dir") != os.path.abspath(workspace_dir):
-                return [], None
-            
             messages = session_data.get("messages", [])
+            sw = session_data.get("workspace_dir")
             if max_turns > 0:
                 messages = messages[-(max_turns * 2):]
-            return messages, sid
+            return messages, sid, sw
 
-    # If no session_id or no prefix match, we don't auto-resume by workspace anymore.
-    # The user wants distinct sessions. They must use --resume to continue.
-    return [], None
+    return [], None, None
 
 def save_context(workspace_dir: str, session_id: str, messages: list[dict]) -> None:
     """Save chat history for a session."""
@@ -89,6 +81,15 @@ def list_sessions(workspace_dir: str = None) -> list[dict]:
                 "last_updated": sdata.get("last_updated"),
                 "message_count": len(sdata.get("messages", []))
             })
+    
+    # Format time to include HH:MM
+    for s in sessions:
+        try:
+            dt = datetime.fromisoformat(s['last_updated'])
+            s['display_date'] = dt.strftime("%Y-%m-%d %H:%M")
+        except:
+            s['display_date'] = s['last_updated']
+
     return sorted(sessions, key=lambda x: x["last_updated"], reverse=True)
 
 def clear_context(workspace_dir: str = None, session_id: str = None) -> None:
