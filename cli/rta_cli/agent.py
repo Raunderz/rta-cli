@@ -105,6 +105,26 @@ def explain_error(tool: str, error: str, args: dict) -> str:
     return error
 
 
+def _run_auto_lint(workspace_dir: str) -> str | None:
+    """Detect and run linter, return output if it fails."""
+    try:
+        info = discover_project(workspace_dir)
+        cmd = get_lint_command(info)
+        if not cmd:
+            return None
+        
+        # Run linter via run_command logic but quietly
+        from rta_cli.functions.run_command import run_command
+        res = run_command(workspace_dir, cmd, timeout=30)
+        
+        # If return code is non-zero, it failed
+        if "RETURN CODE : 0" not in res:
+            return res
+        return None
+    except Exception:
+        return None
+
+
 def call_function(function_call: dict, workspace_dir: str, default_timeout: int = 120, force: bool = False) -> dict:
     name = function_call.get("name")
     args = function_call.get("args", {})
@@ -162,6 +182,13 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
 
     fn = dispatch.get(name)
     result = fn() if fn else f"Error: function '{name}' not found"
+
+    # Plan 6.2: Auto-lint after mutating edits
+    MUTATING_TOOLS = ["write_file", "edit_file", "edit_file_ast", "apply_diff"]
+    if name in MUTATING_TOOLS and isinstance(result, str) and result.startswith("Successfully"):
+        lint_error = _run_auto_lint(workspace_dir)
+        if lint_error:
+            result += f"\n\n[AUTO-LINT] Found issues after edit:\n{lint_error}\nPlease fix these issues."
 
     # Apply error explanation
     if isinstance(result, str) and result.startswith("Error:"):
