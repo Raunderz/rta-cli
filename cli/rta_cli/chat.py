@@ -124,13 +124,18 @@ class RtaChat:
 
     def _load_history(self):
         from rta_cli.context import load_context
-        msgs, sid = load_context(workspace_dir=self.workspace, session_id=self.session_id, max_turns=10)
+        msgs, sid, sw = load_context(workspace_dir=self.workspace, session_id=self.session_id, max_turns=10)
         self.messages = msgs
         if sid:
             self.session_id = sid
+            # If session was in a different workspace, switch to it
+            if sw and os.path.exists(sw) and sw != self.workspace:
+                self.workspace = sw
+                self.workspace_name = os.path.basename(sw)
+                from rta_cli.config import set_last_workspace
+                set_last_workspace(sw)
+            
             # Calculate turn index based on message count
-            # Each pair is 2 messages + tool messages. 
-            # Simple heuristic: total non-system messages
             self.turn_index = sum(1 for m in self.messages if m.get("role") != "system")
 
     def _save_history(self):

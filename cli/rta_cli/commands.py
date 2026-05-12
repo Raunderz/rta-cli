@@ -49,7 +49,7 @@ def chat(
             sid = s['session_id']
             short_id = sid[:8] if len(sid) > 8 else sid
             project = os.path.basename(s['workspace'])
-            date = s['last_updated'].split('T')[0]
+            date = s['display_date']
             console.print(f"ID: [cyan]{short_id}[/] | Project: [green]{project:<15}[/] | Date: {date}")
         console.print("\nRun: [bold]rta chat --resume <ID>[/bold] to continue a session.")
         return
@@ -97,7 +97,7 @@ def callback(
                 sid = s['session_id']
                 short_id = sid[:8] if len(sid) > 8 else sid
                 project = os.path.basename(s['workspace'])
-                date = s['last_updated'].split('T')[0]
+                date = s['display_date']
                 console.print(f"ID: [cyan]{short_id}[/] | Project: [green]{project:<15}[/] | Date: {date}")
             return
 
