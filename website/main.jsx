@@ -569,24 +569,27 @@ const AuthPage = () => {
         {authError && <div style="color: var(--neon-red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--neon-red);">{authError}</div>}
 
         <button class="btn" style="width: 100%; margin-bottom: 1.5rem;" onClick={() => window.location.href = `${API_BASE_URL}/v1/auth/github`}>
-          Continue with GitHub
+          {isLogin ? "Continue with GitHub" : "Sign up with GitHub"}
         </button>
 
-        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; opacity: 0.5;">
-          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
-          <span class="mono" style="font-size: 10px;">OR</span>
-          <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
-        </div>
+        {isLogin && (
+          <>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; opacity: 0.5;">
+              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+              <span class="mono" style="font-size: 10px;">OR</span>
+              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            </div>
 
-        <form class="auth-form" onSubmit={handleAuth}>
-          {!isLogin && <input type="text" name="username" class="auth-input" placeholder="Username" required />}
-          <input type="email" name="email" class="auth-input" placeholder="Email" required />
-          <input type="password" name="password" class="auth-input" placeholder="Password" required />
-          <div ref={captchaRef} class="h-captcha" data-sitekey="51b06ce2-0f58-4148-8fec-b2944c54e718" style="margin-bottom: 1rem;"></div>
-          <button type="submit" class="btn btn-primary" style="width: 100%;" disabled={isLoading}>
-            {isLoading ? "PROCESSING..." : (isLogin ? "Login" : "Initialize")}
-          </button>
-        </form>
+            <form class="auth-form" onSubmit={handleAuth}>
+              <input type="email" name="email" class="auth-input" placeholder="Email" required />
+              <input type="password" name="password" class="auth-input" placeholder="Password" required />
+              <div ref={captchaRef} class="h-captcha" data-sitekey="51b06ce2-0f58-4148-8fec-b2944c54e718" style="margin-bottom: 1rem;"></div>
+              <button type="submit" class="btn btn-primary" style="width: 100%;" disabled={isLoading}>
+                {isLoading ? "PROCESSING..." : "Login"}
+              </button>
+            </form>
+          </>
+        )}
         <div style="margin-top: 2rem; text-align: center;">
           <a href="#" class="nav-link" onClick={e => { e.preventDefault(); setIsLogin(!isLogin); setAuthError(""); }}>
             {isLogin ? "No clearance? Register" : "Have clearance? Login"}

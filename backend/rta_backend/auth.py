@@ -111,30 +111,35 @@ async def auth_callback(request: Request):
 @limiter.limit("100/hour")
 async def signup(request: Request, data: SignupRequest):
     """Register a new user (requires hCaptcha)."""
-    if not TEST_MODE and not await verify_hcaptcha(data.captcha_token):
-        raise HTTPException(status_code=400, detail="hCaptcha verification failed")
-    
-    if not validate_password_strength(data.password):
-        raise HTTPException(status_code=400, detail="Password must be at least 10 characters long and contain at least one uppercase letter, one number, and one special character")
-    
-    try:
-        supabase_client = get_supabase_client()
-        res = supabase_client.auth.sign_up({
-            "email": data.email,
-            "password": data.password,
-            "options": {
-                "data": {
-                    "username": data.username
-                }
-            }
-        })
-        if not res.user:
-            raise HTTPException(status_code=400, detail="Signup failed - check credentials or email")
-            
-        upsert_profile(res.user.id, data.username)
-        return {"message": "Signup successful.", "user_id": res.user.id}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    # [DEPRECATED] Email signup is disabled to prevent abuse.
+    # if not TEST_MODE and not await verify_hcaptcha(data.captcha_token):
+    #     raise HTTPException(status_code=400, detail="hCaptcha verification failed")
+    # 
+    # if not validate_password_strength(data.password):
+    #     raise HTTPException(status_code=400, detail="Password must be at least 10 characters long and contain at least one uppercase letter, one number, and one special character")
+    # 
+    # try:
+    #     supabase_client = get_supabase_client()
+    #     res = supabase_client.auth.sign_up({
+    #         "email": data.email,
+    #         "password": data.password,
+    #         "options": {
+    #             "data": {
+    #                 "username": data.username
+    #             }
+    #         }
+    #     })
+    #     if not res.user:
+    #         raise HTTPException(status_code=400, detail="Signup failed")
+    #     upsert_profile(res.user.id, data.username)
+    #     return {"message": "Signup successful.", "user_id": res.user.id}
+    # except Exception as e:
+    #     raise HTTPException(status_code=400, detail=str(e))
+
+    raise HTTPException(
+        status_code=403, 
+        detail="Direct email signup is disabled. Please use 'Continue with GitHub' to create an account."
+    )
 
 @router.post("/login")
 @limiter.limit("100/hour")
