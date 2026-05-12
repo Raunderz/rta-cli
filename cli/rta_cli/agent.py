@@ -20,6 +20,8 @@ from rta_cli.functions.delete_file import delete_file, schema_delete_file
 from rta_cli.functions.create_dir import create_dir, schema_create_dir
 from rta_cli.functions.list_directory import list_directory, schema_list_directory
 from rta_cli.functions.semantic_search import semantic_search, schema_semantic_search
+from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_repo_skeleton
+from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command, get_build_command, schema_discovery
 from rta_cli.questions import ask_question, schema_question
 from rta_cli.git import (
@@ -47,6 +49,9 @@ AVAILABLE_TOOLS = [
         schema_create_dir,
         schema_list_directory,
         schema_semantic_search,
+        schema_get_repo_skeleton,
+        schema_get_diagnostics,
+        schema_go_to_definition,
         schema_question,
         schema_git_status,
         schema_git_diff,
@@ -174,6 +179,9 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "create_dir":        lambda: create_dir(workspace_dir, **args),
         "list_directory":    lambda: list_directory(workspace_dir, **args),
         "semantic_search":   lambda: semantic_search(workspace_dir, **args),
+        "get_repo_skeleton": lambda: get_repo_skeleton(workspace_dir),
+        "get_diagnostics":   lambda: get_diagnostics(workspace_dir, **args),
+        "go_to_definition":  lambda: go_to_definition(workspace_dir, **args),
         "question":          lambda: ask_question(workspace_dir, **args),
         "git_status":        lambda: git_status(workspace_dir),
         "git_diff":          lambda: git_diff(workspace_dir, **args),

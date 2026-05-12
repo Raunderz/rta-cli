@@ -48,6 +48,8 @@ Despite the UI diet, the engine is more powerful than ever. v0.3.0 introduces:
 - **Workspace Tracking**: Rta now remembers your last workspace and tracks it across sessions.
 - **AST-Aware Refactoring**: Surgical Python renames using `libcst`.
 - **Lean RAG (Semantic Search)**: A pure Python BM25 indexer that provides smart code search without heavy ML dependencies. No 100MB model downloads — just fast, local, keyword-relevance ranking.
+- **Repo Mapping (Skeleton)**: Automatically generates a high-level map of your project's architecture. The agent can "see" all classes and functions across your entire codebase in a single glance, making complex navigation trivial.
+- **Micro-LSP Bridge**: Seamlessly connects to existing language servers (Pyright, clangd, gopls) on your machine. Gives the agent deep understanding of type errors and the ability to "Go to Definition" across your entire project.
 
 ## The Raw Philosophy
 

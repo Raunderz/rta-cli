@@ -16,6 +16,7 @@ class BM25Indexer:
         self.storage_dir = os.path.join(_rta_dir(), "index", self.project_id)
         os.makedirs(self.storage_dir, exist_ok=True)
         self.index_file = os.path.join(self.storage_dir, "bm25_index.json")
+        self.skeleton_file = os.path.join(self.storage_dir, "skeleton.md")
         
         self.k1 = 1.5
         self.b = 0.75
@@ -128,6 +129,56 @@ class BM25Indexer:
             
             # Save actual state
             self._save_index()
+            self._generate_skeleton()
+
+    def _generate_skeleton(self):
+        """Generate a markdown skeleton of the project structure."""
+        skeleton = ["# Project Skeleton\n"]
+        processed_files = set()
+        
+        for doc in self.corpus:
+            file_path = doc["file_path"]
+            if not file_path.endswith((".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".cs", ".java", ".c", ".cpp", ".h", ".hpp")):
+                continue
+                
+            if file_path not in processed_files:
+                skeleton.append(f"## {file_path}")
+                processed_files.add(file_path)
+            
+            # Simple regex-based extraction
+            text = doc["text"]
+            patterns = [
+                r"^\s*(class\s+\w+)",           # Python/JS/Java/C#/C++ classes
+                r"^\s*(def\s+\w+\s*\(.*?\))",   # Python def
+                r"^\s*(function\s+\w+\s*\(.*?\))", # JS function
+                r"^\s*(const\s+\w+\s*=\s*\(.*?\)\s*=>)", # JS arrow function
+                r"^\s*(async\s+function\s+\w+)", # Async JS
+                r"^\s*(async\s+def\s+\w+)",     # Async Python
+                r"^\s*(func\s+(?:\(.*?\)\s+)?\w+\s*\(.*?\))", # Go functions
+                r"^\s*(fn\s+\w+\s*\(.*?\))",    # Rust functions
+                r"^\s*(pub\s+fn\s+\w+\s*\(.*?\))", # Rust public functions
+                r"^\s*(struct\s+\w+)",          # Rust/C/C++ structs
+                r"^\s*(impl\s+\w+)",            # Rust impl blocks
+                r"^\s*((?:static\s+|virtual\s+|inline\s+)?\w+[\w\s\*&]+::\w+\s*\(.*?\))", # C++ methods
+                r"^\s*((?:\w+\s+)+\w+\s*\(.*?\)\s*\{?)", # C/C++/Java/C# general functions (matches "int main()" etc)
+            ]
+            
+            for line in text.splitlines():
+                for p in patterns:
+                    match = re.search(p, line)
+                    if match:
+                        sig = match.group(1).strip()
+                        if f"- `{sig}`" not in skeleton:
+                            skeleton.append(f"- `{sig}`")
+        
+        with open(self.skeleton_file, "w") as f:
+            f.write("\n".join(skeleton))
+
+    def get_skeleton(self) -> str:
+        if os.path.exists(self.skeleton_file):
+            with open(self.skeleton_file, "r") as f:
+                return f.read()
+        return "Skeleton not generated yet. Run indexing first."
 
     def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         query_tokens = self._tokenize(query)
