@@ -26,7 +26,7 @@ def grep_search(working_directory, pattern, path=".", timeout=30, allow_ignored=
                 else:
                     command.append(f"--exclude={p}")
 
-        output = subprocess.run(command, capture_output=True, text=True, timeout=timeout)...
+        output = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
         if output.returncode == 0:
             return output.stdout
         elif output.returncode == 1:

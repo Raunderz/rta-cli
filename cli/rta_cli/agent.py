@@ -19,6 +19,7 @@ from rta_cli.functions.apply_diff import apply_diff, schema_apply_diff
 from rta_cli.functions.delete_file import delete_file, schema_delete_file
 from rta_cli.functions.create_dir import create_dir, schema_create_dir
 from rta_cli.functions.list_directory import list_directory, schema_list_directory
+from rta_cli.functions.list_skills import list_skills, schema_list_skills
 from rta_cli.functions.semantic_search import semantic_search, schema_semantic_search
 from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_repo_skeleton
 from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
@@ -46,8 +47,8 @@ AVAILABLE_TOOLS = [
         schema_edit_file_ast,
         schema_apply_diff,
         schema_delete_file,
-        schema_create_dir,
         schema_list_directory,
+        schema_list_skills,
         schema_semantic_search,
         schema_get_repo_skeleton,
         schema_get_diagnostics,
@@ -178,6 +179,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "delete_file":      lambda: delete_file(workspace_dir, **args, force=force),
         "create_dir":        lambda: create_dir(workspace_dir, **args),
         "list_directory":    lambda: list_directory(workspace_dir, **args),
+        "list_skills":       lambda: list_skills(workspace_dir),
         "semantic_search":   lambda: semantic_search(workspace_dir, **args),
         "get_repo_skeleton": lambda: get_repo_skeleton(workspace_dir),
         "get_diagnostics":   lambda: get_diagnostics(workspace_dir, **args),
@@ -471,29 +473,48 @@ def stream_agent(
             
             max_retries = 2
             allow_ignored = False
+            allow_hidden = False
             
             for attempt in range(max_retries + 1):
-                # Pass allow_ignored if it's been granted
+                # Pass flags if they've been granted
                 if allow_ignored:
                     args["allow_ignored"] = True
+                if allow_hidden:
+                    args["allow_hidden"] = True
 
                 result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout, force=force_flag)
                 content = str(result["functionResponse"]["response"]["content"])
                 
                 # Check for permission requirement
                 if "(PERMISSION_REQUIRED)" in content and not force_flag:
-                    path_match = content.split("Error : ")[1].split(" is ignored")[0] if "Error : " in content else "this file"
+                    path_match = content.split("Error : ")[1].split(" is ignored")[0] if "Error : " in content else "this path"
                     console.print(f"\n[bold yellow][?] The agent wants to access ignored path: {path_match}[/bold yellow]")
                     choice = console.input("[bold]Allow access? (y/N): [/bold]").strip().lower()
                     if choice == 'y':
                         allow_ignored = True
-                        continue # Retry with allow_ignored=True
+                        continue # Retry
                     else:
                         return {
                             "role": "tool",
                             "tool_call_id": call_id,
                             "name": name,
                             "content": f"Error: Permission denied by user to access ignored path: {path_match}",
+                        }
+
+                if "(HIDDEN_CONTENT_PERMISSION_REQUIRED)" in content and not force_flag:
+                    skill_name = content.split("Skill '")[1].split("' contains")[0] if "Skill '" in content else "this skill"
+                    console.print(f"\n[bold red][!] SECURITY WARNING: Skill '{skill_name}' contains hidden HTML comments.[/bold red]")
+                    console.print("[dim]Hidden content can be used for malicious prompt injection.[/dim]")
+                    choice = console.input("[bold]Activate anyway? (y/N): [/bold]").strip().lower()
+                    if choice == 'y':
+                        allow_hidden = True
+                        continue # Retry
+                    else:
+                        return {
+                            "role": "tool",
+                            "tool_call_id": call_id,
+                            "name": name,
+                            "content": f"Error: Activation denied by user for skill '{skill_name}' due to hidden content.",
                         }
 
                 # Check for transient failure (timeout)

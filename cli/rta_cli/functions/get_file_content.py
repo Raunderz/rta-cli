@@ -13,8 +13,8 @@ def get_file_contents(working_directory,file_path, allow_ignored=False):
     if gf.is_ignored(abs_file_path, allow_ignored=allow_ignored):
         return f"Error : {file_path} is ignored by .gitignore. (PERMISSION_REQUIRED)"
 
-    if not os.path.isfile(abs_file_path):        return f"Error : {file_path} is not a file"
-...
+    if not os.path.isfile(abs_file_path):
+        return f"Error : {file_path} is not a file"
 
     try:
         with open(abs_file_path,"r") as f:
