@@ -23,6 +23,7 @@ from rta_cli.functions.list_skills import list_skills, schema_list_skills
 from rta_cli.functions.semantic_search import semantic_search, schema_semantic_search
 from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_repo_skeleton
 from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
+from rta_cli.mcp.search import web_search, schema_web_search
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command, get_build_command, schema_discovery
 from rta_cli.questions import ask_question, schema_question
 from rta_cli.git import (
@@ -60,6 +61,7 @@ AVAILABLE_TOOLS = [
         schema_git_commit,
         schema_git_create_pr,
         schema_git_branch,
+        schema_web_search,
     ]
 ]
 
@@ -157,6 +159,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_commit": 60,
         "git_create_pr": 120,
         "git_branch": 10,
+        "web_search": 30,
     }
     
     timeout = TIMEOUTS.get(name, 10)
@@ -191,6 +194,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_commit":        lambda: git_commit(workspace_dir, **args, force=force),
         "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
         "git_branch":        lambda: git_branch(workspace_dir, **args),
+        "web_search":        lambda: web_search(**args),
     }
 
     fn = dispatch.get(name)
