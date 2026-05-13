@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'preact/hooks';
 import Dashboard from './dashboard.jsx';
 import { Router, Route, Link, useLocation, Switch } from 'wouter';
 import { BlogPage } from './blog.jsx';
+import { Analytics } from "@vercel/analytics/react";
+
 
 const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
   const rotations = [0, 45, 90, 135, 180, 225, 270, 315];
@@ -784,7 +786,9 @@ const App = () => {
         </Router>
       </main>
       <AppFooter />
+      <Analytics />
     </div>
+
   );
 };
 
