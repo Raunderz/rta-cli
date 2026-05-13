@@ -24,6 +24,8 @@ from rta_cli.functions.semantic_search import semantic_search, schema_semantic_s
 from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_repo_skeleton
 from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
 from rta_cli.mcp.search import web_search, schema_web_search
+from rta_cli.mcp.sequential_thinking import sequential_thinking, schema_sequential_thinking
+from rta_cli.mcp.memory import memorize, recall, forget, schema_memorize, schema_recall, schema_forget
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command, get_build_command, schema_discovery
 from rta_cli.questions import ask_question, schema_question
 from rta_cli.git import (
@@ -62,8 +64,21 @@ AVAILABLE_TOOLS = [
         schema_git_create_pr,
         schema_git_branch,
         schema_web_search,
+        schema_sequential_thinking,
+        schema_memorize,
+        schema_recall,
+        schema_forget,
     ]
 ]
+
+READ_ONLY_TOOLS = {
+    "get_files_info", "get_file_contents", "grep_search", "glob_search",
+    "list_directory", "discover_project", "get_repo_skeleton", "semantic_search",
+    "get_diagnostics", "go_to_definition",
+    "web_search", "sequential_thinking", "recall",
+    "git_status", "git_diff", "git_log",
+    "question",
+}
 
 ERROR_MESSAGES = {
     401: "Invalid or expired API key. Run: rta login",
@@ -135,9 +150,17 @@ def _run_auto_lint(workspace_dir: str) -> str | None:
         return None
 
 
-def call_function(function_call: dict, workspace_dir: str, default_timeout: int = 120, force: bool = False) -> dict:
+def call_function(function_call: dict, workspace_dir: str, default_timeout: int = 120, force: bool = False, read_only: bool = False) -> dict:
     name = function_call.get("name")
     args = function_call.get("args", {})
+
+    if read_only and name not in READ_ONLY_TOOLS:
+        return {
+            "functionResponse": {
+                "name": name,
+                "response": {"name": name, "content": f"Blocked: '{name}' is not available in review mode. Only read-only tools are allowed."},
+            }
+        }
 
     # Plan 2.3: Per-tool timeouts
     TIMEOUTS = {
@@ -160,6 +183,10 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_create_pr": 120,
         "git_branch": 10,
         "web_search": 30,
+        "sequential_thinking": 30,
+        "memorize": 10,
+        "recall": 10,
+        "forget": 10,
     }
     
     timeout = TIMEOUTS.get(name, 10)
@@ -195,6 +222,10 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
         "git_branch":        lambda: git_branch(workspace_dir, **args),
         "web_search":        lambda: web_search(**args),
+        "sequential_thinking": lambda: sequential_thinking(**args),
+        "memorize":          lambda: memorize(**args),
+        "recall":            lambda: recall(**args),
+        "forget":            lambda: forget(**args),
     }
 
     fn = dispatch.get(name)
@@ -331,6 +362,7 @@ def stream_agent(
     turn_index: int = 0,
     timeout: int = 120,
     force: bool = False,
+    read_only: bool = False,
 ) -> Generator[dict, None, None]:
     """
     Agentic loop. Each iteration:
@@ -377,9 +409,10 @@ def stream_agent(
         stream_usage = {}
         stream_error = None
 
+        tools = [t for t in AVAILABLE_TOOLS if not read_only or t["function"]["name"] in READ_ONLY_TOOLS]
         for event in _call_backend_stream(
             messages=messages,
-            tools=AVAILABLE_TOOLS,
+            tools=tools,
             workspace_path=workspace_dir,
             api_key=api_key,
             session_id=session_id,
@@ -460,7 +493,7 @@ def stream_agent(
         if current_group:
             groups.append(("parallel", current_group))
 
-        def execute_one(tc, force_flag=False):
+        def execute_one(tc, force_flag=False, read_only_flag=False):
             fn = tc.get("function", {})
             name = fn.get("name")
             call_id = tc.get("id", "call_unknown")
@@ -486,7 +519,7 @@ def stream_agent(
                 if allow_hidden:
                     args["allow_hidden"] = True
 
-                result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout, force=force_flag)
+                result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout, force=force_flag, read_only=read_only_flag)
                 content = str(result["functionResponse"]["response"]["content"])
                 
                 # Check for permission requirement
@@ -545,14 +578,14 @@ def stream_agent(
                     yield {"type": "tool_start", "content": name, "arguments": args}
                 
                 with ThreadPoolExecutor(max_workers=min(len(group_tcs), 10)) as executor:
-                    results = list(executor.map(lambda tc: execute_one(tc, force), group_tcs))
+                    results = list(executor.map(lambda tc: execute_one(tc, force, read_only), group_tcs))
                     messages.extend(results)
             else:
                 for tc in group_tcs:
                     name = tc.get("function", {}).get("name")
                     args = tc.get("function", {}).get("arguments", "{}")
                     yield {"type": "tool_start", "content": name, "arguments": args}
-                    res = execute_one(tc, force)
+                    res = execute_one(tc, force, read_only)
                     messages.append(res)
 
     yield {"type": "error", "content": "Max iterations reached."}
