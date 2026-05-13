@@ -1,61 +1,71 @@
 import os
-import sys
+import fnmatch
+from typing import List, Optional
 
-from rta_cli.ui import Console
-console = Console()
+class GitignoreFilter:
+    def __init__(self, root_dir: str):
+        self.root_dir = os.path.abspath(root_dir)
+        self.patterns: List[str] = []
+        self._load_gitignore()
 
+    def _load_gitignore(self):
+        # Default patterns to always ignore
+        self.patterns = ['.git/', '.rta/', '__pycache__/', '*.pyc']
+        
+        gitignore_path = os.path.join(self.root_dir, '.gitignore')
+        if os.path.exists(gitignore_path):
+            with open(gitignore_path, 'r') as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith('#'):
+                        # Normalize pattern for fnmatch
+                        self.patterns.append(line)
 
-_active_status = None
+    def is_ignored(self, path: str, allow_ignored: bool = False) -> bool:
+        """
+        Check if a path is ignored by .gitignore patterns.
+        'path' should be relative to self.root_dir or absolute.
+        """
+        if allow_ignored:
+            return False
 
+        if os.path.isabs(path):
+            rel_path = os.path.relpath(path, self.root_dir)
+        else:
+            rel_path = path
 
-def set_active_status(status):
-    global _active_status
-    _active_status = status
+        # Normalize path separators
+        rel_path = rel_path.replace(os.sep, '/')
+        
+        parts = rel_path.split('/')
+        
+        for i in range(len(parts)):
+            subpath = '/'.join(parts[:i+1])
+            is_dir = (i < len(parts) - 1) or os.path.isdir(os.path.join(self.root_dir, rel_path))
+            
+            for pattern in self.patterns:
+                # Handle directory-only patterns (ending with /)
+                if pattern.endswith('/'):
+                    if not is_dir:
+                        continue
+                    clean_pattern = pattern[:-1]
+                else:
+                    clean_pattern = pattern
 
-
-def confirm_destructive(action, path, force=False):
-    if force:
-        return True
-
-    msg = {
-        "delete_file": f"Delete {path}?",
-        "delete_dir": f"Delete {path} and contents?",
-        "run_dangerous": f"Run potentially dangerous command?",
-    }.get(action, f"Confirm {action}?")
-
-    global _active_status
-    if _active_status:
-        _active_status.stop()
-
-    try:
-        response = console.input(
-            f"\n[bold red]\u26a0 WARNING:[/bold red] {msg}\n"
-            f"[yellow]Type 'yes' to confirm, 'no' to cancel: [/yellow]"
-        )
-        return response.lower().strip() in ("yes", "y")
-    except (KeyboardInterrupt, EOFError):
+                # Check if the subpath or just the current part matches the pattern
+                if fnmatch.fnmatch(subpath, clean_pattern) or \
+                   fnmatch.fnmatch(parts[i], clean_pattern) or \
+                   fnmatch.fnmatch(subpath, f"*/{clean_pattern}"):
+                    return True
         return False
-    finally:
-        if _active_status:
-            _active_status.start()
 
-
-def is_dangerous_command(command):
-    dangerous_patterns = [
-        "rm -rf",
-        "rm -r",
-        "del /f",
-        "del /s",
-        "format ",
-        "mkfs",
-        "dd ",
-        "> /dev/sd",
-        ":(){ :|:& };:",
-        "chmod -R 777",
-        "chown -R",
-    ]
-    cmd_clean = command.lower().strip()
-    for pattern in dangerous_patterns:
-        if pattern in cmd_clean:
-            return True
-    return False
+    def filter_paths(self, paths: List[str], base_dir: Optional[str] = None) -> List[str]:
+        """Filter a list of paths (relative to base_dir or root_dir)."""
+        filtered = []
+        for p in paths:
+            full_path = p
+            if base_dir:
+                full_path = os.path.join(base_dir, p)
+            if not self.is_ignored(full_path):
+                filtered.append(p)
+        return filtered

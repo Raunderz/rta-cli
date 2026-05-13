@@ -1,14 +1,20 @@
 import os
 from rta_cli.config import MAX_CHARS
+from rta_cli.safety import GitignoreFilter
 
-def get_file_contents(working_directory,file_path):
+def get_file_contents(working_directory,file_path, allow_ignored=False):
     abs_working_dir = os.path.abspath(working_directory)
     abs_file_path = os.path.abspath(os.path.join(working_directory,file_path))
+    gf = GitignoreFilter(abs_working_dir)
+
     if not abs_file_path.startswith(abs_working_dir):
         return f"Error : {file_path} is not in the working directory"
-    if not os.path.isfile(abs_file_path):
-        return f"Error : {file_path} is not a file"
-    
+
+    if gf.is_ignored(abs_file_path, allow_ignored=allow_ignored):
+        return f"Error : {file_path} is ignored by .gitignore. (PERMISSION_REQUIRED)"
+
+    if not os.path.isfile(abs_file_path):        return f"Error : {file_path} is not a file"
+...
 
     try:
         with open(abs_file_path,"r") as f:

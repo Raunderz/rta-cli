@@ -1,7 +1,9 @@
 import os
+from rta_cli.safety import GitignoreFilter
 
-def list_directory(working_directory, dir_path=""):
+def list_directory(working_directory, dir_path="", allow_ignored=False):
     abs_working_dir = os.path.abspath(working_directory)
+    gf = GitignoreFilter(abs_working_dir)
     abs_dir_path = os.path.abspath(os.path.join(working_directory, dir_path))
     if not abs_dir_path.startswith(abs_working_dir):
         return f"Error: {dir_path} is not in the working directory"
@@ -13,6 +15,9 @@ def list_directory(working_directory, dir_path=""):
         result = []
         for entry in sorted(entries):
             entry_path = os.path.join(abs_dir_path, entry)
+            if gf.is_ignored(entry_path, allow_ignored=allow_ignored):
+                continue
+                
             if os.path.isdir(entry_path):
                 result.append(f"{entry}/")
             else:

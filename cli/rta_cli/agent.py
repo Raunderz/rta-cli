@@ -466,11 +466,36 @@ def stream_agent(
                 pass
 
             import time as _time
+            from rta_cli.ui import Console
+            console = Console()
+            
             max_retries = 2
+            allow_ignored = False
+            
             for attempt in range(max_retries + 1):
+                # Pass allow_ignored if it's been granted
+                if allow_ignored:
+                    args["allow_ignored"] = True
+
                 result = call_function({"name": name, "args": args}, workspace_dir, default_timeout=timeout, force=force_flag)
                 content = str(result["functionResponse"]["response"]["content"])
                 
+                # Check for permission requirement
+                if "(PERMISSION_REQUIRED)" in content and not force_flag:
+                    path_match = content.split("Error : ")[1].split(" is ignored")[0] if "Error : " in content else "this file"
+                    console.print(f"\n[bold yellow][?] The agent wants to access ignored path: {path_match}[/bold yellow]")
+                    choice = console.input("[bold]Allow access? (y/N): [/bold]").strip().lower()
+                    if choice == 'y':
+                        allow_ignored = True
+                        continue # Retry with allow_ignored=True
+                    else:
+                        return {
+                            "role": "tool",
+                            "tool_call_id": call_id,
+                            "name": name,
+                            "content": f"Error: Permission denied by user to access ignored path: {path_match}",
+                        }
+
                 # Check for transient failure (timeout)
                 is_transient = "timed out" in content.lower()
                 
