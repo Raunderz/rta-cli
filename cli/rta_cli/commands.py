@@ -80,11 +80,44 @@ def whoami():
     """Show logged-in user info"""
     from rta_cli.auth import do_whoami
     do_whoami()
-
 def status():
     """Show usage stats (calls today, quota left)"""
     from rta_cli.auth import do_status
     do_status()
+
+def skill(args):
+    """Manage specialized skills"""
+    from rta_cli.skills import list_available_skills, load_skill_content
+
+    if not args.subcommand or args.subcommand == "list":
+        skills = list_available_skills()
+        if not skills:
+            console.print("[yellow]No skills installed. Add folders to ~/.rta/skills/[/yellow]")
+            return
+        console.print("\n[bold]Installed Skills[/bold]")
+        console.print("-" * 60)
+        for s in skills:
+            console.print(f"[cyan]{s['name']:<15}[/] | {s['description']}")
+    elif args.subcommand == "info":
+        if not args.name:
+            console.print("[red]Error: Skill name required. (rta skill info <name>)[/red]")
+            return
+        content = load_skill_content(args.name)
+        if content:
+            console.print(f"\n[bold]Skill: {args.name}[/bold]\n")
+            console.print(content)
+        else:
+            console.print(f"[red]Skill '{args.name}' not found.[/red]")
+    elif args.subcommand == "load":
+        if not args.name:
+            console.print("[red]Error: Skill name required. (rta skill load <name>)[/red]")
+            return
+        content = load_skill_content(args.name)
+        if content:
+            # We return the content so chat.py can catch it
+            return content
+        else:
+            console.print(f"[red]Skill '{args.name}' not found.[/red]")
 
 class RtaParser(argparse.ArgumentParser):
     def error(self, message):
@@ -135,6 +168,11 @@ def main():
     p_clone = subparsers.add_parser("clone", help="Clone a repository")
     p_clone.add_argument("repo_url", help="Repository URL to clone")
 
+    # skill
+    p_skill = subparsers.add_parser("skill", help="Manage specialized skills")
+    p_skill.add_argument("subcommand", nargs="?", choices=["list", "info", "load"], default="list")
+    p_skill.add_argument("name", nargs="?", help="Skill name for 'info' or 'load' command")
+
     # auth commands
     subparsers.add_parser("login", help="Authenticate with your Rta API key")
     subparsers.add_parser("logout", help="Remove stored API key")
@@ -163,6 +201,8 @@ def main():
         init(args.project_name)
     elif args.command == "clone":
         clone(args.repo_url)
+    elif args.command == "skill":
+        skill(args)
     elif args.command == "login":
         login()
     elif args.command == "logout":

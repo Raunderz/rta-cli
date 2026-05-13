@@ -178,7 +178,7 @@ class RtaChat:
             console.print("\n[bold #ff4444]  (Press Ctrl+C again to exit)[/bold #ff4444]")
 
     def handle_slash_command(self, command_str):
-        from rta_cli.commands import app
+        from rta_cli.commands import main as rta_main
         parts = command_str[1:].split()
         if not parts: return
         cmd_name = parts[0].lower()
@@ -188,7 +188,12 @@ class RtaChat:
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
             console.print("  /clear         - Clear chat history & screen")
             console.print("  /cclear        - Clear conversation context only")
+            console.print("  /skill list    - List available skills")
+            console.print("  /skill load <n>- Inject skill instructions")
+            console.print("  /status        - Show usage statistics")
             console.print("  /exit          - Exit the chat\n")
+            
+            console.print("[dim]You can also run any Rta CLI command here (e.g., /skill info, /status)[/dim]\n")
             return
 
         if cmd_name in ["clear", "cls"]:
@@ -214,8 +219,25 @@ class RtaChat:
         try:
             orig_argv = sys.argv
             sys.argv = ["rta", cmd_name] + args
-            app()
+            result = rta_main()
             sys.argv = orig_argv
+            
+            # Special case for /skill load
+            if cmd_name == "skill" and args and args[0] == "load" and result:
+                skill_name = args[1] if len(args) > 1 else "unknown"
+                # Check for hidden content first
+                from rta_cli.skills import has_hidden_content
+                if has_hidden_content(result):
+                    console.print(f"\n[bold red][!] SECURITY WARNING: Skill '{skill_name}' contains hidden HTML comments.[/bold red]")
+                    console.print("[dim]Hidden content can be used for malicious prompt injection.[/dim]")
+                    choice = console.input("[bold]Load anyway? (y/N): [/bold]").strip().lower()
+                    if choice != 'y':
+                        console.print("[yellow]Skill loading cancelled.[/yellow]")
+                        return
+                
+                # Inject into system prompt or as a system message
+                self.messages.append({"role": "system", "content": f"<activated_skill name=\"{skill_name}\">\n{result}\n</activated_skill>"})
+                console.print(f"[bold green]Skill '{skill_name}' loaded successfully.[/bold green]")
         except SystemExit: pass
         except Exception as e: console.print(f"[red]Error: {e}[/red]")
 
