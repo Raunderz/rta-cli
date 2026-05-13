@@ -68,6 +68,7 @@ class RtaChat:
         self.timeout = timeout
         self.force = force
         self.privacy = privacy
+        self.review_mode = False
 
         # Project Discovery on startup
         from rta_cli.discovery import discover_project
@@ -188,6 +189,7 @@ class RtaChat:
             console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
             console.print("  /clear         - Clear chat history & screen")
             console.print("  /cclear        - Clear conversation context only")
+            console.print("  /review        - Toggle review mode (read-only tools only)")
             console.print("  /skill list    - List available skills")
             console.print("  /skill load <n>- Inject skill instructions")
             console.print("  /status        - Show usage statistics")
@@ -209,6 +211,22 @@ class RtaChat:
             from rta_cli.context import clear_context
             clear_context(self.workspace)
             console.print("[bold green]Conversation context cleared.[/bold green]")
+            return
+
+        if cmd_name == "review":
+            self.review_mode = not self.review_mode
+            if self.review_mode:
+                for msg in self.messages:
+                    if msg.get("role") == "system":
+                        msg["content"] += "\n\n**REVIEW MODE ACTIVE**\nYou are in code review mode. You may ONLY use read-only tools (get_file_contents, glob_search, grep_search, etc.). Writing, editing, deleting, and running commands are BLOCKED. Analyze the codebase and provide a PR-style critique with line-specific suggestions."
+                        break
+                console.print("[bold yellow]Review mode ON — mutating tools are blocked.[/bold yellow]")
+            else:
+                for msg in self.messages:
+                    if msg.get("role") == "system":
+                        msg["content"] = msg["content"].replace("\n\n**REVIEW MODE ACTIVE**\nYou are in code review mode. You may ONLY use read-only tools (get_file_contents, glob_search, grep_search, etc.). Writing, editing, deleting, and running commands are BLOCKED. Analyze the codebase and provide a PR-style critique with line-specific suggestions.", "")
+                        break
+                console.print("[bold green]Review mode OFF — all tools available.[/bold green]")
             return
 
         if cmd_name == "load_history":
@@ -314,6 +332,7 @@ class RtaChat:
                         turn_index=self.turn_index,
                         timeout=self.timeout,
                         force=self.force,
+                        read_only=self.review_mode,
                     )
                     
                     for event in gen:
