@@ -1,21 +1,21 @@
 :root {
-  --bg-deep: #0C0A09;
-  --bg-surface: #161312;
-  --bg-elevated: #1D1A17;
-  --bg-card: #1A1714;
-  --text-primary: #F5F0EA;
-  --text-secondary: #A0988A;
-  --text-muted: #7A7266;
-  --accent: #D4A26A;
-  --accent-soft: #B8926A;
-  --accent-glow: rgba(212, 162, 106, 0.12);
-  --border: #2A2520;
-  --border-light: rgba(245, 240, 234, 0.06);
-  --red: #E85D4A;
-  --red-soft: rgba(232, 93, 74, 0.12);
+  --bg-deep: #FAF7F2;
+  --bg-surface: #FFFFFF;
+  --bg-elevated: #F2EFE9;
+  --bg-card: #FFFFFF;
+  --text-primary: #2C2A29;
+  --text-secondary: #635E59;
+  --text-muted: #9A938C;
+  --accent: #D26A4A;
+  --accent-soft: #E89E88;
+  --accent-glow: rgba(210, 106, 74, 0.12);
+  --border: #E8E4DB;
+  --border-light: rgba(44, 42, 41, 0.06);
+  --red: #C94B4B;
+  --red-soft: rgba(201, 75, 75, 0.12);
 
-  --font-display: 'Playfair Display', Georgia, serif;
-  --font-body: 'DM Sans', system-ui, sans-serif;
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-body: 'Manrope', system-ui, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   --space-2xs: clamp(0.5rem, 1.5vw, 0.75rem);
@@ -331,7 +331,7 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   padding: 0 1rem;
   gap: 0.5rem;
-  background: rgba(255,255,255,0.02);
+  background: rgba(0,0,0,0.02);
   flex-shrink: 0;
 }
 

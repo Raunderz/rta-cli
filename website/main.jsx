@@ -248,7 +248,7 @@ const TerminalDemo = () => {
     const agentMsg = async (msg) => {
       await sleep(600);
       if (!isRunning || !terminalRef.current) return;
-      const line = el('div', "color: var(--text-primary); margin-top: 0.4rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.03); border-left: 2px solid var(--accent); font-size: 10px; line-height: 1.5;");
+      const line = el('div', "color: var(--text-primary); margin-top: 0.4rem; padding: 0.5rem; background: rgba(0, 0, 0, 0.03); border-left: 2px solid var(--accent); font-size: 10px; line-height: 1.5;");
       terminalRef.current.appendChild(line);
       for (let char of msg) {
         if (!isRunning) return;
@@ -346,11 +346,11 @@ const Hero = () => (
     <div class="container" style="width:100%;">
       <div class="hero-grid">
         <div class="hero-content">
-          <h1>BUILD <br /> FASTER.</h1>
-          <p>High-performance code editing and automation for modern engineering teams. Engineered for precision.</p>
+          <h1 style={{ fontStyle: 'normal' }}>Code <br /> anywhere.</h1>
+          <p>Your AI coding workspace in your pocket. Build, preview, and iterate on any device—no powerful machine required.</p>
           <div class="hero-actions">
-            <Link href="/auth" class="btn btn-primary">Initialize Core</Link>
-            <Link href="/releases" class="btn">View Logs</Link>
+            <Link href="/auth" class="btn btn-primary">Start Building for Free</Link>
+            <Link href="/releases" class="btn">Download App</Link>
           </div>
         </div>
         <TerminalDemo />
@@ -361,16 +361,16 @@ const Hero = () => (
 
 const FeaturesSection = () => {
   const features = [
-    { id: "01", title: "Native Git", desc: "Pure mobile Git implementation. No proxies, just performance." },
-    { id: "02", title: "AI Assisted", desc: "Context-aware code generation. Zero learning curve." },
-    { id: "03", title: "Local First", desc: "Lightning fast with zero round-trips. Works entirely offline." }
+    { id: "01", title: "Freedom to roam", desc: "Code from a hillside or a cafe. Your entire dev environment lives in the cloud." },
+    { id: "02", title: "Your AI partner", desc: "Describe your idea in plain language and watch it become real code in minutes." },
+    { id: "03", title: "Seamless transition", desc: "Start on your phone, finish on your laptop. Perfect sync across all your devices." }
   ];
 
   return (
     <section class="features container">
       <div class="section-header">
-        <h2>Architecture</h2>
-        <p class="mono">System Capabilities</p>
+        <h2 style={{ fontStyle: 'normal' }}>Mobility</h2>
+        <p class="mono">Unbound Creativity</p>
       </div>
       <div class="features-grid">
         {features.map(f => (
@@ -403,8 +403,8 @@ const PricingPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2>Deployment</h2>
-        <p class="mono">Allocate Resources</p>
+        <h2 style={{ fontStyle: 'normal' }}>Pricing</h2>
+        <p class="mono">Accessible to everyone</p>
       </div>
       <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
         <button class={`btn ${currency === 'USD' ? 'btn-primary' : ''}`} onClick={() => setCurrency('USD')}>USD</button>
@@ -429,14 +429,26 @@ const PricingPage = () => {
 const StatusPage = () => {
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [backupStatus, setBackupStatus] = useState(null);
+  const [backupLoading, setBackupLoading] = useState(true);
 
   useEffect(() => {
+    // Primary Server
     fetch(`${API_BASE_URL}/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
       .then(res => res.json())
       .then(data => { setStatus(data); setLoading(false); })
       .catch(() => {
         setStatus({ status: "offline", services: { database: "offline", api: "offline", proxy: "offline" } });
         setLoading(false);
+      });
+
+    // Backup Server
+    fetch(`https://rta-tb0k.onrender.com/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
+      .then(res => res.json())
+      .then(data => { setBackupStatus(data); setBackupLoading(false); })
+      .catch(() => {
+        setBackupStatus({ status: "offline", services: { database: "offline", api: "offline", proxy: "offline" } });
+        setBackupLoading(false);
       });
   }, []);
 
@@ -448,12 +460,14 @@ const StatusPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2>Telemetry</h2>
-        <p class="mono">System Integrity</p>
+        <h2 style={{ fontStyle: 'normal' }}>Status</h2>
+        <p class="mono">Always online</p>
       </div>
-      <div class="status-board">
+
+      {/* Primary Server */}
+      <div class="status-board" style={{ marginBottom: '2rem' }}>
         <div class="status-header">
-          <span class="mono">Global Status</span>
+          <span class="mono">Primary Server</span>
           {loading ? <span class="mono">Checking...</span> : getBadge(status?.status)}
         </div>
         <div class="status-row">
@@ -475,6 +489,33 @@ const StatusPage = () => {
           </span>
         </div>
       </div>
+
+      {/* Backup Server */}
+      <div class="status-board">
+        <div class="status-header">
+          <span class="mono">Backup Server (Render)</span>
+          {backupLoading ? <span class="mono">Checking...</span> : getBadge(backupStatus?.status)}
+        </div>
+        <div class="status-row">
+          <span class="mono">API Endpoint</span>
+          <span class="mono" style={{ color: backupStatus?.services?.api === 'operational' ? '#5BB881' : 'var(--red)' }}>
+            {backupLoading ? "..." : backupStatus?.services?.api?.toUpperCase()}
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="mono">Database Cluster</span>
+          <span class="mono" style={{ color: backupStatus?.services?.database === 'operational' ? '#5BB881' : 'var(--red)' }}>
+            {backupLoading ? "..." : backupStatus?.services?.database?.toUpperCase()}
+          </span>
+        </div>
+        <div class="status-row">
+          <span class="mono">Proxy Mesh</span>
+          <span class="mono" style={{ color: backupStatus?.services?.proxy === 'operational' ? '#5BB881' : 'var(--red)' }}>
+            {backupLoading ? "..." : backupStatus?.services?.proxy?.toUpperCase()}
+          </span>
+        </div>
+      </div>
+
       {!loading && status?.version && (
         <p class="mono" style="font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center;">
           v{status.version} &middot; Last check: {new Date(status.timestamp * 1000).toLocaleTimeString()}
@@ -640,7 +681,7 @@ const ReleasesPage = () => {
             <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(212, 162, 106, 0.15);">
               <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; max-width: 100%; display: block;" />
             </div>
-            <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);">
+            <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(0, 0, 0, 0.03); border: 1px solid var(--border); border-radius: 8px;">
               <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
                 [Classified] Mobile deployment is restricted to Chat & Telemetry.
                 Full Autonomous Agent capabilities (Code Execution/Refactoring) remain exclusive to CLI & Desktop nodes.
