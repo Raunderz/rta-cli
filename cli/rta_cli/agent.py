@@ -35,7 +35,7 @@ from rta_cli.git import (
     schema_git_create_pr, schema_git_branch,
 )
 
-CLI_VERSION = "0.3.0"
+CLI_VERSION = "0.4.0"
 
 _NATIVE_TOOLS = [
     schema_discovery,
