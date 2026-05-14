@@ -44,6 +44,43 @@
     height: 100vh;
 }
 
+@media (max-width: 1024px) {
+    .app-shell {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+    }
+
+    .sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border);
+        padding: 20px;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        position: sticky;
+        top: 0;
+        z-index: 100;
+        height: auto;
+    }
+
+    .sidebar-logo {
+        margin-bottom: 0;
+    }
+
+    .nav-group {
+        display: none; /* Hide sidebar nav on mobile for now, or use a dropdown */
+    }
+
+    .sidebar div:last-child {
+        margin-top: 0 !important;
+    }
+    
+    .main-canvas {
+        padding: 24px;
+    }
+}
+
 /* Sidebar */
 .sidebar {
     background: var(--bg);
@@ -114,6 +151,25 @@
     max-width: 1000px;
     width: 100%;
     margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+    .content-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .api-well {
+        grid-column: span 1 !important;
+    }
+
+    .card {
+        grid-column: span 1 !important;
+    }
+    
+    .metric-value {
+        font-size: 18px;
+    }
 }
 
 /* Cards */
