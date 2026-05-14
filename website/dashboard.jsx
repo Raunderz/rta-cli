@@ -180,12 +180,12 @@ const ChatView = ({ user }) => {
                 {messages.length === 0 ? (
                     <div style="text-align: center; color: var(--text-muted); flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;">
                         <Icon d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" size="48" />
-                        <h2 style="margin: 0; font-size: 18px; color: var(--text);">Project Planner</h2>
+                        <h2 style="margin: 0; font-size: 18px; color: var(--text-primary);">Project Planner</h2>
                         <p style="margin: 0; font-size: 13px;">Share your project idea to get a phase-wise implementation plan.</p>
                     </div>
                 ) : (
                     messages.map((m, i) => (
-                        <div key={i} style={`align-self: ${m.role === 'user' ? 'flex-end' : 'flex-start'}; max-width: 80%; background: ${m.role === 'user' ? 'var(--primary)' : 'transparent'}; color: ${m.role === 'user' ? 'white' : 'var(--text)'}; padding: 12px 16px; border-radius: 8px; font-family: var(--font-sans); ${m.role !== 'user' ? 'border: 1px solid var(--border);' : ''}`}>
+                        <div key={i} style={`align-self: ${m.role === 'user' ? 'flex-end' : 'flex-start'}; max-width: 80%; background: ${m.role === 'user' ? 'var(--accent)' : 'transparent'}; color: ${m.role === 'user' ? 'var(--bg-deep)' : 'var(--text-primary)'}; padding: 12px 16px; border-radius: 8px; font-family: var(--font-body); ${m.role !== 'user' ? 'border: 1px solid var(--border);' : ''}`}>
                             {m.role === 'user' ? (
                                 <div style="white-space: pre-wrap;">{m.content}</div>
                             ) : (
@@ -197,9 +197,9 @@ const ChatView = ({ user }) => {
                 {isTyping && <div style="align-self: flex-start; color: var(--text-muted); font-size: 14px;">Thinking...</div>}
             </div>
             <div style="padding: 20px; border-top: 1px solid var(--border);">
-                <div style="display: flex; gap: 8px; background: var(--bg-alt); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
+                <div style="display: flex; gap: 8px; background: var(--bg-surface); padding: 8px; border-radius: 8px; border: 1px solid var(--border);">
                     <input 
-                        style="flex: 1; background: transparent; border: none; color: var(--text); padding: 8px; outline: none; font-family: var(--font-sans);"
+                        style="flex: 1; background: transparent; border: none; color: var(--text-primary); padding: 8px; outline: none; font-family: var(--font-body);"
                         placeholder="Message Rta..."
                         value={input}
                         onInput={(e) => setInput(e.target.value)}
@@ -308,12 +308,12 @@ const Dashboard = () => {
                     ) : isLoading ? (
                         <div style="color: var(--text-muted); font-size: 14px; text-align: center; margin: auto;">Loading...</div>
                     ) : error ? (
-                        <div style="color: #EF4444;">Error: {error}</div>
+                        <div style="color: var(--red);">Error: {error}</div>
                     ) : dashData ? (
                         <div class="content-grid">
                             <div style="grid-column: 1 / -1; margin-bottom: 32px;">
                                 <h2 style="font-size: 24px; margin: 0;">Welcome back, {dashData.username}</h2>
-                                <p style="color: var(--text-muted); margin-top: 4px; font-size: 14px;">Member since {new Date(dashData.member_since).toLocaleDateString()}</p>
+                                <p style="color: var(--text-secondary); margin-top: 4px; font-size: 14px;">Member since {new Date(dashData.member_since).toLocaleDateString()}</p>
                             </div>
 
                             {[
@@ -350,7 +350,7 @@ const Dashboard = () => {
                                                     <span style="font-weight: 500;">{a.model_used || "AI Request"}</span>
                                                     <span style="font-size: 11px; color: var(--text-muted);">{a.provider}</span>
                                                 </div>
-                                                <span style="color: var(--text-muted); font-size: 11px; font-family: var(--font-mono);">{new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                <span style="color: var(--text-secondary); font-size: 11px; font-family: var(--font-mono);">{new Date(a.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                             </div>
                                         ))
                                     ) : (
