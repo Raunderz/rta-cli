@@ -26,6 +26,7 @@ from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schem
 from rta_cli.mcp.search import web_search, schema_web_search
 from rta_cli.mcp.sequential_thinking import sequential_thinking, schema_sequential_thinking
 from rta_cli.mcp.memory import memorize, recall, forget, schema_memorize, schema_recall, schema_forget
+from rta_cli.mcp import call_mcp_tool, list_mcp_tools, map_mcp_to_openai_schema, load_mcp_config
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command, get_build_command, schema_discovery
 from rta_cli.questions import ask_question, schema_question
 from rta_cli.git import (
@@ -36,40 +37,53 @@ from rta_cli.git import (
 
 CLI_VERSION = "0.3.0"
 
-AVAILABLE_TOOLS = [
-    {"type": "function", "function": f}
-    for f in [
-        schema_discovery,
-        schema_get_files_info,
-        schema_get_file_contents,
-        schema_write_file,
-        schema_run_command,
-        schema_grep_search,
-        schema_glob_search,
-        schema_edit_file,
-        schema_edit_file_ast,
-        schema_apply_diff,
-        schema_delete_file,
-        schema_list_directory,
-        schema_list_skills,
-        schema_semantic_search,
-        schema_get_repo_skeleton,
-        schema_get_diagnostics,
-        schema_go_to_definition,
-        schema_question,
-        schema_git_status,
-        schema_git_diff,
-        schema_git_log,
-        schema_git_commit,
-        schema_git_create_pr,
-        schema_git_branch,
-        schema_web_search,
-        schema_sequential_thinking,
-        schema_memorize,
-        schema_recall,
-        schema_forget,
-    ]
+_NATIVE_TOOLS = [
+    schema_discovery,
+    schema_get_files_info,
+    schema_get_file_contents,
+    schema_write_file,
+    schema_run_command,
+    schema_grep_search,
+    schema_glob_search,
+    schema_edit_file,
+    schema_edit_file_ast,
+    schema_apply_diff,
+    schema_delete_file,
+    schema_list_directory,
+    schema_list_skills,
+    schema_semantic_search,
+    schema_get_repo_skeleton,
+    schema_get_diagnostics,
+    schema_go_to_definition,
+    schema_question,
+    schema_git_status,
+    schema_git_diff,
+    schema_git_log,
+    schema_git_commit,
+    schema_git_create_pr,
+    schema_git_branch,
+    schema_web_search,
+    schema_sequential_thinking,
+    schema_memorize,
+    schema_recall,
+    schema_forget,
 ]
+
+def get_available_tools() -> list[dict]:
+    """Combine native tools with dynamic MCP tools."""
+    tools = [{"type": "function", "function": f} for f in _NATIVE_TOOLS]
+    
+    # Load dynamic MCP tools from config
+    config = load_mcp_config()
+    for server_name in config.get("mcpServers", {}):
+        mcp_tools = list_mcp_tools(server_name)
+        for tool in mcp_tools:
+            openai_schema = map_mcp_to_openai_schema(server_name, tool)
+            tools.append({"type": "function", "function": openai_schema})
+            
+    return tools
+
+AVAILABLE_TOOLS = get_available_tools()
 
 READ_ONLY_TOOLS = {
     "get_files_info", "get_file_contents", "grep_search", "glob_search",
@@ -154,13 +168,19 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
     name = function_call.get("name")
     args = function_call.get("args", {})
 
-    if read_only and name not in READ_ONLY_TOOLS:
-        return {
-            "functionResponse": {
-                "name": name,
-                "response": {"name": name, "content": f"Blocked: '{name}' is not available in review mode. Only read-only tools are allowed."},
+    # Check read-only permission (including dynamic MCP tools)
+    is_mcp = name.startswith("mcp_")
+    if read_only:
+        allowed = name in READ_ONLY_TOOLS
+        # By default, dynamic MCP tools are BLOCKED in review mode unless we white-list them.
+        # For now, block all unless specifically in READ_ONLY_TOOLS.
+        if not allowed:
+            return {
+                "functionResponse": {
+                    "name": name,
+                    "response": {"name": name, "content": f"Blocked: '{name}' is not available in review mode. Only read-only tools are allowed."},
+                }
             }
-        }
 
     # Plan 2.3: Per-tool timeouts
     TIMEOUTS = {
@@ -195,41 +215,61 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
     if name in ["run_command", "grep_search"]:
         args["timeout"] = timeout
 
-    dispatch = {
-        "discover_project":   lambda: discover_project(workspace_dir),
-        "get_files_info":     lambda: get_files_info(workspace_dir, **args),
-        "get_file_contents": lambda: get_file_contents(workspace_dir, **args),
-        "write_file":         lambda: write_file(workspace_dir, **args),
-        "run_command":       lambda: run_command(workspace_dir, **args, force=force),
-        "grep_search":       lambda: grep_search(workspace_dir, **args),
-        "glob_search":        lambda: glob_search(workspace_dir, **args),
-        "edit_file":         lambda: edit_file(workspace_dir, **args),
-        "edit_file_ast":     lambda: edit_file_ast(workspace_dir, **args),
-        "apply_diff":        lambda: apply_diff(workspace_dir, **args),
-        "delete_file":      lambda: delete_file(workspace_dir, **args, force=force),
-        "create_dir":        lambda: create_dir(workspace_dir, **args),
-        "list_directory":    lambda: list_directory(workspace_dir, **args),
-        "list_skills":       lambda: list_skills(workspace_dir),
-        "semantic_search":   lambda: semantic_search(workspace_dir, **args),
-        "get_repo_skeleton": lambda: get_repo_skeleton(workspace_dir),
-        "get_diagnostics":   lambda: get_diagnostics(workspace_dir, **args),
-        "go_to_definition":  lambda: go_to_definition(workspace_dir, **args),
-        "question":          lambda: ask_question(workspace_dir, **args),
-        "git_status":        lambda: git_status(workspace_dir),
-        "git_diff":          lambda: git_diff(workspace_dir, **args),
-        "git_log":           lambda: git_log(workspace_dir, **args),
-        "git_commit":        lambda: git_commit(workspace_dir, **args, force=force),
-        "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
-        "git_branch":        lambda: git_branch(workspace_dir, **args),
-        "web_search":        lambda: web_search(**args),
-        "sequential_thinking": lambda: sequential_thinking(**args),
-        "memorize":          lambda: memorize(**args),
-        "recall":            lambda: recall(**args),
-        "forget":            lambda: forget(**args),
-    }
-
-    fn = dispatch.get(name)
-    result = fn() if fn else f"Error: function '{name}' not found"
+    # Handle Dynamic MCP tools
+    if is_mcp:
+        # Format: mcp_{server}_{tool}
+        parts = name.split("_")
+        if len(parts) >= 3:
+            server_name = parts[1]
+            real_tool_name = "_".join(parts[2:])
+            result = call_mcp_tool(server_name, real_tool_name, args)
+            # Normalize MCP results (can be complex objects)
+            if isinstance(result, dict) and "content" in result:
+                # Often MCP returns {"content": [{"type": "text", "text": "..."}]}
+                content_items = result["content"]
+                if isinstance(content_items, list):
+                    text_parts = []
+                    for item in content_items:
+                        if item.get("type") == "text":
+                            text_parts.append(item.get("text", ""))
+                    result = "\n".join(text_parts)
+        else:
+            result = f"Error: Invalid MCP tool name format '{name}'"
+    else:
+        dispatch = {
+            "discover_project":   lambda: discover_project(workspace_dir),
+            "get_files_info":     lambda: get_files_info(workspace_dir, **args),
+            "get_file_contents": lambda: get_file_contents(workspace_dir, **args),
+            "write_file":         lambda: write_file(workspace_dir, **args),
+            "run_command":       lambda: run_command(workspace_dir, **args, force=force),
+            "grep_search":       lambda: grep_search(workspace_dir, **args),
+            "glob_search":        lambda: glob_search(workspace_dir, **args),
+            "edit_file":         lambda: edit_file(workspace_dir, **args),
+            "edit_file_ast":     lambda: edit_file_ast(workspace_dir, **args),
+            "apply_diff":        lambda: apply_diff(workspace_dir, **args),
+            "delete_file":      lambda: delete_file(workspace_dir, **args, force=force),
+            "create_dir":        lambda: create_dir(workspace_dir, **args),
+            "list_directory":    lambda: list_directory(workspace_dir, **args),
+            "list_skills":       lambda: list_skills(workspace_dir),
+            "semantic_search":   lambda: semantic_search(workspace_dir, **args),
+            "get_repo_skeleton": lambda: get_repo_skeleton(workspace_dir),
+            "get_diagnostics":   lambda: get_diagnostics(workspace_dir, **args),
+            "go_to_definition":  lambda: go_to_definition(workspace_dir, **args),
+            "question":          lambda: ask_question(workspace_dir, **args),
+            "git_status":        lambda: git_status(workspace_dir),
+            "git_diff":          lambda: git_diff(workspace_dir, **args),
+            "git_log":           lambda: git_log(workspace_dir, **args),
+            "git_commit":        lambda: git_commit(workspace_dir, **args, force=force),
+            "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
+            "git_branch":        lambda: git_branch(workspace_dir, **args),
+            "web_search":        lambda: web_search(**args),
+            "sequential_thinking": lambda: sequential_thinking(**args),
+            "memorize":          lambda: memorize(**args),
+            "recall":            lambda: recall(**args),
+            "forget":            lambda: forget(**args),
+        }
+        fn = dispatch.get(name)
+        result = fn() if fn else f"Error: function '{name}' not found"
 
     # Plan 6.2: Auto-lint after mutating edits
     MUTATING_TOOLS = ["write_file", "edit_file", "edit_file_ast", "apply_diff"]
