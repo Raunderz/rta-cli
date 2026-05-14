@@ -108,7 +108,6 @@ Despite the UI diet, the engine is more powerful than ever. v0.3.0 introduces:
 
 ## The Raw Philosophy
 
-
 A developer tool should be invisible. It should feel like an extension of your terminal, not a guest application running inside it. 
 
 Rta v0.3.0 is designed for the developer who values speed over screenshots. It's raw, it's fast, and it's ready.
@@ -286,34 +285,21 @@ To speed up operations, we implemented a dependency graph for tool execution. If
 
   if (selectedArticle) {
     const htmlContent = marked(selectedArticle.body);
-    const isConstellation = selectedArticle.slug === "rta-cli-v040-constellation";
 
     return (
       <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
-        {isConstellation && (
-          <svg style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.5;pointer-events:none;">
-            <style>{`
-              @keyframes twinkle { 0%,100% {opacity:0.2} 50% {opacity:1} }
-              .star { animation: twinkle 4s infinite ease-in-out; fill: var(--text-main); }
-            `}</style>
-            {[...Array(40)].map((_, i) => (
-              <circle key={i} class="star" cx={`${Math.random() * 100}%`} cy={`${Math.random() * 100}%`} r="1.2" style={`animation-delay:${Math.random() * 4}s`} />
-            ))}
-            <path d="M10,10 L30,40 L70,30 L90,80 M20,60 L50,20 L80,50" stroke="var(--text-main)" stroke-width="0.3" fill="none" opacity="0.15" style="transform:scale(10);" />
-          </svg>
-        )}
         <div style="margin-bottom: 2rem;">
-          <Link href="/blog" class="nav-link">← Back to Blog</Link>
+          <Link href="/blog" class="nav-link" style="font-family: var(--font-mono); font-size: 0.75rem;">&larr; Back to Blog</Link>
         </div>
         <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
           {selectedArticle.tags.map(tag => (
-            <span class="mono" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-color); color: var(--text-muted);">{tag}</span>
+            <span class="mono" style="font-size: 0.6rem; padding: 4px 10px; border: 1px solid var(--border); color: var(--text-muted);" key={tag}>{tag}</span>
           ))}
         </div>
-        <h2 style="margin-bottom: 1rem; font-size: clamp(2.2rem, 6vw, 3.5rem); line-height: 1;">{selectedArticle.title}</h2>
-        <div style="display: flex; gap: 2rem; margin-bottom: 3rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; flex-wrap: wrap;">
-          <span class="mono" style="color: var(--text-muted); font-size: 14px;">{selectedArticle.date}</span>
-          <span class="mono" style="color: var(--text-muted); font-size: 14px;">{selectedArticle.readTime}</span>
+        <h2 style="margin-bottom: 1rem; font-size: clamp(2.2rem, 6vw, 3.5rem); line-height: 1; font-family: var(--font-display);">{selectedArticle.title}</h2>
+        <div style="display: flex; gap: 2rem; margin-bottom: 3rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; flex-wrap: wrap;">
+          <span class="mono" style="color: var(--text-secondary); font-size: 0.8rem;">{selectedArticle.date}</span>
+          <span class="mono" style="color: var(--text-secondary); font-size: 0.8rem;">{selectedArticle.readTime}</span>
         </div>
         <div class="markdown-body" dangerouslySetInnerHTML={{ __html: htmlContent }} />
       </div>
@@ -323,22 +309,22 @@ To speed up operations, we implemented a dependency graph for tool execution. If
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2>TRANSMISSIONS</h2>
-        <p class="mono">TECHNICAL BLOG</p>
+        <h2>Transmissions</h2>
+        <p class="mono">Technical Blog</p>
       </div>
       <div style="display: flex; flex-direction: column; gap: 2rem; max-width: 800px; margin: 0 auto;">
         {articles.map(article => (
-          <div class="feature-card" style="cursor: pointer;" onClick={() => setLocation(`/blog/${article.slug}`)}>
+          <div class="feature-card" style="cursor: pointer;" onClick={() => setLocation(`/blog/${article.slug}`)} key={article.slug}>
             <div style="display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap;">
               {article.tags.map(tag => (
-                <span class="mono" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-color); color: var(--text-muted);">{tag}</span>
+                <span class="mono" style="font-size: 0.6rem; padding: 4px 10px; border: 1px solid var(--border); color: var(--text-muted);" key={tag}>{tag}</span>
               ))}
             </div>
-            <h3 style="font-size: clamp(1.5rem, 4vw, 1.8rem); margin-bottom: 1rem;">{article.title}</h3>
-            <p style="margin-bottom: 2rem;">{article.excerpt}</p>
-            <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 1.5rem; gap: 1rem; flex-wrap: wrap;">
-              <span class="mono" style="font-size: 12px; color: var(--text-muted);">{article.date}</span>
-              <span class="mono" style="font-size: 12px; color: var(--text-muted);">{article.readTime}</span>
+            <h3 style="font-size: clamp(1.3rem, 4vw, 1.6rem); margin-bottom: 1rem; font-family: var(--font-display);">{article.title}</h3>
+            <p style="margin-bottom: 2rem; color: var(--text-secondary);">{article.excerpt}</p>
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 1.5rem; gap: 1rem; flex-wrap: wrap;">
+              <span class="mono" style="font-size: 0.65rem; color: var(--text-muted);">{article.date}</span>
+              <span class="mono" style="font-size: 0.65rem; color: var(--text-muted);">{article.readTime}</span>
             </div>
           </div>
         ))}

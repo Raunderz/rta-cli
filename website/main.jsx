@@ -6,40 +6,36 @@ import { BlogPage } from './blog.jsx';
 import { Analytics } from "@vercel/analytics/react";
 import { marked } from 'marked';
 
-
 const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
   const rotations = [0, 45, 90, 135, 180, 225, 270, 315];
-  
-  // Galaxy Palette
-  const nebulaPink = "#ff71ce";
-  const nebulaBlue = "#01cdfe";
-  const nebulaPurple = "#b967ff";
-  const starWhite = "#fffbfe";
+  const gold = "#D4A26A";
+  const ember = "#E85D4A";
+  const cream = "#F5F0EA";
 
   return (
-    <svg 
-      width={size} 
-      height={size} 
-      viewBox="0 0 400 400" 
-      fill="none" 
-      xmlns="http://www.w3.org/2000/svg" 
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 400 400"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
       style={{ verticalAlign: 'middle', ...style }}
     >
       <defs>
-        <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="2" result="blur" />
+        <filter id="warmglow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="3" result="blur" />
           <feComposite in="SourceGraphic" in2="blur" operator="over" />
         </filter>
-        
-        <g id="petal-shape">
-          <path 
-            d="M0,-20 C35,-90 85,-90 100,-10 C85,70 35,70 0,0 C-35,70 -85,70 -100,-10 C-85,-90 -35,-90 0,-20 Z" 
-            stroke={nebulaPurple}
+
+        <g id="petal-warm">
+          <path
+            d="M0,-20 C35,-90 85,-90 100,-10 C85,70 35,70 0,0 C-35,70 -85,70 -100,-10 C-85,-90 -35,-90 0,-20 Z"
+            stroke={gold}
             strokeWidth="2"
-            fill={nebulaPurple}
-            fillOpacity="0.03"
+            fill={gold}
+            fillOpacity="0.04"
           />
-          <g stroke={nebulaBlue} strokeWidth="2">
+          <g stroke={cream} strokeWidth="1.5" opacity="0.6">
             <path d="M0,-10 C0,-30 0,-55 0,-75" />
             <path d="M0,-20 C20,-35 40,-45 65,-55" />
             <path d="M0,-20 C-20,-35 -40,-45 -65,-55" />
@@ -49,65 +45,62 @@ const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
         </g>
       </defs>
 
-      <style>
-        {`
-          @keyframes bloom {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.06); }
-          }
-          @keyframes slowRotate {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          .flower-anim-group { 
-            transform-origin: center;
-            transform-box: fill-box;
-            animation: bloom 4s ease-in-out infinite; 
-          }
-          .petals-only { 
-            transform-origin: center;
-            transform-box: fill-box;
-            animation: slowRotate 30s linear infinite; 
-          }
-          .star {
-            animation: twinkle 2s ease-in-out infinite;
-          }
-          @keyframes twinkle {
-            0%, 100% { opacity: 0.3; transform: scale(0.8); }
-            50% { opacity: 1; transform: scale(1.1); }
-          }
-        `}
-      </style>
+      <style>{`
+        @keyframes warmBloom {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.04); }
+        }
+        @keyframes slowSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .wf-group {
+          transform-origin: center;
+          transform-box: fill-box;
+          animation: warmBloom 5s ease-in-out infinite;
+        }
+        .wf-petals {
+          transform-origin: center;
+          transform-box: fill-box;
+          animation: slowSpin 40s linear infinite;
+        }
+        .wf-dot {
+          animation: warmTwinkle 2.5s ease-in-out infinite;
+        }
+        @keyframes warmTwinkle {
+          0%, 100% { opacity: 0.3; transform: scale(0.8); }
+          50% { opacity: 1; transform: scale(1.1); }
+        }
+      `}</style>
 
       <g transform="translate(200, 200)">
-        {/* Background Stars */}
-        <g fill={starWhite} opacity="0.3">
+        <g fill={cream} opacity="0.15">
           {[
             { x: -120, y: -100, r: 1 }, { x: 140, y: -130, r: 1.5 },
             { x: -150, y: 120, r: 1 }, { x: 130, y: 150, r: 0.8 },
             { x: 50, y: -160, r: 1.2 }, { x: -80, y: 140, r: 1 },
             { x: 170, y: 0, r: 0.9 }, { x: -160, y: -40, r: 1.1 }
           ].map((s, i) => (
-            <circle key={i} className="star" cx={s.x} cy={s.y} r={s.r} style={{ animationDelay: `${i * 0.4}s`, transformOrigin: `${s.x}px ${s.y}px` }} />
+            <circle key={i} className="wf-dot" cx={s.x} cy={s.y} r={s.r} style={{ animationDelay: `${i * 0.4}s`, transformOrigin: `${s.x}px ${s.y}px` }} />
           ))}
         </g>
 
-        <g className="flower-anim-group">
-          <g className="petals-only">
+        <g className="wf-group">
+          <g className="wf-petals">
             {rotations.map(deg => (
-              <use key={deg} href="#petal-shape" transform={`rotate(${deg})`} />
+              <use key={deg} href="#petal-warm" transform={`rotate(${deg})`} />
             ))}
           </g>
 
           <g fill="none">
-            <circle cx="0" cy="0" r="35" stroke={nebulaBlue} strokeWidth="1" strokeDasharray="5 5" opacity="0.5"/>
-            <circle cx="0" cy="0" r="28" stroke={nebulaPink} strokeWidth="2" filter="url(#glow)"/>
-            <g fill={starWhite} stroke="none">
-              <circle className="star" cx="-10" cy="-8" r="2" style={{ animationDelay: '0s', transformOrigin: '-10px -8px' }}/>
-              <circle className="star" cx="12" cy="-6" r="2" style={{ animationDelay: '0.5s', transformOrigin: '12px -6px' }}/>
-              <circle className="star" cx="-6" cy="10" r="2" style={{ animationDelay: '1s', transformOrigin: '-6px 10px' }}/>
-              <circle className="star" cx="9" cy="12" r="2" style={{ animationDelay: '1.5s', transformOrigin: '9px 12px' }}/>
-              <circle className="star" cx="0" cy="0" r="2.5" filter="url(#glow)" style={{ transformOrigin: '0 0' }}/>
+            <circle cx="0" cy="0" r="35" stroke={gold} strokeWidth="1" strokeDasharray="4 6" opacity="0.3"/>
+            <circle cx="0" cy="0" r="28" stroke={ember} strokeWidth="2" filter="url(#warmglow)" opacity="0.8"/>
+            <g fill={cream} stroke="none">
+              <circle className="wf-dot" cx="-10" cy="-8" r="2" style={{ animationDelay: '0s', transformOrigin: '-10px -8px' }}/>
+              <circle className="wf-dot" cx="12" cy="-6" r="2" style={{ animationDelay: '0.5s', transformOrigin: '12px -6px' }}/>
+              <circle className="wf-dot" cx="-6" cy="10" r="2" style={{ animationDelay: '1s', transformOrigin: '-6px 10px' }}/>
+              <circle className="wf-dot" cx="9" cy="12" r="2" style={{ animationDelay: '1.5s', transformOrigin: '9px 12px' }}/>
+              <circle className="wf-dot" cx="0" cy="0" r="2.5" filter="url(#warmglow)" style={{ transformOrigin: '0 0' }}/>
             </g>
           </g>
         </g>
@@ -115,7 +108,6 @@ const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
     </svg>
   );
 };
-
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
@@ -128,12 +120,10 @@ const Navbar = () => {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("rta_user");
-      if (saved) setUser(JSON.parse(saved));
-      else setUser(null);
+      setUser(saved ? JSON.parse(saved) : null);
     } catch (e) {
       setUser(null);
     }
-    // Close menu on navigation
     setIsMenuOpen(false);
   }, [location]);
 
@@ -141,12 +131,12 @@ const Navbar = () => {
     <nav class="navbar">
       <div class="container nav-content">
         <Link href="/" class="logo">
-          <FlowerIcon size={28} color="var(--text-main)" style={{ marginRight: '8px' }} />
-          RTA
+          <FlowerIcon size={24} color="var(--accent)" style={{ marginRight: '6px' }} />
+          Rta
         </Link>
-        
-        <button 
-          class={`menu-toggle ${isMenuOpen ? 'open' : ''}`} 
+
+        <button
+          class={`menu-toggle ${isMenuOpen ? 'open' : ''}`}
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle menu"
         >
@@ -187,36 +177,32 @@ const TerminalDemo = () => {
       }
     };
 
-    const createElement = (tag, styleStr, content) => {
-      const el = document.createElement(tag);
-      if (styleStr) el.style.cssText = styleStr;
+    const el = (tag, styleStr, content) => {
+      const e = document.createElement(tag);
+      if (styleStr) e.style.cssText = styleStr;
       if (content) {
-        if (typeof content === 'string') el.textContent = content;
-        else el.appendChild(content);
+        if (typeof content === 'string') e.textContent = content;
+        else e.appendChild(content);
       }
-      return el;
+      return e;
     };
 
     const addInfoLine = async (label, value, delay = 0) => {
       await sleep(delay);
       if (!isRunning || !infoRef.current) return;
-
-      const line = createElement('div', "display: flex; justify-content: space-between; margin-bottom: 0.3rem; font-size: 10px; line-height: 1.4;");
-      const labelSpan = createElement('span', "color: #a0a0a0;", label);
-      const valSpan = createElement('span', "color: var(--neon-red);", value);
-      line.appendChild(labelSpan);
-      line.appendChild(valSpan);
-
+      const line = el('div', "display: flex; justify-content: space-between; margin-bottom: 0.2rem; font-size: 9px; line-height: 1.5;");
+      line.appendChild(el('span', "color: var(--text-muted);", label));
+      line.appendChild(el('span', "color: var(--accent); font-weight: 500;", value));
       infoRef.current.appendChild(line);
     };
 
-    const typeCommand = async (text, speed = 30) => {
+    const typeCmd = async (text, speed = 30) => {
       if (!isRunning || !terminalRef.current) return;
-      const cmdSpan = createElement('span', "color: var(--neon-red);");
-      terminalRef.current.lastChild.appendChild(cmdSpan);
+      const span = el('span', "color: var(--accent);");
+      terminalRef.current.lastChild.appendChild(span);
       for (let char of text) {
         if (!isRunning) return;
-        cmdSpan.textContent += char;
+        span.textContent += char;
         scrollToBottom();
         await sleep(speed);
       }
@@ -227,9 +213,8 @@ const TerminalDemo = () => {
       const frames = ['-', '\\', '|', '/'];
       let frame = 0;
       const start = Date.now();
-      const loaderSpan = createElement('span', "color: var(--neon-red); font-size: 10px;");
+      const loaderSpan = el('span', "color: var(--accent); font-size: 10px;");
       terminalRef.current.appendChild(loaderSpan);
-
       return new Promise((r) => {
         const iv = setInterval(() => {
           if (!isRunning) { clearInterval(iv); r(); return; }
@@ -249,29 +234,22 @@ const TerminalDemo = () => {
     const addTool = async (name) => {
       await sleep(400);
       if (!isRunning || !terminalRef.current) return;
-
-      const line = createElement('div', "color: #a0a0a0; margin-bottom: 0.4rem; font-size: 10px; display: flex; align-items: center; gap: 0.5rem;");
-      const checkSpan = createElement('span', "color: var(--neon-red); font-weight: bold;", "[+]");
-      const nameSpan = createElement('span', "", name);
-      line.appendChild(checkSpan);
-      line.appendChild(nameSpan);
-
+      const line = el('div', "color: var(--text-secondary); margin-bottom: 0.3rem; font-size: 10px; display: flex; align-items: center; gap: 0.5rem;");
+      line.appendChild(el('span', "color: var(--accent); font-weight: bold;", "[+]"));
+      line.appendChild(el('span', "", name));
       terminalRef.current.appendChild(line);
       scrollToBottom();
-
       await sleep(500);
       if (!isRunning || !terminalRef.current) return;
-      const check = createElement('div', "color: var(--text-muted); margin-bottom: 0.4rem; font-size: 9px; margin-left: 1.5rem;", "[done]");
-      terminalRef.current.appendChild(check);
+      terminalRef.current.appendChild(el('div', "color: var(--text-muted); margin-bottom: 0.3rem; font-size: 9px; margin-left: 1.5rem;", "[done]"));
       scrollToBottom();
     };
 
     const agentMsg = async (msg) => {
       await sleep(600);
       if (!isRunning || !terminalRef.current) return;
-      const line = createElement('div', "color: var(--text-main); margin-top: 0.5rem; padding: 0.6rem; background: rgba(255, 255, 255, 0.05); border-left: 2px solid var(--text-main); font-size: 10px; line-height: 1.4;");
+      const line = el('div', "color: var(--text-primary); margin-top: 0.4rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.03); border-left: 2px solid var(--accent); font-size: 10px; line-height: 1.5;");
       terminalRef.current.appendChild(line);
-
       for (let char of msg) {
         if (!isRunning) return;
         line.textContent += char;
@@ -314,10 +292,9 @@ const TerminalDemo = () => {
       await sleep(400);
       if (!isRunning || !terminalRef.current) return;
 
-      const prompt = createElement('div', "color: var(--neon-red); margin-bottom: 0.4rem; font-size: 10px; margin-top: 0.8rem;", "rta > ");
+      const prompt = el('div', "color: var(--accent); margin-bottom: 0.3rem; font-size: 10px; margin-top: 0.6rem;", "rta >");
       terminalRef.current.appendChild(prompt);
-
-      await typeCommand(scenario.command, 40);
+      await typeCmd(scenario.command, 40);
       await showLoader(2000);
 
       for (const tool of scenario.tools) {
@@ -325,7 +302,6 @@ const TerminalDemo = () => {
       }
 
       await agentMsg(scenario.message);
-
       await sleep(4000);
       if (isRunning) runDemo();
     };
@@ -344,42 +320,41 @@ const TerminalDemo = () => {
         <div class="terminal-dot"></div>
         <div class="terminal-dot"></div>
         <div class="terminal-dot"></div>
-        <span style="font-size: 10px; color: var(--text-muted); margin-left: auto; font-family: var(--font-mono);">rta-terminal-demo</span>
+        <span style="font-size: 9px; color: var(--text-muted); margin-left: auto; font-family: var(--font-mono);">rta-terminal-demo</span>
       </div>
-      <div style="display: flex; flex-direction: column; height: 100%; padding: var(--space-s); overflow: hidden; gap: 1rem;">
-        <div style="display: flex; gap: clamp(1rem, 5vw, 2rem); align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-shrink: 0; flex-wrap: wrap;">
-          <pre style="font-family: monospace; font-size: clamp(5px, 1.2vw, 7px); line-height: 1.1; color: var(--neon-red); font-weight: bold; margin: 0;">
-            {` _  .-')   .-') _      ('-.     
+      <div style="display: flex; flex-direction: column; height: 100%; padding: var(--space-s); overflow: hidden; gap: 0.8rem;">
+        <div class="terminal-info-grid">
+          <pre class="terminal-ascii">{` _  .-')   .-') _      ('-.     
 ( \\( -O ) (  OO) )    ( OO ).-. 
  ,------.  /     '._   / . --. / 
-|   /\`. '|'--...__)  | \\-.  \\  
+|   /\\'. |'--...__)  | \\-.  \\  
 |  /  | |'--.  .--'.-'-'  |  | 
 |  |_.' |   |  |    \\| |_.'  | 
 |  .  '.'   |  |     |  .-.  | 
 |  |\\  \\    |  |     |  | |  | 
- \\'--' '--'   \\'--'     \\'--' \\'--'`}
-          </pre>
-          <div ref={infoRef} style="min-width: 120px; flex: 1;"></div>
+ \\'--' '--'   \\'--'     \\'--' \\'--'`}</pre>
+          <div ref={infoRef} class="terminal-info-lines"></div>
         </div>
-        <div ref={terminalRef} class="terminal-body" style="flex: 1; overflow-y: auto; padding: 0; padding-right: 5px; color: var(--text-main);">
-        </div>
+        <div ref={terminalRef} class="terminal-scroll"></div>
       </div>
     </div>
   );
 };
 
 const Hero = () => (
-  <section class="hero container">
-    <div class="hero-grid">
-      <div class="hero-content">
-        <h1>BUILD <br /> FASTER.</h1>
-        <p>High-performance code editing and automation for modern engineering teams. Engineered for precision.</p>
-        <div class="hero-actions">
-          <Link href="/auth" class="btn btn-primary">Initialize Core</Link>
-          <Link href="/releases" class="btn">View Logs</Link>
+  <section class="hero">
+    <div class="container" style="width:100%;">
+      <div class="hero-grid">
+        <div class="hero-content">
+          <h1>BUILD <br /> FASTER.</h1>
+          <p>High-performance code editing and automation for modern engineering teams. Engineered for precision.</p>
+          <div class="hero-actions">
+            <Link href="/auth" class="btn btn-primary">Initialize Core</Link>
+            <Link href="/releases" class="btn">View Logs</Link>
+          </div>
         </div>
+        <TerminalDemo />
       </div>
-      <TerminalDemo />
     </div>
   </section>
 );
@@ -394,14 +369,14 @@ const FeaturesSection = () => {
   return (
     <section class="features container">
       <div class="section-header">
-        <h2>ARCHITECTURE</h2>
-        <p class="mono">SYSTEM CAPABILITIES</p>
+        <h2>Architecture</h2>
+        <p class="mono">System Capabilities</p>
       </div>
       <div class="features-grid">
         {features.map(f => (
           <div class="feature-card" key={f.id}>
             <div class="feature-icon">
-              <FlowerIcon size={48} color="var(--text-main)" />
+              <FlowerIcon size={44} color="var(--accent)" />
             </div>
             <h3>{f.title}</h3>
             <p>{f.desc}</p>
@@ -414,7 +389,6 @@ const FeaturesSection = () => {
 
 const PricingPage = () => {
   const [currency, setCurrency] = useState('USD');
-
   const priceMap = {
     INR: { starter: "₹0", basic: "₹75", pro: "₹299" },
     USD: { starter: "$0", basic: "$1.49", pro: "$4.49" }
@@ -429,10 +403,10 @@ const PricingPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2>DEPLOYMENT</h2>
-        <p class="mono">ALLOCATE RESOURCES</p>
+        <h2>Deployment</h2>
+        <p class="mono">Allocate Resources</p>
       </div>
-      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 4rem; flex-wrap: wrap;">
+      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
         <button class={`btn ${currency === 'USD' ? 'btn-primary' : ''}`} onClick={() => setCurrency('USD')}>USD</button>
         <button class={`btn ${currency === 'INR' ? 'btn-primary' : ''}`} onClick={() => setCurrency('INR')}>INR</button>
       </div>
@@ -459,10 +433,7 @@ const StatusPage = () => {
   useEffect(() => {
     fetch(`${API_BASE_URL}/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
       .then(res => res.json())
-      .then(data => {
-        setStatus(data);
-        setLoading(false);
-      })
+      .then(data => { setStatus(data); setLoading(false); })
       .catch(() => {
         setStatus({ status: "offline", services: { database: "offline", api: "offline", proxy: "offline" } });
         setLoading(false);
@@ -471,42 +442,42 @@ const StatusPage = () => {
 
   const getBadge = (val) => {
     const isOk = val === "operational" || val === "online";
-    return <span class={`status-badge ${isOk ? 'operational' : 'degraded'}`}>{val?.toUpperCase() || "UNKNOWN"}</span>;
+    return <span class={`status-badge ${isOk ? 'operational' : ''}`}>{val?.toUpperCase() || "UNKNOWN"}</span>;
   };
 
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2>TELEMETRY</h2>
-        <p class="mono">SYSTEM INTEGRITY</p>
+        <h2>Telemetry</h2>
+        <p class="mono">System Integrity</p>
       </div>
       <div class="status-board">
         <div class="status-header">
           <span class="mono">Global Status</span>
-          {loading ? <span class="mono">CHECKING...</span> : getBadge(status?.status)}
+          {loading ? <span class="mono">Checking...</span> : getBadge(status?.status)}
         </div>
         <div class="status-row">
           <span class="mono">API Endpoint</span>
-          <span class="mono" style={{ color: status?.services?.api === 'operational' ? '#33ff33' : '#ff3333' }}>
+          <span class="mono" style={{ color: status?.services?.api === 'operational' ? '#5BB881' : 'var(--red)' }}>
             {loading ? "..." : status?.services?.api?.toUpperCase()}
           </span>
         </div>
         <div class="status-row">
           <span class="mono">Database Cluster</span>
-          <span class="mono" style={{ color: status?.services?.database === 'operational' ? '#33ff33' : '#ff3333' }}>
+          <span class="mono" style={{ color: status?.services?.database === 'operational' ? '#5BB881' : 'var(--red)' }}>
             {loading ? "..." : status?.services?.database?.toUpperCase()}
           </span>
         </div>
         <div class="status-row">
           <span class="mono">Proxy Mesh</span>
-          <span class="mono" style={{ color: status?.services?.proxy === 'operational' ? '#33ff33' : '#ff3333' }}>
+          <span class="mono" style={{ color: status?.services?.proxy === 'operational' ? '#5BB881' : 'var(--red)' }}>
             {loading ? "..." : status?.services?.proxy?.toUpperCase()}
           </span>
         </div>
       </div>
       {!loading && status?.version && (
         <p class="mono" style="font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center;">
-          v{status.version} • LAST CHECK: {new Date(status.timestamp * 1000).toLocaleTimeString()}
+          v{status.version} &middot; Last check: {new Date(status.timestamp * 1000).toLocaleTimeString()}
         </p>
       )}
     </div>
@@ -529,19 +500,15 @@ const AuthPage = () => {
     e.preventDefault();
     setAuthError("");
     setIsLoading(true);
-
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-
     const captchaToken = window.hcaptcha ? window.hcaptcha.getResponse() : "test_token";
     if (!captchaToken && import.meta.env.PROD) {
       setAuthError("Please complete the captcha.");
       setIsLoading(false);
       return;
     }
-
     data.captcha_token = captchaToken;
-
     try {
       const endpoint = isLogin ? "/v1/auth/login" : "/v1/auth/signup";
       const res = await fetch(`${API_BASE_URL}${endpoint}`, {
@@ -549,10 +516,8 @@ const AuthPage = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-
       const result = await res.json();
       if (!res.ok) throw new Error(result.detail || "Authentication failed");
-
       if (!isLogin) {
         setIsLogin(true);
         setAuthError("Signup successful! Please log in.");
@@ -571,18 +536,18 @@ const AuthPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="auth-box">
-        <h2 style="margin-bottom: 2rem; text-align: center;">{isLogin ? "AUTHENTICATE" : "REGISTER"}</h2>
+        <h2 style="margin-bottom: 2rem; text-align: center; font-size: 1.8rem;">{isLogin ? "Authenticate" : "Register"}</h2>
 
-        <div style="background: rgba(59, 130, 246, 0.05); border-left: 3px solid #3b82f6; padding: 12px 16px; margin-bottom: 24px;">
-          <p class="mono" style="font-size: 11px; color: #3b82f6; margin: 0; line-height: 1.5; font-weight: bold;">
-            [PROTOCOL_SUGGESTION]
+        <div style="background: var(--accent-glow); border-left: 3px solid var(--accent); padding: 12px 16px; margin-bottom: 24px;">
+          <p class="mono" style="font-size: 11px; color: var(--accent); margin: 0; line-height: 1.5; font-weight: bold;">
+            [Protocol Suggestion]
           </p>
-          <p class="mono" style="font-size: 11px; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.5;">
+          <p class="mono" style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 0 0; line-height: 1.5;">
             GitHub Authentication is recommended for optimal performance and CLI integration.
           </p>
         </div>
 
-        {authError && <div style="color: var(--neon-red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--neon-red);">{authError}</div>}
+        {authError && <div style="color: var(--red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--red); font-family: var(--font-mono);">{authError}</div>}
 
         <button class="btn" style="width: 100%; margin-bottom: 1.5rem;" onClick={() => window.location.href = `${API_BASE_URL}/v1/auth/github`}>
           {isLogin ? "Continue with GitHub" : "Sign up with GitHub"}
@@ -590,10 +555,10 @@ const AuthPage = () => {
 
         {isLogin && (
           <>
-            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; opacity: 0.5;">
-              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; opacity: 0.4;">
+              <div style="flex: 1; height: 1px; background: var(--border);"></div>
               <span class="mono" style="font-size: 10px;">OR</span>
-              <div style="flex: 1; height: 1px; background: var(--border-color);"></div>
+              <div style="flex: 1; height: 1px; background: var(--border);"></div>
             </div>
 
             <form class="auth-form" onSubmit={handleAuth}>
@@ -601,11 +566,12 @@ const AuthPage = () => {
               <input type="password" name="password" class="auth-input" placeholder="Password" required />
               <div ref={captchaRef} class="h-captcha" data-sitekey="51b06ce2-0f58-4148-8fec-b2944c54e718" style="margin-bottom: 1rem;"></div>
               <button type="submit" class="btn btn-primary" style="width: 100%;" disabled={isLoading}>
-                {isLoading ? "PROCESSING..." : "Login"}
+                {isLoading ? "Processing..." : "Login"}
               </button>
             </form>
           </>
         )}
+
         <div style="margin-top: 2rem; text-align: center;">
           <a href="#" class="nav-link" onClick={e => { e.preventDefault(); setIsLogin(!isLogin); setAuthError(""); }}>
             {isLogin ? "No clearance? Register" : "Have clearance? Login"}
@@ -618,10 +584,10 @@ const AuthPage = () => {
 
 const LegalPage = () => (
   <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
-    <h2 style="margin-bottom: 2rem;">TERMS OF SERVICE</h2>
-    <div style="color: var(--text-muted); font-size: 18px; line-height: 1.8;">
+    <h2 style="margin-bottom: 2rem;">Terms of Service</h2>
+    <div style="color: var(--text-secondary); font-size: 1.05rem; line-height: 1.8;">
       <p style="margin-bottom: 2rem;">By accessing Rta, you agree to be bound by these terms. If you disagree with any part, you may not access our services.</p>
-      <h3 style="color: var(--text-main); margin-bottom: 1rem; margin-top: 2rem;">1. Acceptance of Terms</h3>
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">1. Acceptance of Terms</h3>
       <p style="margin-bottom: 2rem;">Billing is processed via secure payment gateways. Subscriptions renew automatically unless cancelled. All fees are non-refundable except as required by law.</p>
     </div>
   </div>
@@ -630,22 +596,22 @@ const LegalPage = () => (
 const RoadmapPage = () => (
   <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
     <div class="section-header">
-      <h2>ROADMAP</h2>
-      <p class="mono">UPCOMING DEPLOYMENTS</p>
+      <h2>Roadmap</h2>
+      <p class="mono">Upcoming Deployments</p>
     </div>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 1rem; color: var(--text-main);">PHASE 01 [ACTIVE]</div>
+        <div class="feature-icon mono" style="font-size: 0.7rem; color: var(--accent);">Phase 01 [Active]</div>
         <h3>Core CLI v1.0</h3>
         <p>Auth, Telemetry, Project Indexing</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 1rem;">PHASE 02 [SOON]</div>
+        <div class="feature-icon mono" style="font-size: 0.7rem;">Phase 02 [Soon]</div>
         <h3>Public Beta</h3>
         <p>Context Sync, AI Refactor Engine</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 1rem; color: var(--text-main);">PHASE 03 [BETA]</div>
+        <div class="feature-icon mono" style="font-size: 0.7rem; color: var(--text-primary);">Phase 03 [Beta]</div>
         <h3>Mobile App</h3>
         <p>Android Chat Interface, Account Sync</p>
       </div>
@@ -659,8 +625,8 @@ const ReleasesPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2>RELEASES</h2>
-        <p class="mono">DOWNLOAD BINARIES</p>
+        <h2>Releases</h2>
+        <p class="mono">Download Binaries</p>
       </div>
       <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
         <button class={`btn ${os === 'linux' ? 'btn-primary' : ''}`} onClick={() => setOs('linux')}>Linux</button>
@@ -670,13 +636,13 @@ const ReleasesPage = () => {
       <div class="status-board">
         {os === 'android' ? (
           <div style="padding: var(--space-m); text-align: center;">
-            <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-main);">MOBILE PROTOCOL [BETA]</h4>
-            <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);">
+            <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-primary);">Mobile Protocol [Beta]</h4>
+            <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(212, 162, 106, 0.15);">
               <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; max-width: 100%; display: block;" />
             </div>
-            <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);">
-              <p class="mono" style="font-size: 11px; color: var(--neon-red); line-height: 1.6; margin: 0;">
-                [CLASSIFIED] Mobile deployment is restricted to Chat & Telemetry. 
+            <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border);">
+              <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
+                [Classified] Mobile deployment is restricted to Chat & Telemetry.
                 Full Autonomous Agent capabilities (Code Execution/Refactoring) remain exclusive to CLI & Desktop nodes.
               </p>
             </div>
@@ -684,7 +650,7 @@ const ReleasesPage = () => {
         ) : (
           <>
             <div class="status-header">
-              <span class="mono">v1.4.2 [STABLE]</span>
+              <span class="mono">v1.4.2 [Stable]</span>
               <a
                 href={os === 'linux' ? "/rta" : "/rta.exe"}
                 download={os === 'linux' ? "rta" : "rta.exe"}
@@ -695,8 +661,8 @@ const ReleasesPage = () => {
               </a>
             </div>
             <div style="padding: var(--space-m);">
-              <h4 class="mono" style="margin-bottom: 1rem;">QUICK INSTALL</h4>
-              <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
+              <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
+              <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
                 {os === 'linux' ? `chmod +x rta
 sudo mv rta /usr/local/bin/
 rta chat` : `rta.exe chat`}
@@ -708,19 +674,6 @@ rta chat` : `rta.exe chat`}
     </div>
   );
 };
-
-const ConstellationBackground = () => (
-  <svg style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.5;pointer-events:none;">
-    <style>{`
-      @keyframes twinkle { 0%,100% {opacity:0.2} 50% {opacity:1} }
-      .star { animation: twinkle 4s infinite ease-in-out; fill: var(--text-main); }
-    `}</style>
-    {[...Array(40)].map((_, i) => (
-      <circle key={i} class="star" cx={`${Math.random() * 100}%`} cy={`${Math.random() * 100}%`} r="1.2" style={`animation-delay:${Math.random() * 4}s`} />
-    ))}
-    <path d="M10,10 L30,40 L70,30 L90,80 M20,60 L50,20 L80,50" stroke="var(--text-main)" stroke-width="0.3" fill="none" opacity="0.15" style="transform:scale(10);" />
-  </svg>
-);
 
 const DocsPage = () => {
   const sections = [
@@ -803,29 +756,28 @@ Add your Personal Access Token to the config to enable repository management, is
 
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
-      <ConstellationBackground />
       <div class="docs-layout">
         <aside class="docs-sidebar">
-          <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-muted);">INDEX</h4>
+          <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-muted);">Index</h4>
           <nav style="display: flex; flex-direction: column; gap: 1rem;">
             {sections.map(s => (
-              <a href={`#${s.id}`} class="nav-link mono" style="font-size: 13px;">{s.title.toUpperCase()}</a>
+              <a href={`#${s.id}`} class="nav-link mono" style="font-size: 0.8rem;" key={s.id}>{s.title.toUpperCase()}</a>
             ))}
           </nav>
         </aside>
-        
+
         <div style="flex: 1; max-width: 700px; width: 100%;">
           <div class="section-header" style="text-align: left; margin-bottom: 4rem;">
-            <h2>DOCUMENTATION</h2>
-            <p class="mono">SYSTEM OPERATION MANUAL v0.4.0</p>
+            <h2>Documentation</h2>
+            <p class="mono">System Operation Manual v0.4.0</p>
           </div>
-          
+
           {sections.map(s => (
-            <div id={s.id} style="margin-bottom: 6rem;">
-              <h3 style="font-size: clamp(1.8rem, 4vw, 2.2rem); margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+            <div id={s.id} style="margin-bottom: 6rem;" key={s.id}>
+              <h3 style="font-size: clamp(1.6rem, 4vw, 2rem); margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; font-family: var(--font-display);">
                 {s.title}
               </h3>
-              <div class="markdown-body" style="font-size: 16px; line-height: 1.8; color: var(--text-muted);">
+              <div class="markdown-body" style="font-size: 1rem; line-height: 1.8; color: var(--text-secondary);">
                 <div dangerouslySetInnerHTML={{ __html: marked(s.content) }} />
               </div>
             </div>
@@ -841,11 +793,11 @@ const AppFooter = () => (
     <div class="container">
       <div class="footer-grid">
         <div class="footer-col">
-          <Link href="/" class="logo" style="margin-bottom: 1rem;">
-            <FlowerIcon size={24} color="var(--text-main)" style={{ marginRight: '8px' }} />
-            RTA
+          <Link href="/" class="logo" style="margin-bottom: 0.5rem;">
+            <FlowerIcon size={20} color="var(--accent)" style={{ marginRight: '6px' }} />
+            Rta
           </Link>
-          <p style="color: var(--text-muted); font-size: 14px;">The high-performance developer toolkit for the next era of computing.</p>
+          <p class="footer-logo-text">The high-performance developer toolkit for the next era of computing.</p>
         </div>
         <div class="footer-col">
           <h4>Platform</h4>
@@ -867,7 +819,7 @@ const AppFooter = () => (
         </div>
       </div>
       <div class="footer-bottom">
-        <span>© 2026 Rta Software. All rights reserved.</span>
+        <span>&copy; 2026 Rta Software. All rights reserved.</span>
         <div style="display: flex; gap: 2rem;">
           <a href="#">Twitter</a>
           <a href="#">GitHub</a>
@@ -888,51 +840,47 @@ const NotFoundPage = () => (
   <div class="container" style="padding-top: 120px; padding-bottom: 80px; min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center;">
     <div class="status-board" style="max-width: 600px; width: 100%; text-align: center; padding: 4rem 2rem;">
       <div class="section-header" style="margin-bottom: 2rem;">
-        <h2 style="font-size: 80px; margin-bottom: 0;">404</h2>
-        <p class="mono">RESOURCE_NOT_FOUND</p>
+        <h2 style="font-size: clamp(5rem, 12vw, 7rem); margin-bottom: 0;">404</h2>
+        <p class="mono">Resource Not Found</p>
       </div>
-      <div style="margin-bottom: 3rem; opacity: 0.8; display: flex; justify-content: center;">
-        <FlowerIcon size={120} color="var(--text-main)" />
+      <div style="margin-bottom: 3rem; opacity: 0.6; display: flex; justify-content: center;">
+        <FlowerIcon size={100} color="var(--accent)" />
       </div>
-      <div style="display: flex; gap: 1rem; justify-content: center;">
+      <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
         <Link href="/" class="btn btn-primary">Return to Base</Link>
         <Link href="/status" class="btn">Diagnostics</Link>
       </div>
     </div>
-    <p class="mono" style="margin-top: 2rem; color: var(--text-muted); font-size: 12px; letter-spacing: 0.2em;">
-      TERMINATED_SESSION_ID: {Math.random().toString(16).slice(2, 10).toUpperCase()}
+    <p class="mono" style="margin-top: 2rem; color: var(--text-muted); font-size: 0.7rem; letter-spacing: 0.2em;">
+      Terminated Session: {Math.random().toString(16).slice(2, 10).toUpperCase()}
     </p>
   </div>
 );
 
-const App = () => {
-  return (
-    <div class="app-container">
-      <Navbar />
-      <main class="main-content">
-        <Router>
-          <Switch>
-            <Route path="/" component={Home} />
-            <Route path="/pricing" component={PricingPage} />
-            <Route path="/roadmap" component={RoadmapPage} />
-            <Route path="/status" component={StatusPage} />
-            <Route path="/releases" component={ReleasesPage} />
-            <Route path="/auth" component={AuthPage} />
-            <Route path="/legal" component={LegalPage} />
-            <Route path="/blog" component={BlogPage} />
-            <Route path="/blog/:slug" component={BlogPage} />
-            <Route path="/docs" component={DocsPage} />
-            <Route path="/dashboard" component={Dashboard} />
-            <Route component={NotFoundPage} />
-          </Switch>
-        </Router>
-      </main>
-      <AppFooter />
-      <Analytics />
-    </div>
-
-  );
-};
+const App = () => (
+  <div class="app-container">
+    <Navbar />
+    <main class="main-content">
+      <Router>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/pricing" component={PricingPage} />
+          <Route path="/roadmap" component={RoadmapPage} />
+          <Route path="/status" component={StatusPage} />
+          <Route path="/releases" component={ReleasesPage} />
+          <Route path="/auth" component={AuthPage} />
+          <Route path="/legal" component={LegalPage} />
+          <Route path="/blog" component={BlogPage} />
+          <Route path="/blog/:slug" component={BlogPage} />
+          <Route path="/docs" component={DocsPage} />
+          <Route path="/dashboard" component={Dashboard} />
+          <Route component={NotFoundPage} />
+        </Switch>
+      </Router>
+    </main>
+    <AppFooter />
+    <Analytics />
+  </div>
+);
 
 render(<App />, document.body);
-
