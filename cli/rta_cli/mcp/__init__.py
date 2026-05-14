@@ -14,17 +14,17 @@ def load_mcp_config() -> dict[str, Any]:
         # Create a documented template for new users
         template = {
             "mcpServers": {
-                "example-search": {
+                "search": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-duckduckgo"],
                     "env": {},
                     "_comment": "Search the web using DuckDuckGo (No API key needed)"
                 },
-                "example-github": {
+                "github": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-github"],
                     "env": {
-                        "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_TOKEN_HERE"
+                        "GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_YOUR_TOKEN"
                     },
                     "_comment": "Manage GitHub issues and PRs. Requires a Personal Access Token."
                 }

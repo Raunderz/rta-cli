@@ -63,7 +63,7 @@ class RtaChat:
         
         set_last_workspace(self.workspace)
         self.workspace_name = os.path.basename(self.workspace)
-        self.version = "v0.3.0"
+        self.version = "v0.4.0"
         self.ascii_art = ASCII_ART
         self.timeout = timeout
         self.force = force
@@ -253,11 +253,61 @@ class RtaChat:
                         console.print("[yellow]Skill loading cancelled.[/yellow]")
                         return
                 
-                # Inject into system prompt or as a system message
-                self.messages.append({"role": "system", "content": f"<activated_skill name=\"{skill_name}\">\n{result}\n</activated_skill>"})
+                # Inject after the main system prompt (index 1)
+                self.messages.insert(1, {"role": "system", "content": f"<activated_skill name=\"{skill_name}\">\n{result}\n</activated_skill>"})
                 console.print(f"[bold green]Skill '{skill_name}' loaded successfully.[/bold green]")
+                
+                # Auto-trigger an activation turn to ensure context is updated
+                self._trigger_activation_turn(f"Skill '{skill_name}' activated. Please acknowledge.")
+
         except SystemExit: pass
         except Exception as e: console.print(f"[red]Error: {e}[/red]")
+
+    def _trigger_activation_turn(self, activation_prompt: str):
+        """Hidden turn to force agent to acknowledge new context/skills."""
+        from rta_cli.agent import stream_agent
+        new_turn = self.turn_index
+        usage = {}
+        
+        status = console.status("Activating protocol...", spinner="dots")
+        status.start()
+        try:
+            gen = stream_agent(
+                activation_prompt,
+                self.workspace,
+                self.messages,
+                self.provider,
+                self.model,
+                session_id=self.session_id,
+                turn_index=self.turn_index,
+                timeout=self.timeout,
+                force=self.force,
+                read_only=self.review_mode,
+            )
+            
+            printed_header = False
+            for event in gen:
+                if event["type"] in ["text_chunk", "text", "tool_start"]:
+                    status.stop()
+                
+                if event["type"] == "text_chunk":
+                    if not printed_header:
+                        console.print(f"\n[bold red]Rta[/bold red]")
+                        printed_header = True
+                    console.print(event["content"], end="")
+                elif event["type"] == "usage":
+                    usage = event["content"]
+                    new_turn = event.get("turn_index", new_turn)
+                elif event["type"] == "error":
+                    status.stop()
+                    console.print(f"\n[red]Error: {event['content']}[/red]")
+        finally:
+            status.stop()
+        
+        self.turn_index = new_turn
+        self.session_usage["input"] += usage.get("prompt_tokens", 0)
+        self.session_usage["output"] += usage.get("candidate_tokens", 0)
+        console.print(f"\n[dim]─── {self.workspace_name} ───[/dim]\n")
 
     def print_summary(self):
         duration = time.time() - self.session_usage["start_time"]

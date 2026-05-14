@@ -184,9 +184,9 @@ def main():
     args, unknown = parser.parse_known_args()
 
     if args.command == "cd":
-        cd(args.path)
+        return cd(args.path)
     elif args.command == "chat":
-        chat(
+        return chat(
             prompt=args.prompt,
             clear_context=args.clear_context,
             workspace=args.workspace,
@@ -198,23 +198,23 @@ def main():
             privacy=args.privacy
         )
     elif args.command == "init":
-        init(args.project_name)
+        return init(args.project_name)
     elif args.command == "clone":
-        clone(args.repo_url)
+        return clone(args.repo_url)
     elif args.command == "skill":
-        skill(args)
+        return skill(args)
     elif args.command == "login":
-        login()
+        return login()
     elif args.command == "logout":
-        logout()
+        return logout()
     elif args.command == "whoami":
-        whoami()
+        return whoami()
     elif args.command == "status":
-        status()
+        return status()
     else:
         # Default behavior: chat
         prompt = " ".join(unknown) if unknown else None
-        chat(
+        return chat(
             prompt=prompt,
             clear_context=args.clear_context,
             workspace=args.workspace,
