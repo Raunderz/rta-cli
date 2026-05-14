@@ -696,6 +696,19 @@ rta chat` : `rta.exe chat`}
   );
 };
 
+const ConstellationBackground = () => (
+  <svg style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.5;pointer-events:none;">
+    <style>{`
+      @keyframes twinkle { 0%,100% {opacity:0.2} 50% {opacity:1} }
+      .star { animation: twinkle 4s infinite ease-in-out; fill: var(--text-main); }
+    `}</style>
+    {[...Array(40)].map((_, i) => (
+      <circle key={i} class="star" cx={`${Math.random() * 100}%`} cy={`${Math.random() * 100}%`} r="1.2" style={`animation-delay:${Math.random() * 4}s`} />
+    ))}
+    <path d="M10,10 L30,40 L70,30 L90,80 M20,60 L50,20 L80,50" stroke="var(--text-main)" stroke-width="0.3" fill="none" opacity="0.15" style="transform:scale(10);" />
+  </svg>
+);
+
 const DocsPage = () => {
   const sections = [
     {
@@ -777,6 +790,7 @@ Add your Personal Access Token to the config to enable repository management, is
 
   return (
     <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+      <ConstellationBackground />
       <div class="hero-grid" style="align-items: flex-start; gap: 4rem;">
         <aside style="position: sticky; top: 140px; width: 200px; flex-shrink: 0;">
           <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-muted);">INDEX</h4>
