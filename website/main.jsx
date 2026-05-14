@@ -122,6 +122,7 @@ const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000"
 const Navbar = () => {
   const [location] = useLocation();
   const [user, setUser] = useState(null);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const isActive = (path) => location === path ? "active" : "";
 
   useEffect(() => {
@@ -132,6 +133,8 @@ const Navbar = () => {
     } catch (e) {
       setUser(null);
     }
+    // Close menu on navigation
+    setIsMenuOpen(false);
   }, [location]);
 
   return (
@@ -141,11 +144,21 @@ const Navbar = () => {
           <FlowerIcon size={28} color="var(--text-main)" style={{ marginRight: '8px' }} />
           RTA
         </Link>
-        <div class="nav-links">
+        
+        <button 
+          class={`menu-toggle ${isMenuOpen ? 'open' : ''}`} 
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          aria-label="Toggle menu"
+        >
+          <span class="hamburger"></span>
+        </button>
+
+        <div class={`nav-links ${isMenuOpen ? 'open' : ''}`}>
           <Link href="/pricing" class={`nav-link ${isActive('/pricing')}`}>Pricing</Link>
           <Link href="/roadmap" class={`nav-link ${isActive('/roadmap')}`}>Roadmap</Link>
           <Link href="/status" class={`nav-link ${isActive('/status')}`}>Status</Link>
           <Link href="/releases" class={`nav-link ${isActive('/releases')}`}>Releases</Link>
+          <Link href="/docs" class={`nav-link ${isActive('/docs')}`}>Docs</Link>
           <Link href={user ? "/dashboard" : "/auth"} class={`nav-link ${isActive(user ? '/dashboard' : '/auth')}`}>
             {user ? "Dashboard" : "Account"}
           </Link>
@@ -292,7 +305,7 @@ const TerminalDemo = () => {
 
       const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
 
-      await addInfoLine('Version', 'v0.2.0', 0);
+      await addInfoLine('Version', 'v0.4.0', 0);
       await addInfoLine('User', 'test@example.com', 100);
       await addInfoLine('Provider', 'rta', 100);
       await addInfoLine('Model', 'auto', 100);
@@ -333,9 +346,9 @@ const TerminalDemo = () => {
         <div class="terminal-dot"></div>
         <span style="font-size: 10px; color: var(--text-muted); margin-left: auto; font-family: var(--font-mono);">rta-terminal-demo</span>
       </div>
-      <div style="display: flex; flex-direction: column; height: 100%; padding: 1.5rem; overflow: hidden; gap: 1rem;">
-        <div style="display: flex; gap: 2rem; align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-shrink: 0;">
-          <pre style="font-family: monospace; font-size: 7px; line-height: 1.1; color: var(--neon-red); font-weight: bold; margin: 0;">
+      <div style="display: flex; flex-direction: column; height: 100%; padding: var(--space-s); overflow: hidden; gap: 1rem;">
+        <div style="display: flex; gap: clamp(1rem, 5vw, 2rem); align-items: flex-start; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; flex-shrink: 0; flex-wrap: wrap;">
+          <pre style="font-family: monospace; font-size: clamp(5px, 1.2vw, 7px); line-height: 1.1; color: var(--neon-red); font-weight: bold; margin: 0;">
             {` _  .-')   .-') _      ('-.     
 ( \\( -O ) (  OO) )    ( OO ).-. 
  ,------.  /     '._   / . --. / 
@@ -346,7 +359,7 @@ const TerminalDemo = () => {
 |  |\\  \\    |  |     |  | |  | 
  \\'--' '--'   \\'--'     \\'--' \\'--'`}
           </pre>
-          <div ref={infoRef} style="min-width: 140px; flex: 1;"></div>
+          <div ref={infoRef} style="min-width: 120px; flex: 1;"></div>
         </div>
         <div ref={terminalRef} class="terminal-body" style="flex: 1; overflow-y: auto; padding: 0; padding-right: 5px; color: var(--text-main);">
         </div>
@@ -414,12 +427,12 @@ const PricingPage = () => {
   ];
 
   return (
-    <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
         <h2>DEPLOYMENT</h2>
         <p class="mono">ALLOCATE RESOURCES</p>
       </div>
-      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 4rem;">
+      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 4rem; flex-wrap: wrap;">
         <button class={`btn ${currency === 'USD' ? 'btn-primary' : ''}`} onClick={() => setCurrency('USD')}>USD</button>
         <button class={`btn ${currency === 'INR' ? 'btn-primary' : ''}`} onClick={() => setCurrency('INR')}>INR</button>
       </div>
@@ -462,7 +475,7 @@ const StatusPage = () => {
   };
 
   return (
-    <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
         <h2>TELEMETRY</h2>
         <p class="mono">SYSTEM INTEGRITY</p>
@@ -556,7 +569,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="auth-box">
         <h2 style="margin-bottom: 2rem; text-align: center;">{isLogin ? "AUTHENTICATE" : "REGISTER"}</h2>
 
@@ -604,7 +617,7 @@ const AuthPage = () => {
 };
 
 const LegalPage = () => (
-  <div class="container" style="padding-top: 120px; padding-bottom: 80px; max-width: 800px;">
+  <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
     <h2 style="margin-bottom: 2rem;">TERMS OF SERVICE</h2>
     <div style="color: var(--text-muted); font-size: 18px; line-height: 1.8;">
       <p style="margin-bottom: 2rem;">By accessing Rta, you agree to be bound by these terms. If you disagree with any part, you may not access our services.</p>
@@ -615,7 +628,7 @@ const LegalPage = () => (
 );
 
 const RoadmapPage = () => (
-  <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+  <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
     <div class="section-header">
       <h2>ROADMAP</h2>
       <p class="mono">UPCOMING DEPLOYMENTS</p>
@@ -644,22 +657,22 @@ const ReleasesPage = () => {
   const [os, setOs] = useState('linux');
 
   return (
-    <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
         <h2>RELEASES</h2>
         <p class="mono">DOWNLOAD BINARIES</p>
       </div>
-      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem;">
+      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
         <button class={`btn ${os === 'linux' ? 'btn-primary' : ''}`} onClick={() => setOs('linux')}>Linux</button>
         <button class={`btn ${os === 'windows' ? 'btn-primary' : ''}`} onClick={() => setOs('windows')}>Windows</button>
         <button class={`btn ${os === 'android' ? 'btn-primary' : ''}`} onClick={() => setOs('android')}>Android</button>
       </div>
       <div class="status-board">
         {os === 'android' ? (
-          <div style="padding: 3rem; text-align: center;">
+          <div style="padding: var(--space-m); text-align: center;">
             <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-main);">MOBILE PROTOCOL [BETA]</h4>
             <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(59, 130, 246, 0.2);">
-              <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; display: block;" />
+              <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; max-width: 100%; display: block;" />
             </div>
             <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color);">
               <p class="mono" style="font-size: 11px; color: var(--neon-red); line-height: 1.6; margin: 0;">
@@ -681,9 +694,9 @@ const ReleasesPage = () => {
                 Download for {os === 'linux' ? 'Linux' : 'Windows'}
               </a>
             </div>
-            <div style="padding: 2rem;">
+            <div style="padding: var(--space-m);">
               <h4 class="mono" style="margin-bottom: 1rem;">QUICK INSTALL</h4>
-              <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px;">
+              <pre style="background: var(--bg-dark); padding: 1.5rem; border: 1px solid var(--border-color); color: var(--text-muted); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
                 {os === 'linux' ? `chmod +x rta
 sudo mv rta /usr/local/bin/
 rta chat` : `rta.exe chat`}
@@ -789,10 +802,10 @@ Add your Personal Access Token to the config to enable repository management, is
   ];
 
   return (
-    <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <ConstellationBackground />
-      <div class="hero-grid" style="align-items: flex-start; gap: 4rem;">
-        <aside style="position: sticky; top: 140px; width: 200px; flex-shrink: 0;">
+      <div class="docs-layout">
+        <aside class="docs-sidebar">
           <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-muted);">INDEX</h4>
           <nav style="display: flex; flex-direction: column; gap: 1rem;">
             {sections.map(s => (
@@ -801,7 +814,7 @@ Add your Personal Access Token to the config to enable repository management, is
           </nav>
         </aside>
         
-        <div style="flex: 1; max-width: 700px;">
+        <div style="flex: 1; max-width: 700px; width: 100%;">
           <div class="section-header" style="text-align: left; margin-bottom: 4rem;">
             <h2>DOCUMENTATION</h2>
             <p class="mono">SYSTEM OPERATION MANUAL v0.4.0</p>
@@ -809,7 +822,7 @@ Add your Personal Access Token to the config to enable repository management, is
           
           {sections.map(s => (
             <div id={s.id} style="margin-bottom: 6rem;">
-              <h3 style="font-size: 2.2rem; margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
+              <h3 style="font-size: clamp(1.8rem, 4vw, 2.2rem); margin-bottom: 2rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1rem;">
                 {s.title}
               </h3>
               <div class="markdown-body" style="font-size: 16px; line-height: 1.8; color: var(--text-muted);">

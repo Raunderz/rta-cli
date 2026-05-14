@@ -1,9 +1,10 @@
 import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { marked } from 'marked';
 
 export const BlogPage = ({ params }) => {
+  const [, setLocation] = useLocation();
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
@@ -288,7 +289,7 @@ To speed up operations, we implemented a dependency graph for tool execution. If
     const isConstellation = selectedArticle.slug === "rta-cli-v040-constellation";
 
     return (
-      <div class="container" style="padding-top: 120px; padding-bottom: 80px; max-width: 800px;">
+      <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
         {isConstellation && (
           <svg style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;opacity:0.5;pointer-events:none;">
             <style>{`
@@ -304,13 +305,13 @@ To speed up operations, we implemented a dependency graph for tool execution. If
         <div style="margin-bottom: 2rem;">
           <Link href="/blog" class="nav-link">← Back to Blog</Link>
         </div>
-        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem;">
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; flex-wrap: wrap;">
           {selectedArticle.tags.map(tag => (
             <span class="mono" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-color); color: var(--text-muted);">{tag}</span>
           ))}
         </div>
-        <h2 style="margin-bottom: 1rem; font-size: 3rem;">{selectedArticle.title}</h2>
-        <div style="display: flex; gap: 2rem; margin-bottom: 3rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem;">
+        <h2 style="margin-bottom: 1rem; font-size: clamp(2.2rem, 6vw, 3.5rem); line-height: 1;">{selectedArticle.title}</h2>
+        <div style="display: flex; gap: 2rem; margin-bottom: 3rem; border-bottom: 1px solid var(--border-color); padding-bottom: 1.5rem; flex-wrap: wrap;">
           <span class="mono" style="color: var(--text-muted); font-size: 14px;">{selectedArticle.date}</span>
           <span class="mono" style="color: var(--text-muted); font-size: 14px;">{selectedArticle.readTime}</span>
         </div>
@@ -320,22 +321,22 @@ To speed up operations, we implemented a dependency graph for tool execution. If
   }
 
   return (
-    <div class="container" style="padding-top: 120px; padding-bottom: 80px;">
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
         <h2>TRANSMISSIONS</h2>
         <p class="mono">TECHNICAL BLOG</p>
       </div>
       <div style="display: flex; flex-direction: column; gap: 2rem; max-width: 800px; margin: 0 auto;">
         {articles.map(article => (
-          <div class="feature-card" style="cursor: pointer;" onClick={() => window.location.href = `/blog/${article.slug}`}>
-            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.2rem;">
+          <div class="feature-card" style="cursor: pointer;" onClick={() => setLocation(`/blog/${article.slug}`)}>
+            <div style="display: flex; gap: 0.5rem; margin-bottom: 1.2rem; flex-wrap: wrap;">
               {article.tags.map(tag => (
                 <span class="mono" style="font-size: 11px; padding: 4px 10px; border: 1px solid var(--border-color); color: var(--text-muted);">{tag}</span>
               ))}
             </div>
-            <h3 style="font-size: 1.8rem; margin-bottom: 1rem;">{article.title}</h3>
+            <h3 style="font-size: clamp(1.5rem, 4vw, 1.8rem); margin-bottom: 1rem;">{article.title}</h3>
             <p style="margin-bottom: 2rem;">{article.excerpt}</p>
-            <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; border-top: 1px solid var(--border-color); padding-top: 1.5rem; gap: 1rem; flex-wrap: wrap;">
               <span class="mono" style="font-size: 12px; color: var(--text-muted);">{article.date}</span>
               <span class="mono" style="font-size: 12px; color: var(--text-muted);">{article.readTime}</span>
             </div>
