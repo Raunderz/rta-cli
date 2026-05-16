@@ -80,10 +80,16 @@ def whoami():
     """Show logged-in user info"""
     from rta_cli.auth import do_whoami
     do_whoami()
+
 def status():
     """Show usage stats (calls today, quota left)"""
     from rta_cli.auth import do_status
     do_status()
+
+def update():
+    """Check for and install updates"""
+    from rta_cli.updater import perform_update
+    perform_update()
 
 def skill(args):
     """Manage specialized skills"""
@@ -178,6 +184,7 @@ def main():
     subparsers.add_parser("logout", help="Remove stored API key")
     subparsers.add_parser("whoami", help="Show logged-in user info")
     subparsers.add_parser("status", help="Show usage stats (calls today, quota left)")
+    subparsers.add_parser("update", help="Check for and install updates")
 
     # Parse arguments
     # If we have unknown args, they might be for the prompt if we didn't specify a command
@@ -211,6 +218,8 @@ def main():
         return whoami()
     elif args.command == "status":
         return status()
+    elif args.command == "update":
+        return update()
     else:
         # Default behavior: chat
         prompt = " ".join(unknown) if unknown else None
