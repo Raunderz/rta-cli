@@ -1,0 +1,7 @@
+{
+  "version": "0.4.0",
+  "url_linux": "https://rta-three.vercel.app/rta",
+  "url_windows": "https://rta-three.vercel.app/rta.exe",
+  "sha256_linux": "",
+  "sha256_windows": ""
+}
