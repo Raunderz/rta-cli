@@ -10,7 +10,7 @@ import {
   Platform,
   StatusBar
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
@@ -22,7 +22,7 @@ export default function Chat({ apiKey, onLogout }) {
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const scrollViewRef = useRef();
-  const insets = useSafeAreaInsets();
+
 
   const sendMessage = async () => {
     if (!inputText.trim() || isStreaming) return;
@@ -110,7 +110,7 @@ export default function Chat({ apiKey, onLogout }) {
   }, [isStreaming]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <LinearGradient
         colors={['#f0f9ff', '#e0f2fe']}
