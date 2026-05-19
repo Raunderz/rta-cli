@@ -111,15 +111,15 @@ export default function Chat({ apiKey, onLogout }) {
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" />
       <LinearGradient
-        colors={['#1e293b', '#0f172a']}
+        colors={['#f0f9ff', '#e0f2fe']}
         style={styles.header}
       >
         <View style={styles.headerInner}>
           <View>
             <Text style={styles.headerTitle}>Rta</Text>
-            <Text style={styles.headerStatus}>
+            <Text style={[styles.headerStatus, { color: isStreaming ? '#f59e0b' : '#0d9488' }]}>
               {isStreaming ? 'Thinking...' : 'Ready'}
             </Text>
           </View>
@@ -138,7 +138,7 @@ export default function Chat({ apiKey, onLogout }) {
         {messages.length === 0 && (
           <View style={styles.emptyContainer}>
             <LinearGradient
-              colors={['#1e293b', 'transparent']}
+              colors={['#e0f2fe', 'transparent']}
               style={styles.emptyGradient}
             />
             <Text style={styles.emptyText}>Rta is ready to help</Text>
@@ -155,7 +155,7 @@ export default function Chat({ apiKey, onLogout }) {
           >
             {msg.role === 'user' ? (
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={['#0ea5e9', '#0284c7']}
                 style={styles.bubbleGradient}
               >
                 <Text style={styles.userText}>{msg.content}</Text>
@@ -178,7 +178,7 @@ export default function Chat({ apiKey, onLogout }) {
               value={inputText}
               onChangeText={setInputText}
               placeholder="Message Rta..."
-              placeholderTextColor="#64748b"
+              placeholderTextColor="#94a3b8"
               multiline
             />
             <TouchableOpacity
@@ -187,7 +187,7 @@ export default function Chat({ apiKey, onLogout }) {
               disabled={!inputText.trim() || isStreaming}
             >
               <LinearGradient
-                colors={['#3b82f6', '#2563eb']}
+                colors={['#f59e0b', '#d97706']}
                 style={styles.sendGradient}
               >
                 <Text style={styles.sendButtonText}>↑</Text>
@@ -203,11 +203,11 @@ export default function Chat({ apiKey, onLogout }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f0f9ff',
   },
   header: {
     borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+    borderBottomColor: '#e0f2fe',
   },
   headerInner: {
     height: 70,
@@ -217,28 +217,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
   },
   headerTitle: {
-    color: '#f8fafc',
+    color: '#1f2937',
     fontSize: 24,
     fontWeight: '900',
     letterSpacing: -1,
   },
   headerStatus: {
-    color: '#3b82f6',
     fontSize: 10,
     fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   logoutBtn: {
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    backgroundColor: 'rgba(31, 41, 55, 0.05)',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
+    borderColor: 'rgba(31, 41, 55, 0.1)',
   },
   logoutText: {
-    color: '#ef4444',
+    color: '#4b5563',
     fontWeight: '800',
     fontSize: 10,
   },
@@ -261,12 +260,12 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   emptyText: {
-    color: '#f8fafc',
+    color: '#1f2937',
     fontSize: 20,
     fontWeight: '800',
   },
   emptySubtext: {
-    color: '#64748b',
+    color: '#4b5563',
     fontSize: 14,
     marginTop: 8,
   },
@@ -282,12 +281,17 @@ const styles = StyleSheet.create({
   },
   assistantBubble: {
     alignSelf: 'flex-start',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 24,
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e0f2fe',
     padding: 16,
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.02,
+    shadowRadius: 5,
+    elevation: 1,
   },
   bubbleGradient: {
     padding: 16,
@@ -299,29 +303,34 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   assistantText: {
-    color: '#e2e8f0',
+    color: '#1f2937',
     fontSize: 16,
     lineHeight: 24,
   },
   inputArea: {
     padding: 16,
-    backgroundColor: '#0f172a',
+    backgroundColor: '#f0f9ff',
     borderTopWidth: 1,
-    borderTopColor: '#1e293b',
+    borderTopColor: '#e0f2fe',
   },
   inputWrapper: {
     flexDirection: 'row',
-    backgroundColor: '#1e293b',
+    backgroundColor: '#ffffff',
     borderRadius: 28,
     padding: 4,
     paddingLeft: 16,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#e0f2fe',
+    shadowColor: '#0ea5e9',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   textInput: {
     flex: 1,
-    color: '#fff',
+    color: '#1f2937',
     fontSize: 16,
     maxHeight: 120,
     paddingVertical: 10,
