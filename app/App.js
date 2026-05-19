@@ -12,9 +12,12 @@ import {
   StatusBar
 } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Chat from './Chat';
+import Files from './Files';
+import Editor from './Editor';
+import Terminal from './Terminal';
 
 const STORAGE_KEY = 'rta_api_key';
 
@@ -22,6 +25,19 @@ export default function App() {
   const [apiKey, setApiKey] = useState('');
   const [isReady, setIsReady] = useState(false);
   const [hasKey, setHasKey] = useState(false);
+  
+  // Navigation & Tab state
+  const [activeTab, setActiveTab] = useState('chat');
+  const [selectedFile, setSelectedFile] = useState(null);
+  
+  // Local project workspace state
+  const [files, setFiles] = useState([
+    { id: '2', name: 'main.py', isDir: false, parentId: '1', content: 'import os\n\nprint("Rta Server Running")' },
+    { id: '3', name: 'utils.py', isDir: false, parentId: '1', content: 'def clean_text(t):\n    return t.strip()' },
+    { id: '5', name: 'index.html', isDir: false, parentId: '4', content: '<h1>Rta App</h1>' },
+    { id: '6', name: 'package.json', isDir: false, content: '{\n  "name": "rta-project"\n}' },
+    { id: '7', name: 'README.md', isDir: false, content: '# Rta Project\n\nRun with container environments.' }
+  ]);
 
   useEffect(() => {
     loadKey();
@@ -59,15 +75,33 @@ export default function App() {
       await SecureStore.deleteItemAsync(STORAGE_KEY);
       setApiKey('');
       setHasKey(false);
+      setSelectedFile(null);
+      setActiveTab('chat');
     } catch (e) {
       alert('Failed to logout');
     }
   };
 
+  const handleSelectFile = (file) => {
+    setSelectedFile(file);
+    setActiveTab('editor');
+  };
+
+  const handleSaveFile = (id, newContent) => {
+    setFiles(prev => prev.map(f => {
+      if (f.id === id) {
+        return { ...f, content: newContent };
+      }
+      return f;
+    }));
+    // Sync active editor state
+    setSelectedFile(prev => prev && prev.id === id ? { ...prev, content: newContent } : prev);
+  };
+
   if (!isReady) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#3b82f6" />
+        <ActivityIndicator size="large" color="#0ea5e9" />
       </View>
     );
   }
@@ -76,7 +110,16 @@ export default function App() {
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
       {hasKey ? (
-        <Chat apiKey={apiKey} onLogout={handleLogout} />
+        <MainApp 
+          apiKey={apiKey}
+          onLogout={handleLogout}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          selectedFile={selectedFile}
+          handleSelectFile={handleSelectFile}
+          handleSaveFile={handleSaveFile}
+          files={files}
+        />
       ) : (
         <KeyboardAvoidingView 
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -135,10 +178,103 @@ export default function App() {
   );
 }
 
+function MainApp({ 
+  apiKey, 
+  onLogout, 
+  activeTab, 
+  setActiveTab, 
+  selectedFile, 
+  handleSelectFile, 
+  handleSaveFile, 
+  files 
+}) {
+  const insets = useSafeAreaInsets();
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'files':
+        return <Files onSelectFile={handleSelectFile} currentFile={selectedFile} />;
+      case 'editor':
+        return <Editor file={selectedFile} onSave={handleSaveFile} />;
+      case 'terminal':
+        return <Terminal files={files} />;
+      case 'chat':
+      default:
+        return <Chat apiKey={apiKey} onLogout={onLogout} />;
+    }
+  };
+
+  return (
+    <View style={[styles.appContainer, { paddingTop: insets.top }]}>
+      <View style={styles.mainContent}>
+        {renderContent()}
+      </View>
+      
+      {/* Bottom Tab Bar */}
+      <View style={[styles.tabBar, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('files')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'files' && styles.activeTabIcon]}>
+            📁
+          </Text>
+          <Text style={[styles.tabLabel, activeTab === 'files' && styles.activeTabLabel]}>
+            Files
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('editor')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'editor' && styles.activeTabIcon]}>
+            📝
+          </Text>
+          <Text style={[styles.tabLabel, activeTab === 'editor' && styles.activeTabLabel]}>
+            Editor
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('chat')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'chat' && styles.activeTabIcon]}>
+            💬
+          </Text>
+          <Text style={[styles.tabLabel, activeTab === 'chat' && styles.activeTabLabel]}>
+            Chat
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('terminal')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'terminal' && styles.activeTabIcon]}>
+            💻
+          </Text>
+          <Text style={[styles.tabLabel, activeTab === 'terminal' && styles.activeTabLabel]}>
+            Terminal
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f0f9ff',
+  },
+  appContainer: {
+    flex: 1,
+    backgroundColor: '#f0f9ff',
+  },
+  mainContent: {
+    flex: 1,
   },
   background: {
     ...StyleSheet.absoluteFillObject,
@@ -264,6 +400,33 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
   },
+  tabBar: {
+    height: 64,
+    flexDirection: 'row',
+    backgroundColor: '#ffffff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0f2fe',
+  },
+  tabItem: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabIcon: {
+    fontSize: 20,
+    color: '#94a3b8',
+  },
+  activeTabIcon: {
+    color: '#0ea5e9',
+  },
+  tabLabel: {
+    fontSize: 10,
+    color: '#6b7280',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  activeTabLabel: {
+    color: '#0ea5e9',
+    fontWeight: '800',
+  },
 });
-
-
