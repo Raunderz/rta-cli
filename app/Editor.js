@@ -1,23 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { 
   StyleSheet, 
   Text, 
   View, 
-  TextInput, 
   TouchableOpacity, 
-  ScrollView, 
   KeyboardAvoidingView, 
   Platform 
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 
 export default function Editor({ file, onSave }) {
-  const [code, setCode] = useState('');
+  const webViewRef = useRef(null);
 
   useEffect(() => {
-    if (file) {
-      setCode(file.content || '');
-    } else {
-      setCode('');
+    if (file && webViewRef.current) {
+      // Inject code when the file changes
+      const escapedContent = JSON.stringify(file.content || '');
+      const escapedName = JSON.stringify(file.name || '');
+      
+      const js = `
+        if (window.setCodeMirrorContent) {
+          window.setCodeMirrorContent(${escapedContent}, ${escapedName});
+        }
+        true;
+      `;
+      webViewRef.current.injectJavaScript(js);
     }
   }, [file]);
 
@@ -31,9 +38,201 @@ export default function Editor({ file, onSave }) {
     );
   }
 
-  // Generate line numbers gutter
-  const lineCount = code.split('\n').length || 1;
-  const lineNumbers = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+  // Handle message from WebView (save or auto-change sync)
+  const handleMessage = (event) => {
+    try {
+      const data = JSON.parse(event.nativeEvent.data);
+      if (data.type === 'save' || data.type === 'change') {
+        onSave(file.id, data.content);
+      }
+    } catch (e) {
+      console.warn('Failed to parse message from Editor WebView', e);
+    }
+  };
+
+  const requestSave = () => {
+    if (webViewRef.current) {
+      webViewRef.current.injectJavaScript(`
+        if (window.triggerSave) {
+          window.triggerSave();
+        }
+        true;
+      `);
+    }
+  };
+
+  // HTML content featuring CodeMirror 6 loaded from esm.sh
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+      <style>
+        html, body {
+          margin: 0;
+          padding: 0;
+          height: 100%;
+          background-color: #ffffff;
+          overflow: hidden;
+        }
+        #editor {
+          height: 100%;
+          width: 100%;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background-color: #cbd5e1;
+          border-radius: 3px;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="editor"></div>
+
+      <script type="module">
+        import { EditorView, basicSetup } from 'https://esm.sh/codemirror';
+        import { EditorState } from 'https://esm.sh/@codemirror/state';
+        import { keymap } from 'https://esm.sh/@codemirror/view';
+        import { indentWithTab } from 'https://esm.sh/@codemirror/commands';
+        
+        // Languages
+        import { javascript } from 'https://esm.sh/@codemirror/lang-javascript';
+        import { python } from 'https://esm.sh/@codemirror/lang-python';
+        import { html } from 'https://esm.sh/@codemirror/lang-html';
+        import { css } from 'https://esm.sh/@codemirror/lang-css';
+
+        let editor = null;
+        let currentFilename = '';
+
+        // Clean light Sky & Horizon theme configuration
+        const skyTheme = EditorView.theme({
+          "&": {
+            height: "100%",
+            fontSize: "14px",
+            fontFamily: "monospace",
+            backgroundColor: "#ffffff",
+            color: "#1f2937"
+          },
+          ".cm-content": {
+            caretColor: "#0ea5e9"
+          },
+          ".cm-cursor, .cm-dropCursor": {
+            borderLeftColor: "#0ea5e9"
+          },
+          "&.cm-focused .cm-selectionBackground, .cm-selectionBackground, ::selection": {
+            backgroundColor: "#e0f2fe !important"
+          },
+          ".cm-gutters": {
+            backgroundColor: "#f0f9ff",
+            color: "#94a3b8",
+            borderRight: "1px solid #e0f2fe",
+            minWidth: "40px"
+          },
+          ".cm-activeLine": {
+            backgroundColor: "#f8fafc"
+          },
+          ".cm-activeLineGutter": {
+            backgroundColor: "#e0f2fe",
+            color: "#0ea5e9"
+          }
+        }, { dark: false });
+
+        function getLanguageExtension(filename) {
+          const ext = filename.split('.').pop().toLowerCase();
+          if (ext === 'js' || ext === 'jsx' || ext === 'ts' || ext === 'tsx' || ext === 'json') {
+            return javascript();
+          }
+          if (ext === 'py') {
+            return python();
+          }
+          if (ext === 'html') {
+            return html();
+          }
+          if (ext === 'css') {
+            return css();
+          }
+          return [];
+        }
+
+        window.setCodeMirrorContent = function(content, filename) {
+          currentFilename = filename;
+          
+          if (editor) {
+            // Update existing editor
+            editor.setState(EditorState.create({
+              doc: content,
+              extensions: [
+                basicSetup,
+                keymap.of([indentWithTab]),
+                getLanguageExtension(filename),
+                skyTheme,
+                EditorView.updateListener.of((v) => {
+                  if (v.docChanged) {
+                    window.ReactNativeWebView.postMessage(JSON.stringify({
+                      type: 'change',
+                      content: v.state.doc.toString()
+                    }));
+                  }
+                })
+              ]
+            }));
+          } else {
+            // Initialize editor
+            editor = new EditorView({
+              state: EditorState.create({
+                doc: content,
+                extensions: [
+                  basicSetup,
+                  keymap.of([indentWithTab]),
+                  getLanguageExtension(filename),
+                  skyTheme,
+                  EditorView.updateListener.of((v) => {
+                    if (v.docChanged) {
+                      window.ReactNativeWebView.postMessage(JSON.stringify({
+                        type: 'change',
+                        content: v.state.doc.toString()
+                      }));
+                    }
+                  })
+                ]
+              }),
+              parent: document.getElementById('editor')
+            });
+          }
+        };
+
+        window.triggerSave = function() {
+          if (editor) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'save',
+              content: editor.state.doc.toString()
+            }));
+          }
+        };
+
+        // Notify app we are ready to receive data
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
+      </script>
+    </body>
+    </html>
+  `;
+
+  // Inject script when loading completes
+  const onWebViewLoad = () => {
+    const escapedContent = JSON.stringify(file.content || '');
+    const escapedName = JSON.stringify(file.name || '');
+    const js = `
+      if (window.setCodeMirrorContent) {
+        window.setCodeMirrorContent(${escapedContent}, ${escapedName});
+      }
+      true;
+    `;
+    webViewRef.current.injectJavaScript(js);
+  };
 
   return (
     <KeyboardAvoidingView 
@@ -47,27 +246,25 @@ export default function Editor({ file, onSave }) {
         </View>
         <TouchableOpacity 
           style={styles.saveBtn}
-          onPress={() => onSave(file.id, code)}
+          onPress={requestSave}
         >
           <Text style={styles.saveText}>SAVE</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={styles.editorArea}>
-        <View style={styles.editorInner}>
-          <Text style={styles.gutterText}>{lineNumbers}</Text>
-          <TextInput
-            multiline
-            value={code}
-            onChangeText={setCode}
-            style={styles.textInput}
-            autoCapitalize="none"
-            autoCorrect={false}
-            spellCheck={false}
-            placeholder="Start coding here..."
-            placeholderTextColor="#94a3b8"
-          />
-        </View>
-      </ScrollView>
+      <View style={styles.editorArea}>
+        <WebView
+          ref={webViewRef}
+          source={{ html: htmlContent }}
+          onMessage={handleMessage}
+          onLoadEnd={onWebViewLoad}
+          originWhitelist={['*']}
+          javaScriptEnabled={true}
+          domStorageEnabled={true}
+          style={styles.webview}
+          keyboardDisplayRequiresUserAction={false}
+          hideKeyboardAccessoryView={true}
+        />
+      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -110,32 +307,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   editorArea: {
-    flexGrow: 1,
-  },
-  editorInner: {
-    flexDirection: 'row',
-    paddingVertical: 16,
-  },
-  gutterText: {
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#94a3b8',
-    textAlign: 'right',
-    paddingHorizontal: 12,
-    backgroundColor: '#f0f9ff',
-    borderRightWidth: 1,
-    borderRightColor: '#e0f2fe',
-    minWidth: 40,
-  },
-  textInput: {
     flex: 1,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: 14,
-    lineHeight: 22,
-    color: '#1f2937',
-    paddingHorizontal: 16,
-    textAlignVertical: 'top',
+  },
+  webview: {
+    flex: 1,
+    backgroundColor: '#ffffff',
   },
   emptyContainer: {
     flex: 1,
