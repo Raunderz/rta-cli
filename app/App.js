@@ -14,12 +14,14 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as FileSystem from 'expo-file-system/legacy';
 import Chat from './Chat';
 import Files from './Files';
 import Editor from './Editor';
 import Terminal from './Terminal';
 
 const STORAGE_KEY = 'rta_api_key';
+const WORKSPACE_DIR = `${FileSystem.documentDirectory}workspace/`;
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
@@ -31,17 +33,17 @@ export default function App() {
   const [selectedFile, setSelectedFile] = useState(null);
   
   // Local project workspace state
-  const [files, setFiles] = useState([
-    { id: '2', name: 'main.py', isDir: false, parentId: '1', content: 'import os\n\nprint("Rta Server Running")' },
-    { id: '3', name: 'utils.py', isDir: false, parentId: '1', content: 'def clean_text(t):\n    return t.strip()' },
-    { id: '5', name: 'index.html', isDir: false, parentId: '4', content: '<h1>Rta App</h1>' },
-    { id: '6', name: 'package.json', isDir: false, content: '{\n  "name": "rta-project"\n}' },
-    { id: '7', name: 'README.md', isDir: false, content: '# Rta Project\n\nRun with container environments.' }
-  ]);
+  const [files, setFiles] = useState([]);
 
   useEffect(() => {
     loadKey();
   }, []);
+
+  useEffect(() => {
+    if (hasKey) {
+      initWorkspace();
+    }
+  }, [hasKey]);
 
   const loadKey = async () => {
     try {
@@ -54,6 +56,67 @@ export default function App() {
       console.error('Failed to load key', e);
     } finally {
       setIsReady(true);
+    }
+  };
+
+  const initWorkspace = async () => {
+    try {
+      const info = await FileSystem.getInfoAsync(WORKSPACE_DIR);
+      if (!info.exists) {
+        await FileSystem.makeDirectoryAsync(WORKSPACE_DIR, { intermediates: true });
+        
+        // Create initial default workspace files
+        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'main.py', 'import os\n\nprint("Hello from Rta Local Filesystem!")\n');
+        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'README.md', '# Rta Workspace\n\nThis is a real local project stored on your device.\n');
+        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'utils.py', 'def add(a, b):\n    return a + b\n');
+        
+        const srcDir = WORKSPACE_DIR + 'src/';
+        await FileSystem.makeDirectoryAsync(srcDir, { intermediates: true });
+        await FileSystem.writeAsStringAsync(srcDir + 'config.json', '{\n  "version": "1.0.0"\n}\n');
+      }
+      await reloadFiles();
+    } catch (e) {
+      console.error('Failed to initialize workspace directory', e);
+    }
+  };
+
+  const reloadFiles = async () => {
+    try {
+      const scanDir = async (path, parentId = null) => {
+        const items = await FileSystem.readDirectoryAsync(path);
+        let list = [];
+        
+        const infoPromises = items.map(async (name) => {
+          const itemUri = path + name;
+          const info = await FileSystem.getInfoAsync(itemUri);
+          return { name, uri: itemUri, isDirectory: info.isDirectory };
+        });
+        
+        const resolvedItems = await Promise.all(infoPromises);
+        resolvedItems.sort((a, b) => {
+          if (a.isDirectory && !b.isDirectory) return -1;
+          if (!a.isDirectory && b.isDirectory) return 1;
+          return a.name.localeCompare(b.name);
+        });
+
+        for (const item of resolvedItems) {
+          if (item.isDirectory) {
+            const id = item.uri;
+            list.push({ id, name: item.name, isDir: true, parentId });
+            const children = await scanDir(item.uri + '/', id);
+            list = [...list, ...children];
+          } else {
+            const content = await FileSystem.readAsStringAsync(item.uri);
+            list.push({ id: item.uri, name: item.name, isDir: false, parentId, content });
+          }
+        }
+        return list;
+      };
+      
+      const workspaceFiles = await scanDir(WORKSPACE_DIR);
+      setFiles(workspaceFiles);
+    } catch (e) {
+      console.error('Failed to scan workspace directory', e);
     }
   };
 
@@ -84,18 +147,59 @@ export default function App() {
 
   const handleSelectFile = (file) => {
     setSelectedFile(file);
-    setActiveTab('editor');
+    if (!file.isDir) {
+      setActiveTab('editor');
+    }
   };
 
-  const handleSaveFile = (id, newContent) => {
-    setFiles(prev => prev.map(f => {
-      if (f.id === id) {
-        return { ...f, content: newContent };
+  const handleSaveFile = async (id, newContent) => {
+    try {
+      await FileSystem.writeAsStringAsync(id, newContent);
+      setFiles(prev => prev.map(f => {
+        if (f.id === id) {
+          return { ...f, content: newContent };
+        }
+        return f;
+      }));
+      setSelectedFile(prev => prev && prev.id === id ? { ...prev, content: newContent } : prev);
+      alert('Saved successfully!');
+    } catch (e) {
+      alert('Failed to save file');
+    }
+  };
+
+  const handleCreateFile = async (parentUri, fileName) => {
+    try {
+      const baseDir = parentUri ? (parentUri.endsWith('/') ? parentUri : parentUri + '/') : WORKSPACE_DIR;
+      const targetUri = baseDir + fileName;
+      await FileSystem.writeAsStringAsync(targetUri, '');
+      await reloadFiles();
+    } catch (e) {
+      alert('Failed to create file');
+    }
+  };
+
+  const handleCreateFolder = async (parentUri, folderName) => {
+    try {
+      const baseDir = parentUri ? (parentUri.endsWith('/') ? parentUri : parentUri + '/') : WORKSPACE_DIR;
+      const targetUri = baseDir + folderName + '/';
+      await FileSystem.makeDirectoryAsync(targetUri, { intermediates: true });
+      await reloadFiles();
+    } catch (e) {
+      alert('Failed to create folder');
+    }
+  };
+
+  const handleDeleteItem = async (uri) => {
+    try {
+      await FileSystem.deleteAsync(uri);
+      if (selectedFile && selectedFile.id === uri) {
+        setSelectedFile(null);
       }
-      return f;
-    }));
-    // Sync active editor state
-    setSelectedFile(prev => prev && prev.id === id ? { ...prev, content: newContent } : prev);
+      await reloadFiles();
+    } catch (e) {
+      alert('Failed to delete item');
+    }
   };
 
   if (!isReady) {
@@ -118,6 +222,10 @@ export default function App() {
           selectedFile={selectedFile}
           handleSelectFile={handleSelectFile}
           handleSaveFile={handleSaveFile}
+          handleCreateFile={handleCreateFile}
+          handleCreateFolder={handleCreateFolder}
+          handleDeleteItem={handleDeleteItem}
+          reloadFiles={reloadFiles}
           files={files}
         />
       ) : (
@@ -186,6 +294,10 @@ function MainApp({
   selectedFile, 
   handleSelectFile, 
   handleSaveFile, 
+  handleCreateFile,
+  handleCreateFolder,
+  handleDeleteItem,
+  reloadFiles,
   files 
 }) {
   const insets = useSafeAreaInsets();
@@ -193,7 +305,17 @@ function MainApp({
   const renderContent = () => {
     switch (activeTab) {
       case 'files':
-        return <Files onSelectFile={handleSelectFile} currentFile={selectedFile} />;
+        return (
+          <Files 
+            filesList={files}
+            onSelectFile={handleSelectFile}
+            currentFile={selectedFile}
+            onCreateFile={handleCreateFile}
+            onCreateFolder={handleCreateFolder}
+            onDeleteItem={handleDeleteItem}
+            onRefresh={reloadFiles}
+          />
+        );
       case 'editor':
         return <Editor file={selectedFile} onSave={handleSaveFile} />;
       case 'terminal':
