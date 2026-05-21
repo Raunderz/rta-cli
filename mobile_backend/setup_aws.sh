@@ -1,15 +1,15 @@
 #!/bin/bash
 
-# Rta Mobile Backend Setup Script for Debian/Ubuntu
+# Rta Mobile Backend Setup Script for AWS (Amazon Linux 2023)
 
 set -e
 
-echo "🚀 Starting Rta Mobile Backend Setup..."
+echo "🚀 Starting Rta Mobile Backend Setup for AWS..."
 
 # 1. Install Dependencies
 echo "📦 Installing system dependencies..."
-sudo apt-get update
-sudo apt-get install -y curl wget git docker.io golang-go
+sudo dnf update -y
+sudo dnf install -y curl wget git docker golang
 
 # 2. Setup Docker
 echo "🐳 Setting up Docker..."
