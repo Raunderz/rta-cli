@@ -85,6 +85,52 @@ export default function Terminal({ files = [] }) {
           }
         }
         break;
+      case 'bf':
+        if (!arg) {
+          response.push('Error: Specify a BF file or string. Example: bf hello.bf');
+        } else {
+          let code = arg;
+          const file = files.find(f => f.name.toLowerCase() === arg.toLowerCase());
+          if (file) code = file.content;
+
+          // Simple BF Interpreter
+          let tape = new Array(30000).fill(0);
+          let ptr = 0;
+          let pc = 0;
+          let output = "";
+          let loopStack = [];
+          let loops = {};
+
+          // Precompute loops
+          let tempStack = [];
+          for (let i = 0; i < code.length; i++) {
+            if (code[i] === '[') tempStack.push(i);
+            else if (code[i] === ']') {
+              let start = tempStack.pop();
+              loops[start] = i;
+              loops[i] = start;
+            }
+          }
+
+          let steps = 0;
+          while (pc < code.length && steps < 100000) {
+            steps++;
+            let c = code[pc];
+            if (c === '>') ptr++;
+            else if (c === '<') ptr--;
+            else if (c === '+') tape[ptr] = (tape[ptr] + 1) % 256;
+            else if (c === '-') tape[ptr] = (tape[ptr] - 1 + 256) % 256;
+            else if (c === '.') output += String.fromCharCode(tape[ptr]);
+            else if (c === '[') { if (tape[ptr] === 0) pc = loops[pc]; }
+            else if (c === ']') { if (tape[ptr] !== 0) pc = loops[pc]; }
+            pc++;
+          }
+
+          response.push('--- bf output ---');
+          response.push(output || '(no output)');
+          if (steps >= 100000) response.push('[Error: Timeout]');
+        }
+        break;
       default:
         response.push(`bash: ${cmd}: command not found`);
     }

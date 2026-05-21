@@ -19,6 +19,7 @@ import Chat from './Chat';
 import Files from './Files';
 import Editor from './Editor';
 import Terminal from './Terminal';
+import GitUI from './GitUI';
 
 const STORAGE_KEY = 'rta_api_key';
 const WORKSPACE_DIR = `${FileSystem.documentDirectory}workspace/`;
@@ -69,6 +70,7 @@ export default function App() {
         await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'main.py', 'import os\n\nprint("Hello from Rta Local Filesystem!")\n');
         await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'README.md', '# Rta Workspace\n\nThis is a real local project stored on your device.\n');
         await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'utils.py', 'def add(a, b):\n    return a + b\n');
+        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'hello.bf', '++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.');
         
         const srcDir = WORKSPACE_DIR + 'src/';
         await FileSystem.makeDirectoryAsync(srcDir, { intermediates: true });
@@ -320,6 +322,8 @@ function MainApp({
         return <Editor file={selectedFile} onSave={handleSaveFile} />;
       case 'terminal':
         return <Terminal files={files} />;
+      case 'git':
+        return <GitUI />;
       case 'chat':
       default:
         return <Chat apiKey={apiKey} onLogout={onLogout} />;
@@ -348,13 +352,25 @@ function MainApp({
 
         <TouchableOpacity 
           style={styles.tabItem} 
-          onPress={() => setActiveTab('editor')}
+          onPress={() => setActiveTab('terminal')}
         >
-          <Text style={[styles.tabIcon, activeTab === 'editor' && styles.activeTabIcon]}>
-            📝
+          <Text style={[styles.tabIcon, activeTab === 'terminal' && styles.activeTabIcon]}>
+            💻
           </Text>
-          <Text style={[styles.tabLabel, activeTab === 'editor' && styles.activeTabLabel]}>
-            Editor
+          <Text style={[styles.tabLabel, activeTab === 'terminal' && styles.activeTabLabel]}>
+            Terminal
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.tabItem} 
+          onPress={() => setActiveTab('git')}
+        >
+          <Text style={[styles.tabIcon, activeTab === 'git' && styles.activeTabIcon]}>
+            🌿
+          </Text>
+          <Text style={[styles.tabLabel, activeTab === 'git' && styles.activeTabLabel]}>
+            Git
           </Text>
         </TouchableOpacity>
 

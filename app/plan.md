@@ -25,12 +25,12 @@ A mobile-first, AI-driven cloud development environment. Users write and edit co
 
 | Component | Tech | Role |
 |-----------|------|------|
-| **Mobile App** | Expo + JavaScript | Thin client: editor, terminal, chat, offline file storage |
-| **FastAPI Backend** | Python (existing) | Auth, API key validation, routes requests to AI Agent |
-| **AI Agent** | Your existing HTTP service | Token pool management, model routing (Qwen/Gemini/DeepSeek/etc.) |
-| **Execution Service** | Go (`net/http` stdlib) | Dumb execution pipe: Docker lifecycle, WebSocket bridging, tunnel management |
-| **Tunneling** | `localhost.run` via SSH | Zero-setup, no API keys, no self-hosted server |
-| **Container** | Ubuntu + Docker | Ephemeral execution environment, glibc-compatible |
+| **Mobile App** | Expo + JavaScript | Thin client: editor, chat-terminal, offline file storage |
+| **FastAPI Backend** | Python (existing) | Auth, API key validation, telemetry |
+| **AI Agent** | rta CLI (headless) | Token pool management, model routing, tool execution inside sandbox |
+| **Execution Service** | Go (`net/http` stdlib) | Orchestrator: Docker lifecycle, Chat-over-CLI bridge, tunnel management |
+| **Tunneling** | `cloudflared` | Secure public URLs for previewing web servers |
+| **Container** | Ubuntu + Docker | Ephemeral execution environment with pre-installed `rta` CLI |
 
 ---
 
@@ -80,14 +80,14 @@ rta/
 | Framework | **Expo (bare workflow)** | Native modules support, mature ecosystem |
 | Language | **JavaScript** | No compile step, no type system overhead, runs everywhere |
 | Editor | **CodeMirror 6** | Lightweight, mobile-friendly touch, native diff view for AI changes |
-| Terminal | **xterm.js** | Industry standard, runs in WebView |
+| Terminal | **Chat-UI (Native)** | Native scrolling, easy copy-paste, better mobile UX than xterm.js |
 | Local Git | **isomorphic-git** | Pure JS, works offline with Expo FileSystem shim |
 | Local Files | **expo-file-system** | Native filesystem access, persists across sessions |
 | State | **React Context + useReducer** | Built-in, no extra dependency, simple enough for this app |
 | Styling | **StyleSheet** | No build step, no Tailwind config, React Native native |
 | Lists | **FlatList** | Built-in, good enough for <1000 files |
-| AI Streaming | **EventSource** (browser API) | No library needed, auto-reconnect, SSE support |
-| Terminal Comms | **WebSocket** (browser API) | Bidirectional, needed for interactive shell |
+| AI Streaming | **Chunked HTTP** | Streamed response from Go `rta ask` execution |
+| Terminal Comms | **WebSocket** | For tunnel URL notifications and PTY shell (optional) |
 
 ### Execution Service (Go)
 | Concern | Choice | Reason |
@@ -123,28 +123,20 @@ rta/
 7. Go returns: `{session_id, ws_url}`
 8. Mobile connects WebSocket, renders terminal via xterm.js
 
-### AI Interaction
-1. User types in chat: *"Add error handling to the login function"*
-2. App sends: `{api_key, session_id, message, current_file_context}` via SSE to FastAPI
-3. FastAPI validates key, forwards to AI Agent
-4. AI Agent selects model, streams response tokens back via SSE
-5. Response arrives at mobile as stream — CodeMirror diff view highlights proposed changes
-6. User taps **Accept** or **Reject**
-7. If accept: app patches file locally, sends `git diff` to container via WebSocket command
-8. If reject: discard, keep chatting
+### AI Interaction (Chat-over-CLI)
+1. User types in chat: *"Fix the bug in main.py"*
+2. App sends: `{prompt}` via `POST /env/{id}/chat` to Go Service.
+3. Go Service executes: `rta ask "Fix the bug in main.py" --workspace /workspace` inside the container.
+4. **Inside Sandbox**: `rta` loads previous session history, uses tools (`read_file`, `edit_file`, `run_command`) to complete the task.
+5. `rta` streams its thinking and final response back to Go, which streams it to the Mobile App.
+6. Mobile App renders the response in a native Chat UI.
 
 ### Running a Web Server (Preview)
-1. User (or AI) runs: `python -m http.server 8080` or `npm run dev`
-2. Process binds to port inside container
-3. Go detects port binding (via polling stdout or user-specified)
-4. Go starts SSH tunnel inside container:
-   ```bash
-   ssh -o StrictHostKeyChecking=no -R 80:localhost:8080 localhost.run
-   ```
-5. localhost.run gives public URL: `https://abc123.localhost.run`
-6. Go parses URL from SSH stdout, sends to mobile via WebSocket
-7. Mobile shows preview in WebView or external browser
-8. On session end: container dies → SSH tunnel dies → URL 404s
+1. User (or AI) runs a server (e.g., `python3 -m http.server 8000`).
+2. Go Service detects port binding or user triggers "Expose".
+3. Go runs `cloudflared tunnel` inside the container.
+4. Go parses the tunnel URL and sends it to the Mobile App via WebSocket.
+5. Mobile App shows a "Preview" button/link.
 
 ### Ending a Session
 1. User taps **"End Session"**
