@@ -56,6 +56,48 @@ def chat(
 
     chat_obj.run(initial_prompt=prompt)
 
+def ask(
+    prompt: str,
+    workspace=None,
+    resume=None,
+    timeout=300,
+    force=False,
+):
+    """Run a one-off agentic request (headless)"""
+    from rta_cli.chat import RtaChat
+    import json
+    chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force)
+    chat_obj._load_history()
+    
+    # Add system prompt if needed
+    if not chat_obj.messages or not any(m.get("role") == "system" for m in chat_obj.messages):
+        system_prompt = f"You are Rta, an expert developer CLI assistant. Working in: {chat_obj.workspace}\n"
+        system_prompt += f"Project: {json.dumps(chat_obj.project_info)}\n"
+        chat_obj.messages.insert(0, {"role": "system", "content": system_prompt})
+
+    from rta_cli.agent import stream_agent
+    
+    gen = stream_agent(
+        prompt,
+        chat_obj.workspace,
+        chat_obj.messages,
+        chat_obj.provider,
+        chat_obj.model,
+        session_id=chat_obj.session_id,
+        turn_index=chat_obj.turn_index,
+        timeout=chat_obj.timeout,
+        force=chat_obj.force,
+    )
+    
+    for event in gen:
+        if event["type"] == "content":
+            print(event["content"], end="", flush=True)
+        elif event["type"] == "done":
+            chat_obj.messages = event["history"]
+            chat_obj.turn_index = event.get("turn_index", chat_obj.turn_index)
+            chat_obj._save_history()
+            print() # Final newline
+
 def init(project_name: str):
     """Initialize a new project"""
     from rta_cli.cmd_init import init as do_init
@@ -166,6 +208,14 @@ def main():
     p_chat.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     p_chat.add_argument("--privacy", action="store_true", help="Hide email in header")
 
+    # ask
+    p_ask = subparsers.add_parser("ask", help="Run a one-off agentic request (headless)")
+    p_ask.add_argument("prompt", help="Prompt for the agent")
+    p_ask.add_argument("--workspace", help="Working directory")
+    p_ask.add_argument("--resume", help="Resume a previous session by ID")
+    p_ask.add_argument("--timeout", type=int, default=300, help="Timeout in seconds")
+    p_ask.add_argument("--force", action="store_true", help="Skip confirmation")
+
     # init
     p_init = subparsers.add_parser("init", help="Initialize a new project")
     p_init.add_argument("project_name", help="Name of the project to create")
@@ -203,6 +253,14 @@ def main():
             resume=args.resume,
             list_sessions=args.list_sessions,
             privacy=args.privacy
+        )
+    elif args.command == "ask":
+        return ask(
+            prompt=args.prompt,
+            workspace=args.workspace,
+            resume=args.resume,
+            timeout=args.timeout,
+            force=args.force
         )
     elif args.command == "init":
         return init(args.project_name)

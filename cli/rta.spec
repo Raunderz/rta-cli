@@ -22,7 +22,7 @@ a = Analysis(
         'rta_cli.functions.semantic_search',
         'rta_cli.functions.get_repo_skeleton',
         'rta_cli.functions.lsp_tools',
-        'rta_cli.functions.ask_question',
+        'rta_cli.questions',
         'rta_cli.index.manager',
         'rta_cli.lsp.client',
         'rta_cli.lsp.manager'

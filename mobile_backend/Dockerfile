@@ -51,8 +51,8 @@ RUN curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_
 # Rta CLI
 # ============================================================================
 
-RUN curl -fsSL https://rta-three.vercel.app/rta -o /usr/local/bin/rta && \
-    chmod +x /usr/local/bin/rta
+# COPY ./cli /tmp/cli
+RUN curl -fsSL https://rta-three.vercel.app/rta -o /usr/local/bin/rta && chmod +x /usr/local/bin/rta
 
 # ============================================================================
 # cloudflared (tunneling)

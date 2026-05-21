@@ -45,6 +45,7 @@ func main() {
 	http.HandleFunc("/env", handleCreateEnv)
 	http.HandleFunc("/env/", handleEnvAction)
 	http.HandleFunc("/ws/env/", handleShell)
+	http.HandleFunc("/env/chat/", handleChat)
 	http.HandleFunc("/expose/", handleExpose)
 	http.HandleFunc("/envs", handleListEnvs)
 	http.Handle("/", http.FileServer(http.Dir("./public")))
@@ -677,6 +678,75 @@ func rateLimitResetLoop() {
 	}
 }
 
+func handleChat(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST" {
+		http.Error(w, "POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
+	id := strings.TrimPrefix(r.URL.Path, "/env/chat/")
+	if !sanitizeEnvID(id) {
+		http.Error(w, "Invalid env ID", http.StatusBadRequest)
+		return
+	}
+
+	val, ok := envs.Load(id)
+	if !ok {
+		http.Error(w, "Environment not found", http.StatusNotFound)
+		return
+	}
+	env := val.(*Env)
+
+	var req struct {
+		Prompt string `json:"prompt"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Set up streaming response
+	w.Header().Set("Content-Type", "text/plain")
+	w.Header().Set("Transfer-Encoding", "chunked")
+
+	// Run 'rta ask' inside container
+	cmd := exec.Command("docker", "exec",
+		"-e", "rta_api_key="+env.APIKey,
+		env.Container,
+		"rta", "ask", req.Prompt, "--workspace", "/workspace",
+	)
+
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		http.Error(w, "Failed to capture stdout", http.StatusInternalServerError)
+		return
+	}
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		http.Error(w, "Failed to start rta", http.StatusInternalServerError)
+		return
+	}
+
+	// Stream stdout to client
+	buffer := make([]byte, 512)
+	for {
+		n, err := stdout.Read(buffer)
+		if n > 0 {
+			w.Write(buffer[:n])
+			if f, ok := w.(http.Flusher); ok {
+				f.Flush()
+			}
+		}
+		if err != nil {
+			break
+		}
+	}
+
+	cmd.Wait()
+	logEventToBackend(env.APIKey, "chat_prompt", env.ID, map[string]interface{}{"prompt": req.Prompt})
+}
+
 // ============================================================================
 // Status & Monitoring
 // ============================================================================
@@ -697,7 +767,22 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-var startTime = time.Now()erface{}) bool {
+var startTime = time.Now()
+
+func handleListEnvs(w http.ResponseWriter, r *http.Request) {
+	type EnvStatus struct {
+		ID        string `json:"id"`
+		CreatedAt string `json:"created_at"`
+		LastPing  string `json:"last_ping"`
+		Uptime    string `json:"uptime"`
+		Idle      string `json:"idle"`
+		TunnelURL string `json:"tunnel_url,omitempty"`
+	}
+
+	var envList []*EnvStatus
+	now := time.Now()
+
+	envs.Range(func(k, v interface{}) bool {
 		env := v.(*Env)
 
 		age := now.Sub(env.CreatedAt)
