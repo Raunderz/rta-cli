@@ -33,6 +33,30 @@ echo "🔨 Building Go backend binary..."
 go mod download
 go build -o mobile_backend_service *.go
 
+# 6. Create Systemd Service
+echo "⚙️  Creating systemd service..."
+USER_NAME=$(whoami)
+WORKING_DIR=$(pwd)
+
+sudo bash -c "cat > /etc/systemd/system/rta-mobile-backend.service <<EOF
+[Unit]
+Description=Rta Mobile Backend Service
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=simple
+User=$USER_NAME
+WorkingDirectory=$WORKING_DIR
+ExecStart=$WORKING_DIR/mobile_backend_service
+Restart=always
+EnvironmentFile=$WORKING_DIR/.env
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+
+sudo systemctl daemon-reload
 echo "✅ Setup complete!"
-echo "To start the service: ./mobile_backend_service"
-echo "Make sure your main Rta backend is reachable at the URL in .env"
+echo "To start service: sudo systemctl enable --now rta-mobile-backend"
+echo "To view logs: journalctl -u rta-mobile-backend -f"
