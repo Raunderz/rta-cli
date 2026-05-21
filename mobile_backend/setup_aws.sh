@@ -11,8 +11,10 @@ echo "📦 Installing system dependencies..."
 sudo dnf update -y --skip-broken
 sudo dnf install -y --skip-broken curl wget git docker golang
 
-# Install Go 1.26.1 (repo version may be too old)
-if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go1.26"; then
+# Ensure Go 1.26.1 (repo version may be too old)
+if /usr/local/go/bin/go version 2>/dev/null | grep -q "go1.26"; then
+    export PATH=/usr/local/go/bin:$PATH
+else
     echo "📦 Installing Go 1.26.1..."
     wget -q https://go.dev/dl/go1.26.1.linux-amd64.tar.gz -O /tmp/go1.26.1.linux-amd64.tar.gz
     sudo rm -rf /usr/local/go
