@@ -116,39 +116,40 @@ docker system df
 ### 1. Launch EC2 Instance
 
 * **Type**: t3.micro (free tier eligible)
-* **OS**: Ubuntu 22.04 LTS
+* **OS**: 
+  * Option A: Ubuntu 22.04 LTS (Recommended)
+  * Option B: Amazon Linux 2023
 * **Storage**: 30GB
 * **Security Group**: Allow ports 8080, 22
 
 ### 2. SSH into Instance
 
 ```bash
-ssh -i your-key.pem ubuntu@<instance-ip>
+ssh -i your-key.pem <user>@<instance-ip>
+# <user> is 'ubuntu' for Ubuntu, 'ec2-user' for Amazon Linux
 ```
 
-### 3. Install Docker
+### 3. Automatic Setup (Recommended)
 
+Run the appropriate setup script for your OS:
+
+**For Ubuntu/Debian:**
 ```bash
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-rm get-docker.sh
-sudo usermod -aG docker ubuntu
-newgrp docker
-```
-
-### 4. Prepare Container Provider
-
-```bash
-# Clone the repository
 git clone https://github.com/schallten/container-provider.git
 cd container-provider
-
-# Build Docker image
-docker build -t tempdev:latest .
-
-# Verify image
-docker images | grep tempdev
+chmod +x setup.sh
+sudo ./setup.sh
 ```
+
+**For Amazon Linux 2023:**
+```bash
+git clone https://github.com/schallten/container-provider.git
+cd container-provider
+chmod +x setup_aws.sh
+sudo ./setup_aws.sh
+```
+
+### 4. Manual Setup (Ubuntu)
 
 ### 5. Build and Deploy Go Binary
 
