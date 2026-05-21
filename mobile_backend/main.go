@@ -681,20 +681,23 @@ func rateLimitResetLoop() {
 // Status & Monitoring
 // ============================================================================
 
-func handleListEnvs(w http.ResponseWriter, r *http.Request) {
-	type EnvStatus struct {
-		ID        string `json:"id"`
-		CreatedAt string `json:"created_at"`
-		LastPing  string `json:"last_ping"`
-		Uptime    string `json:"uptime"`
-		Idle      string `json:"idle"`
-		TunnelURL string `json:"tunnel_url,omitempty"`
-	}
-
-	var envList []*EnvStatus
-	now := time.Now()
-
+func handleStatus(w http.ResponseWriter, r *http.Request) {
+	count := 0
 	envs.Range(func(k, v interface{}) bool {
+		count++
+		return true
+	})
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":          "healthy",
+		"version":         "1.0.0",
+		"active_sessions": count,
+		"uptime":          formatDuration(time.Since(startTime)),
+	})
+}
+
+var startTime = time.Now()erface{}) bool {
 		env := v.(*Env)
 
 		age := now.Sub(env.CreatedAt)
