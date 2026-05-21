@@ -22,6 +22,7 @@ import (
 // Env represents a temporary development environment
 type Env struct {
 	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
 	Container string    `json:"-"`
 	CreatedAt time.Time `json:"created_at"`
 	LastPing  time.Time `json:"last_ping"`
@@ -134,17 +135,42 @@ func handleCreateEnv(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip := extractIP(r)
-
-	// Rate limit: 5 envs per hour per IP
-	val, _ := rateLimits.LoadOrStore(ip, 0)
-	count := val.(int)
-	if count >= 5 {
-		logEvent("rate_limit_exceeded", "", ip)
-		http.Error(w, "Rate limit exceeded (5 per hour)", http.StatusTooManyRequests)
+	apiKey := r.Header.Get("X-API-KEY")
+	if apiKey == "" {
+		http.Error(w, "Missing X-API-KEY", http.StatusUnauthorized)
 		return
 	}
-	rateLimits.Store(ip, count+1)
+
+	user, err := verifyKey(apiKey)
+	if err != nil {
+		http.Error(w, "Invalid API key", http.StatusUnauthorized)
+		return
+	}
+
+	if user.Tier == "free" {
+		http.Error(w, "Free tier access denied. Upgrade for sandbox access.", http.StatusForbidden)
+		return
+	}
+
+	// Check for existing session
+	var existingEnv *Env
+	envs.Range(func(k, v interface{}) bool {
+		e := v.(*Env)
+		if e.UserID == user.UserID {
+			existingEnv = e
+			return false
+		}
+		return true
+	})
+
+	if existingEnv != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"id":     existingEnv.ID,
+			"ws_url": "/ws/env/" + existingEnv.ID,
+		})
+		return
+	}
 
 	// Create Docker container
 	id := generateID()
@@ -173,6 +199,7 @@ func handleCreateEnv(w http.ResponseWriter, r *http.Request) {
 	container := strings.TrimSpace(string(output))
 	env := &Env{
 		ID:        id,
+		UserID:    user.UserID,
 		Container: container,
 		CreatedAt: time.Now(),
 		LastPing:  time.Now(),
@@ -180,7 +207,7 @@ func handleCreateEnv(w http.ResponseWriter, r *http.Request) {
 
 	envs.Store(id, env)
 	logEvent("env_created", id, container[:12])
-	log.Printf("✓ Created env %s (container %s)", id, container[:12])
+	log.Printf("✓ Created env %s for user %s (%s)", id, user.UserID, user.Tier)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{
@@ -532,14 +559,14 @@ func cleanupLoop() {
 			age := now.Sub(env.CreatedAt)
 			idle := now.Sub(env.LastPing)
 
-			if age > 12*time.Hour {
-				log.Printf("⏱  Cleanup: env %s exceeded max lifetime (12h)", env.ID)
+			if age > 3*time.Hour {
+				log.Printf("⏱  Cleanup: env %s exceeded max lifetime (3h)", env.ID)
 				toDelete = append(toDelete, env)
 				return true
 			}
 
-			if idle > 15*time.Minute {
-				log.Printf("⏱  Cleanup: env %s idle for 15m", env.ID)
+			if idle > 30*time.Minute {
+				log.Printf("⏱  Cleanup: env %s idle for 30m", env.ID)
 				toDelete = append(toDelete, env)
 				return true
 			}
