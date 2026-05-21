@@ -21,13 +21,16 @@ import (
 
 // Env represents a temporary development environment
 type Env struct {
-	ID        string    `json:"id"`
-	UserID    string    `json:"user_id"`
-	Container string    `json:"-"`
-	CreatedAt time.Time `json:"created_at"`
-	LastPing  time.Time `json:"last_ping"`
-	TunnelURL string    `json:"tunnel_url,omitempty"`
-	TunnelPID int       `json:"-"`
+	ID        string          `json:"id"`
+	UserID    string          `json:"user_id"`
+	APIKey    string          `json:"-"`
+	Container string          `json:"-"`
+	CreatedAt time.Time       `json:"created_at"`
+	LastPing  time.Time       `json:"last_ping"`
+	TunnelURL string          `json:"tunnel_url,omitempty"`
+	TunnelPID int             `json:"-"`
+	mu        sync.Mutex      `json:"-"`
+	WS        *websocket.Conn `json:"-"`
 }
 
 var (
@@ -200,12 +203,14 @@ func handleCreateEnv(w http.ResponseWriter, r *http.Request) {
 	env := &Env{
 		ID:        id,
 		UserID:    user.UserID,
+		APIKey:    apiKey,
 		Container: container,
 		CreatedAt: time.Now(),
 		LastPing:  time.Now(),
 	}
 
 	envs.Store(id, env)
+	logEventToBackend(apiKey, "env_created", id, map[string]interface{}{"tier": user.Tier})
 	logEvent("env_created", id, container[:12])
 	log.Printf("✓ Created env %s for user %s (%s)", id, user.UserID, user.Tier)
 
@@ -319,6 +324,8 @@ if os.path.exists("/workspace"):
 }
 
 func deleteEnv(env *Env) {
+	logEventToBackend(env.APIKey, "env_deleted", env.ID, nil)
+
 	// Kill Docker container
 	exec.Command("docker", "rm", "-f", env.Container).Run()
 
@@ -359,6 +366,16 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer conn.Close()
+
+	env.mu.Lock()
+	env.WS = conn
+	env.mu.Unlock()
+
+	defer func() {
+		env.mu.Lock()
+		env.WS = nil
+		env.mu.Unlock()
+	}()
 
 	// Start bash in container with PTY
 	bash := exec.Command("docker", "exec", "-it", env.Container, "bash")
@@ -402,6 +419,8 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
+	logEventToBackend(env.APIKey, "shell_opened", env.ID, nil)
+
 	// Container output → client
 	buf := make([]byte, 4096)
 	for {
@@ -416,6 +435,7 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	logEventToBackend(env.APIKey, "shell_closed", env.ID, nil)
 	logEvent("shell_closed", env.ID, "")
 }
 
@@ -529,6 +549,21 @@ cloudflared tunnel --no-autoupdate --url http://localhost:%s > /tmp/tunnel.log 2
 	}
 
 	env.TunnelURL = tunnelURL
+
+	if tunnelURL != "" && !strings.Contains(tunnelURL, "starting") {
+		env.mu.Lock()
+		if env.WS != nil {
+			msg := map[string]interface{}{
+				"type": "tunnel",
+				"url":  tunnelURL,
+				"port": port,
+			}
+			data, _ := json.Marshal(msg)
+			env.WS.WriteMessage(websocket.TextMessage, data)
+		}
+		env.mu.Unlock()
+		logEventToBackend(env.APIKey, "tunnel_created", env.ID, map[string]interface{}{"port": port, "url": tunnelURL})
+	}
 
 	logEvent("tunnel_created", env.ID, port)
 	log.Printf("🔗 Exposed port %s for env %s: %s", port, id, tunnelURL)

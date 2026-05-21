@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 )
 
 type UserInfo struct {
@@ -43,4 +45,28 @@ func verifyKey(apiKey string) (*UserInfo, error) {
 	}
 
 	return &user, nil
+}
+
+func logEventToBackend(apiKey, event, envID string, details map[string]interface{}) {
+	backendURL := os.Getenv("BACKEND_URL")
+	if backendURL == "" {
+		backendURL = "http://localhost:8000"
+	}
+
+	payload := map[string]interface{}{
+		"event":   event,
+		"env_id":  envID,
+		"details": details,
+	}
+	body, _ := json.Marshal(payload)
+
+	req, _ := http.NewRequest("POST", backendURL+"/v1/telemetry/container", bytes.NewBuffer(body))
+	req.Header.Set("X-API-KEY", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Do(req)
+	if err == nil {
+		resp.Body.Close()
+	}
 }
