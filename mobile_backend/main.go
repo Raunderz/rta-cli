@@ -5,7 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	// "io"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -190,8 +190,8 @@ func handleCreateEnv(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleEnvAction(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/env/")
-	id = strings.Split(id, "/")[0]
+	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/env/"), "/")
+	id := pathParts[0]
 
 	if !sanitizeEnvID(id) {
 		http.Error(w, "Invalid env ID", http.StatusBadRequest)
@@ -205,6 +205,77 @@ func handleEnvAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	env := val.(*Env)
+	
+	action := ""
+	if len(pathParts) > 1 {
+		action = pathParts[1]
+	}
+
+	if action == "upload" && r.Method == "POST" {
+		file, _, err := r.FormFile("workspace")
+		if err != nil {
+			http.Error(w, "Error retrieving file from form-data", http.StatusBadRequest)
+			return
+		}
+		defer file.Close()
+
+		tmpPath := fmt.Sprintf("/tmp/%s.zip", id)
+		out, err := os.Create(tmpPath)
+		if err != nil {
+			http.Error(w, "Failed to create temp file", http.StatusInternalServerError)
+			return
+		}
+		io.Copy(out, file)
+		out.Close()
+
+		// Copy ZIP to container
+		exec.Command("docker", "cp", tmpPath, fmt.Sprintf("%s:/tmp/workspace.zip", env.Container)).Run()
+		
+		// Extract inside container using Python
+		unzipCmd := exec.Command("docker", "exec", "-u", "root", env.Container, "bash", "-c",
+			"mkdir -p /workspace && chown dev:dev /workspace && python3 -c 'import zipfile; zipfile.ZipFile(\"/tmp/workspace.zip\", \"r\").extractall(\"/workspace\")' && chown -R dev:dev /workspace && rm /tmp/workspace.zip")
+		if err := unzipCmd.Run(); err != nil {
+			log.Printf("Unzip failed: %v", err)
+			http.Error(w, "Failed to extract workspace in container", http.StatusInternalServerError)
+			return
+		}
+		
+		os.Remove(tmpPath)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Workspace uploaded successfully"))
+		return
+	}
+
+	if action == "download" && r.Method == "GET" {
+		tmpPath := fmt.Sprintf("/tmp/out_%s.zip", id)
+		
+		// Zip workspace inside container using Python, excluding heavy/hidden dirs
+		script := `import os, zipfile
+if os.path.exists("/workspace"):
+    with zipfile.ZipFile("/tmp/workspace_out.zip", "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, dirs, files in os.walk("/workspace"):
+            dirs[:] = [d for d in dirs if d not in (".venv", "node_modules", "__pycache__", ".git", ".expo")]
+            for f in files:
+                zf.write(os.path.join(root, f), os.path.relpath(os.path.join(root, f), "/workspace"))
+`
+		zipCmd := exec.Command("docker", "exec", "-u", "root", env.Container, "bash", "-c",
+			fmt.Sprintf("echo '%s' > /tmp/zip.py && python3 /tmp/zip.py", script))
+		if err := zipCmd.Run(); err != nil {
+			log.Printf("Zip failed: %v", err)
+			http.Error(w, "Failed to zip workspace", http.StatusInternalServerError)
+			return
+		}
+		
+		// Copy zip out of container
+		exec.Command("docker", "cp", fmt.Sprintf("%s:/tmp/workspace_out.zip", env.Container), tmpPath).Run()
+		defer os.Remove(tmpPath)
+		
+		// Serve file
+		w.Header().Set("Content-Type", "application/zip")
+		w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"workspace_%s.zip\"", id))
+		http.ServeFile(w, r, tmpPath)
+		return
+	}
 
 	switch r.Method {
 	case "GET":
