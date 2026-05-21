@@ -170,17 +170,20 @@ rta/
 
 ---
 
-### Phase 1: Local-First Git (Days 3–4)
-**Goal**: Offline file versioning works.
+### Phase 1: Local-First Git & Auth (Days 3–4)
+**Goal**: Offline file versioning and real GitHub integration.
 
-- [ ] Install and configure isomorphic-git with Expo FileSystem shim
-- [ ] Implement `init`, `add`, `commit`, `log`, `status` operations
-- [ ] Build Git UI: commit history, diff viewer, branch indicator
-- [ ] Add "Initialize Repository" and "Commit" actions in UI
-- [ ] Test full flow: edit file → stage → commit → view log
-- [ ] Handle edge cases: empty repos, merge conflicts (alert user)
+- [ ] Install and configure isomorphic-git with Expo FileSystem shim.
+- [ ] Implement `init`, `add`, `commit`, `log`, `status` operations.
+- [ ] **GitHub OAuth Integration**:
+  - Add "Login with GitHub" button (WebView flow).
+  - Backend `/v1/auth/github` returns OAuth token.
+  - Store token securely in `expo-secure-store`.
+  - Use token in `isomorphic-git` for `push` / `pull` actions.
+- [ ] Build Git UI: commit history, diff viewer, branch indicator, and Remote Sync (Push/Pull).
+- [ ] Add "Initialize Repository" and "Commit" actions in UI.
 
-**Deliverable**: User can create repo, make commits, view history — all offline.
+**Deliverable**: User can version files locally AND sync with real GitHub repos from mobile.
 
 ---
 

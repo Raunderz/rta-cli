@@ -385,18 +385,6 @@ function MainApp({
             Chat
           </Text>
         </TouchableOpacity>
-
-        <TouchableOpacity 
-          style={styles.tabItem} 
-          onPress={() => setActiveTab('terminal')}
-        >
-          <Text style={[styles.tabIcon, activeTab === 'terminal' && styles.activeTabIcon]}>
-            💻
-          </Text>
-          <Text style={[styles.tabLabel, activeTab === 'terminal' && styles.activeTabLabel]}>
-            Terminal
-          </Text>
-        </TouchableOpacity>
       </View>
     </View>
   );
