@@ -20,6 +20,11 @@ class TelemetryPayload(BaseModel):
     tokens_out: int = 0
     file_info: dict | None = None
 
+class ContainerLogPayload(BaseModel):
+    event: str
+    env_id: str
+    details: dict | None = None
+
 @router.post("/collect")
 async def collect_telemetry(
     payload: TelemetryPayload,
@@ -46,6 +51,35 @@ async def collect_telemetry(
     background_tasks.add_task(insert_telemetry, data)
     
     return {"status": "Accepted", "user_id": user_id}
+
+@router.post("/container")
+async def collect_container_log(
+    payload: ContainerLogPayload,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(require_api_key)
+):
+    """
+    Log container lifecycle events.
+    """
+    from rta_backend.db import get_supabase_client
+    
+    data = {
+        "user_id": user_id,
+        "event": payload.event,
+        "env_id": payload.env_id,
+        "details": payload.details,
+        "created_at": "now()"
+    }
+    
+    def insert_log(log_data):
+        try:
+            supabase = get_supabase_client()
+            supabase.table("container_logs").insert(log_data).execute()
+        except Exception as e:
+            logging.error(f"Container log insertion failed: {e}")
+
+    background_tasks.add_task(insert_log, data)
+    return {"status": "Accepted"}
 
 async def log_telemetry_task(user_id: str, request, result):
     """Background task to log enriched AI interaction telemetry for fine-tuning."""
