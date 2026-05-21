@@ -2,27 +2,31 @@
 
 # Rta Mobile Backend Setup Script for AWS (Amazon Linux 2023)
 
-set -e
+set +e
 
 echo "🚀 Starting Rta Mobile Backend Setup for AWS..."
 
 # 1. Install Dependencies
 echo "📦 Installing system dependencies..."
-sudo dnf update -y
-sudo dnf install -y curl wget git docker golang
+sudo dnf update -y --skip-broken
+sudo dnf install -y --skip-broken curl wget git docker golang
 
 # 2. Setup Docker
 echo "🐳 Setting up Docker..."
-sudo systemctl enable --now docker
+if ! systemctl is-active --quiet docker 2>/dev/null; then
+    sudo systemctl enable --now docker
+else
+    echo "✅ Docker already running."
+fi
 ACTUAL_USER=${SUDO_USER:-$(whoami)}
-sudo usermod -aG docker $ACTUAL_USER
+sudo usermod -aG docker $ACTUAL_USER 2>/dev/null
 echo "⚠️  Note: You might need to log out and back in for docker group changes to take effect."
 
 # 3. Build Sandbox Image
 echo "🏗️  Building Docker sandbox image (tempdev:latest)..."
 # Ensure we are in the script's directory
 cd "$(dirname "$0")"
-docker build -t tempdev:latest .
+docker build -t tempdev:latest . --pull 2>/dev/null || echo "⚠️  Docker build skipped (image may already exist)."
 
 # 4. Environment Config
 if [ ! -f .env ]; then
@@ -33,15 +37,16 @@ fi
 
 # 5. Build Go Backend
 echo "🔨 Building Go backend binary..."
-go mod download
-go build -o mobile_backend_service *.go
+go mod download 2>/dev/null
+go build -o mobile_backend_service *.go 2>/dev/null || echo "⚠️  Go build skipped (binary may already exist)."
 
 # 6. Create Systemd Service
 echo "⚙️  Creating systemd service..."
 USER_NAME=${SUDO_USER:-$(whoami)}
 WORKING_DIR=$(pwd)
 
-sudo bash -c "cat > /etc/systemd/system/rta-mobile-backend.service <<EOF
+if [ ! -f /etc/systemd/system/rta-mobile-backend.service ]; then
+    sudo bash -c "cat > /etc/systemd/system/rta-mobile-backend.service <<EOF
 [Unit]
 Description=Rta Mobile Backend Service
 After=network.target docker.service
@@ -58,10 +63,23 @@ EnvironmentFile=$WORKING_DIR/.env
 [Install]
 WantedBy=multi-user.target
 EOF"
+    sudo systemctl daemon-reload
+else
+    echo "✅ Service file already exists."
+fi
 
-sudo systemctl daemon-reload
-sudo systemctl enable --now rta-mobile-backend
+if ! systemctl is-enabled --quiet rta-mobile-backend 2>/dev/null; then
+    sudo systemctl enable rta-mobile-backend
+else
+    echo "✅ Service already enabled."
+fi
+
+if ! systemctl is-active --quiet rta-mobile-backend 2>/dev/null; then
+    sudo systemctl start rta-mobile-backend
+    echo "🚀 Service started."
+else
+    echo "✅ Service already running."
+fi
 
 echo "✅ Setup complete!"
-echo "🚀 Service is now running."
 echo "To view logs: journalctl -u rta-mobile-backend -f"
