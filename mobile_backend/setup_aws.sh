@@ -11,6 +11,17 @@ echo "📦 Installing system dependencies..."
 sudo dnf update -y --skip-broken
 sudo dnf install -y --skip-broken curl wget git docker golang
 
+# Install Go 1.26.1 (repo version may be too old)
+if ! /usr/local/go/bin/go version 2>/dev/null | grep -q "go1.26"; then
+    echo "📦 Installing Go 1.26.1..."
+    wget -q https://go.dev/dl/go1.26.1.linux-amd64.tar.gz -O /tmp/go1.26.1.linux-amd64.tar.gz
+    sudo rm -rf /usr/local/go
+    sudo tar -C /usr/local -xzf /tmp/go1.26.1.linux-amd64.tar.gz
+    rm /tmp/go1.26.1.linux-amd64.tar.gz
+    echo 'export PATH=/usr/local/go/bin:$PATH' | sudo tee /etc/profile.d/go.sh > /dev/null
+    export PATH=/usr/local/go/bin:$PATH
+fi
+
 # 2. Setup Docker
 echo "🐳 Setting up Docker..."
 if ! systemctl is-active --quiet docker 2>/dev/null; then
@@ -26,7 +37,7 @@ echo "⚠️  Note: You might need to log out and back in for docker group chang
 echo "🏗️  Building Docker sandbox image (tempdev:latest)..."
 # Ensure we are in the script's directory
 cd "$(dirname "$0")"
-docker build -t tempdev:latest . --pull 2>/dev/null || echo "⚠️  Docker build skipped (image may already exist)."
+docker build -t tempdev:latest .
 
 # 4. Environment Config
 if [ ! -f .env ]; then
@@ -37,8 +48,8 @@ fi
 
 # 5. Build Go Backend
 echo "🔨 Building Go backend binary..."
-go mod download 2>/dev/null
-go build -o mobile_backend_service *.go 2>/dev/null || echo "⚠️  Go build skipped (binary may already exist)."
+go mod download
+go build -o mobile_backend_service *.go
 
 # 6. Create Systemd Service
 echo "⚙️  Creating systemd service..."
