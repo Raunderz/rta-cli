@@ -932,6 +932,32 @@ const NotFoundPage = () => (
   </div>
 );
 
+const CookieBanner = () => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const consent = localStorage.getItem('rta_cookie_consent');
+    if (!consent) setVisible(true);
+  }, []);
+
+  const accept = () => {
+    localStorage.setItem('rta_cookie_consent', 'true');
+    setVisible(false);
+  };
+
+  if (!visible) return null;
+
+  return (
+    <div style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); width: calc(100% - 2rem); max-width: 500px; background: var(--bg-deep); border: 1px solid var(--border); padding: 1.5rem; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); z-index: 9999; display: flex; flex-direction: column; gap: 1rem;">
+      <p class="mono" style="font-size: 12px; line-height: 1.6; margin: 0; color: var(--text-secondary);">
+        [PROTOCOL_NOTICE] We use essential cookies and anonymous telemetry to improve system stability. 
+        Read our <Link href="/privacy" style="color: var(--accent); text-decoration: underline;">Privacy Policy</Link>.
+      </p>
+      <button onClick={accept} class="btn btn-primary" style="width: 100%; font-size: 12px; padding: 0.6rem;">ACKNOWLEDGE</button>
+    </div>
+  );
+};
+
 const App = () => (
   <div class="app-container">
     <Navbar />
@@ -954,6 +980,7 @@ const App = () => (
         </Switch>
       </Router>
     </main>
+    <CookieBanner />
     <AppFooter />
     <Analytics />
   </div>
