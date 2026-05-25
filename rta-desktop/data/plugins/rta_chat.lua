@@ -6,6 +6,7 @@ local config = require "core.config"
 local keymap = require "core.keymap"
 local style = require "core.style"
 local View = require "core.view"
+local process = require "core.process"
 
 config.plugins.rta_chat = common.merge({
   size = 340 * SCALE,
@@ -339,48 +340,37 @@ function RtaChat:send_message()
     local proc = process.start(args)
     local result = proc.stdout:read("a")
     local ok = proc:wait()
-    coroutine.yield()
 
     if ok == 0 and result and #result > 0 then
       local data = json_decode(result)
       if data and data.choices and data.choices[1] and data.choices[1].message then
         local content = data.choices[1].message.content or "(no response)"
-        core.add_thread(function()
-          table.insert(self.messages, {
-            role = "assistant",
-            text = content,
-            time = os.date("%H:%M"),
-          })
-          self.sending = false
-          self.scroll.to.y = self:get_scrollable_size()
-          core.redraw = true
-        end)
-      else
-        core.add_thread(function()
-          table.insert(self.messages, {
-            role = "system",
-            text = "Error: Unexpected API response format.",
-            time = os.date("%H:%M"),
-          })
-          self.sending = false
-          core.redraw = true
-        end)
-      end
-    else
-      core.add_thread(function()
-        local err = "Error: Request failed"
-        if result and #result > 0 then
-          err = err .. " - " .. result:sub(1, 200)
-        end
         table.insert(self.messages, {
-          role = "system",
-          text = err,
+          role = "assistant",
+          text = content,
           time = os.date("%H:%M"),
         })
-        self.sending = false
-        core.redraw = true
-      end)
+        self.scroll.to.y = self:get_scrollable_size()
+      else
+        table.insert(self.messages, {
+          role = "system",
+          text = "Error: Unexpected API response format.",
+          time = os.date("%H:%M"),
+        })
+      end
+    else
+      local err = "Error: Request failed"
+      if result and #result > 0 then
+        err = err .. " - " .. result:sub(1, 200)
+      end
+      table.insert(self.messages, {
+        role = "system",
+        text = err,
+        time = os.date("%H:%M"),
+      })
     end
+    self.sending = false
+    core.redraw = true
   end)
 end
 
@@ -472,8 +462,17 @@ function RtaChat:draw()
 end
 
 
+local function find_doc_node(node)
+  if node.type ~= "leaf" then
+    return find_doc_node(node.a) or find_doc_node(node.b)
+  end
+  if not node.locked then
+    return node
+  end
+end
+
 local view = RtaChat()
-local node = core.root_view:get_active_node()
+local node = find_doc_node(core.root_view.root_node) or core.root_view:get_active_node()
 view.node = node:split("right", view, {x = true}, true)
 
 
