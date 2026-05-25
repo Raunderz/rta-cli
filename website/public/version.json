@@ -3,5 +3,7 @@
   "url_linux": "https://rta-three.vercel.app/rta",
   "url_windows": "https://rta-three.vercel.app/rta.exe",
   "sha256_linux": "4b8a951e94cb24cda81d0fad004936bed69e918363323d57e3bac0f8006538ed",
-  "sha256_windows": ""
+  "sha256_windows": "",
+  "url_linux_desktop": "https://rta-three.vercel.app/rta-desktop",
+  "sha256_linux_desktop": "c02acfae7b330add96acfb8233848d5fe75279f3931319ccac4c6654751712c0"
 }
