@@ -17,24 +17,35 @@ config.plugins.rta_chat = common.merge({
 
 local b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
-local function b64_decode(s)
-  s = s:gsub("[^%w+/=]", "")
-  local result = {}
-  for i = 1, #s, 4 do
-    local a = (s:sub(i, i):find(b64chars) or 65) - 1
-    local b = (s:sub(i+1, i+1):find(b64chars) or 65) - 1
-    local c = (s:sub(i+2, i+2):find(b64chars) or 65) - 1
-    local d = (s:sub(i+3, i+3):find(b64chars) or 65) - 1
-    local n = a*262144 + b*4096 + c*64 + d
-    result[#result+1] = string.char(math.floor(n/65536))
-    if s:sub(i+2, i+2) ~= "=" then
-      result[#result+1] = string.char(math.floor(n/256) % 256)
+local function b64_decode(data)
+  data = data:gsub("[^" .. b64chars .. "=]", "")
+
+  return (data:gsub(".", function(x)
+    if x == "=" then
+      return ""
     end
-    if s:sub(i+3, i+3) ~= "=" then
-      result[#result+1] = string.char(n % 256)
+
+    local r, f = "", (b64chars:find(x, 1, true) or 1) - 1
+
+    for i = 6, 1, -1 do
+      r = r .. ((f % 2^i - f % 2^(i - 1) > 0) and "1" or "0")
     end
-  end
-  return table.concat(result)
+
+    return r
+  end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+    if #x ~= 8 then
+      return ""
+    end
+
+    local c = 0
+    for i = 1, 8 do
+      if x:sub(i, i) == "1" then
+        c = c + 2^(8 - i)
+      end
+    end
+
+    return string.char(c)
+  end))
 end
 
 
@@ -155,17 +166,38 @@ end
 
 local function load_api_key()
   local home = os.getenv("HOME") or ""
-  local f = io.open(home .. "/.rta/credentials", "r")
-  if not f then return nil end
+  local path = home .. "/.rta/credentials"
+
+  local f, err = io.open(path, "r")
+  if not f then
+    core.error("RTA Chat: Failed to open credentials file: %s", err or "unknown error")
+    return nil
+  end
+
   for line in f:lines() do
-    if line:match("^rta_api_key=") then
-      local val = line:match("^rta_api_key%s*=%s*(.+)$")
+    local val = line:match("^rta_api_key%s*=%s*(.+)$")
+
+    if val and #val > 0 then
       f:close()
-      if val then return b64_decode(val) end
-      return nil
+
+      local ok, decoded = pcall(b64_decode, val)
+
+      if not ok then
+        core.error("RTA Chat: Failed to decode API key")
+        return nil
+      end
+
+      if type(decoded) ~= "string" or #decoded == 0 then
+        core.error("RTA Chat: Invalid decoded API key")
+        return nil
+      end
+
+      return decoded
     end
   end
+
   f:close()
+  core.error("RTA Chat: rta_api_key not found in credentials file")
   return nil
 end
 
