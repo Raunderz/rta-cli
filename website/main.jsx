@@ -410,6 +410,15 @@ const PricingPage = () => {
         <button class={`btn ${currency === 'USD' ? 'btn-primary' : ''}`} onClick={() => setCurrency('USD')}>USD</button>
         <button class={`btn ${currency === 'INR' ? 'btn-primary' : ''}`} onClick={() => setCurrency('INR')}>INR</button>
       </div>
+
+      <div style="max-width: 600px; margin: 0 auto 4rem auto; padding: 1.5rem; background: rgba(232, 93, 74, 0.1); border: 2px solid #E85D4A; border-radius: 12px; text-align: center;">
+        <h4 class="mono" style="color: #E85D4A; margin-bottom: 0.5rem; font-weight: bold;">[PAYMENT_GATEWAY_OFFLINE]</h4>
+        <p class="mono" style="font-size: 13px; color: var(--text-primary); margin: 0; line-height: 1.6;">
+          Subscription systems are in **Sandbox Mode**. <br />
+          Card processing is disabled. Select a plan to join the priority queue.
+        </p>
+      </div>
+
       <div class="pricing-grid">
         {tiers.map(t => (
           <div class={`pricing-card ${t.featured ? 'featured' : ''}`} key={t.name}>
@@ -627,12 +636,42 @@ const LegalPage = () => (
   <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
     <h2 style="margin-bottom: 2rem;">Terms of Service</h2>
     <div style="color: var(--text-secondary); font-size: 1.05rem; line-height: 1.8;">
-      <p style="margin-bottom: 2rem;">By accessing Rta, you agree to be bound by these terms. If you disagree with any part, you may not access our services.</p>
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">1. Acceptance of Terms</h3>
-      <p style="margin-bottom: 2rem;">Billing is processed via secure payment gateways. Subscriptions renew automatically unless cancelled. All fees are non-refundable except as required by law.</p>
+      <p style="margin-bottom: 2rem;">By accessing Rta, you agree to these terms. Read carefully.</p>
+      
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">1. Account Usage</h3>
+      <p style="margin-bottom: 1rem;">Users must provide accurate info. One person per account. Sharing credentials is prohibited. We reserve right to terminate access for any violation.</p>
+
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">2. AI & Code Generation</h3>
+      <p style="margin-bottom: 1rem;">Rta provides AI-assisted code. We do not guarantee accuracy or safety of generated code. Review all output before execution. User assumes all risk for code deployed via Rta.</p>
+
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">3. Prohibited Conduct</h3>
+      <p style="margin-bottom: 1rem;">Do not use Rta for: malware creation, illegal hacking, harassment, or bypassing system limits. Do not attempt to reverse engineer the CLI or backend infrastructure.</p>
+
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">4. Intellectual Property</h3>
+      <p style="margin-bottom: 1rem;">You own code you write. We own the Rta platform, branding, and proprietary algorithms. License to use Rta is non-exclusive and revocable.</p>
+
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">5. Limitation of Liability</h3>
+      <p style="margin-bottom: 1rem;">Rta is provided "as is". We are not liable for data loss, system failure, or financial damages resulting from use of our tools.</p>
     </div>
   </div>
 );
+
+const PrivacyPage = () => {
+  const [content, setContent] = useState("");
+
+  useEffect(() => {
+    fetch('/privacy.md')
+      .then(res => res.text())
+      .then(text => setContent(marked(text)))
+      .catch(() => setContent("Error loading privacy policy."));
+  }, []);
+
+  return (
+    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
+      <div class="markdown-body" dangerouslySetInnerHTML={{ __html: content }} />
+    </div>
+  );
+};
 
 const RoadmapPage = () => (
   <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
@@ -850,25 +889,20 @@ const AppFooter = () => (
         <div class="footer-col">
           <h4>Resources</h4>
           <Link href="/docs">Documentation</Link>
-          <a href="#">Waitlist</a>
           <Link href="/blog">Blog</Link>
         </div>
         <div class="footer-col">
           <h4>Legal</h4>
           <Link href="/legal">Terms</Link>
-          <Link href="/legal">Privacy</Link>
+          <Link href="/privacy">Privacy</Link>
         </div>
-      </div>
-      <div class="footer-bottom">
+        </div>
+        <div class="footer-bottom">
         <span>&copy; 2026 Rta Software. All rights reserved.</span>
-        <div style="display: flex; gap: 2rem;">
-          <a href="#">Twitter</a>
-          <a href="#">GitHub</a>
         </div>
-      </div>
-    </div>
-  </footer>
-);
+        </div>
+        </footer>
+        );
 
 const Home = () => (
   <div>
@@ -911,6 +945,7 @@ const App = () => (
           <Route path="/releases" component={ReleasesPage} />
           <Route path="/auth" component={AuthPage} />
           <Route path="/legal" component={LegalPage} />
+          <Route path="/privacy" component={PrivacyPage} />
           <Route path="/blog" component={BlogPage} />
           <Route path="/blog/:slug" component={BlogPage} />
           <Route path="/docs" component={DocsPage} />
