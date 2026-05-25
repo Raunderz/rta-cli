@@ -146,3 +146,4 @@ nn/nn
 nn/network.py
 nn/main.cpp
 .rta_project.json
+rta-desktop/data/data
