@@ -275,6 +275,12 @@ main() {
 
   meson compile -C "${build_dir}"
 
+  # Symlink data into build/src so the binary can find start.lua when run
+  # from the build tree (portable mode fallback). This is the same approach
+  # used upstream in scripts/build.sh for PGO runs.
+  if [[ ! -e "${build_dir}/src/data" ]]; then
+    ln -sf ../../data "${build_dir}/src/data"
+  fi
 
   if [[ $pgo != "" ]]; then
     cp -r data "${build_dir}/src"
@@ -282,6 +288,7 @@ main() {
     meson configure -Db_pgo=use "${build_dir}"
     meson compile -C "${build_dir}"
     rm -fr "${build_dir}/src/data"
+    ln -sf ../../data "${build_dir}/src/data"
   fi
 
   meson install -C "${build_dir}" --destdir "$destdir" \

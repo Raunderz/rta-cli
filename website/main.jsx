@@ -699,6 +699,79 @@ const RoadmapPage = () => (
   </div>
 );
 
+const DownloadsSection = ({ os }) => {
+  if (os === 'android') {
+    return (
+      <div style="padding: var(--space-m); text-align: center;">
+        <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-primary);">Mobile Protocol [Beta]</h4>
+        <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(212, 162, 106, 0.15);">
+          <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; max-width: 100%; display: block;" />
+        </div>
+        <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(0, 0, 0, 0.03); border: 1px solid var(--border); border-radius: 8px;">
+          <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
+            [Classified] Mobile deployment is restricted to Chat & Telemetry.
+            Full Autonomous Agent capabilities (Code Execution/Refactoring) remain exclusive to CLI & Desktop nodes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (os === 'desktop') {
+    return (
+      <div style="padding: var(--space-m);">
+        <div class="status-header">
+          <span class="mono">RTA Desktop IDE [Linux]</span>
+          <a
+            href="/rta-desktop"
+            download="rta-desktop"
+            class="btn btn-primary"
+            style="text-decoration: none;"
+          >
+            Download (4.4 MB)
+          </a>
+        </div>
+        <div style="padding: 1rem 0;">
+          <div style="background: rgba(232, 93, 74, 0.08); border: 1px solid rgba(232, 93, 74, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+            <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
+              [Notice] This is a standalone code editor based on Lite XL.
+              AI agent features are not yet integrated — they are exclusive to the CLI.
+            </p>
+          </div>
+          <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
+          <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">chmod +x rta-desktop
+sudo mv rta-desktop /usr/local/bin/
+rta-desktop</pre>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div class="status-header">
+        <span class="mono">v1.4.2 [Stable]</span>
+        <a
+          href={os === 'linux' ? "/rta" : "/rta.exe"}
+          download={os === 'linux' ? "rta" : "rta.exe"}
+          class="btn btn-primary"
+          style="text-decoration: none;"
+        >
+          Download for {os === 'linux' ? 'Linux' : 'Windows'}
+        </a>
+      </div>
+      <div style="padding: var(--space-m);">
+        <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
+        <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
+          {os === 'linux' ? `chmod +x rta
+sudo mv rta /usr/local/bin/
+rta chat` : `rta.exe chat`}
+        </pre>
+      </div>
+    </>
+  );
+};
+
 const ReleasesPage = () => {
   const [os, setOs] = useState('linux');
 
@@ -709,47 +782,13 @@ const ReleasesPage = () => {
         <p class="mono">Download Binaries</p>
       </div>
       <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
-        <button class={`btn ${os === 'linux' ? 'btn-primary' : ''}`} onClick={() => setOs('linux')}>Linux</button>
-        <button class={`btn ${os === 'windows' ? 'btn-primary' : ''}`} onClick={() => setOs('windows')}>Windows</button>
+        <button class={`btn ${os === 'linux' ? 'btn-primary' : ''}`} onClick={() => setOs('linux')}>CLI · Linux</button>
+        <button class={`btn ${os === 'windows' ? 'btn-primary' : ''}`} onClick={() => setOs('windows')}>CLI · Windows</button>
+        <button class={`btn ${os === 'desktop' ? 'btn-primary' : ''}`} onClick={() => setOs('desktop')}>Desktop IDE</button>
         <button class={`btn ${os === 'android' ? 'btn-primary' : ''}`} onClick={() => setOs('android')}>Android</button>
       </div>
       <div class="status-board">
-        {os === 'android' ? (
-          <div style="padding: var(--space-m); text-align: center;">
-            <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-primary);">Mobile Protocol [Beta]</h4>
-            <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(212, 162, 106, 0.15);">
-              <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; max-width: 100%; display: block;" />
-            </div>
-            <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(0, 0, 0, 0.03); border: 1px solid var(--border); border-radius: 8px;">
-              <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
-                [Classified] Mobile deployment is restricted to Chat & Telemetry.
-                Full Autonomous Agent capabilities (Code Execution/Refactoring) remain exclusive to CLI & Desktop nodes.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div class="status-header">
-              <span class="mono">v1.4.2 [Stable]</span>
-              <a
-                href={os === 'linux' ? "/rta" : "/rta.exe"}
-                download={os === 'linux' ? "rta" : "rta.exe"}
-                class="btn btn-primary"
-                style="text-decoration: none;"
-              >
-                Download for {os === 'linux' ? 'Linux' : 'Windows'}
-              </a>
-            </div>
-            <div style="padding: var(--space-m);">
-              <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
-              <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
-                {os === 'linux' ? `chmod +x rta
-sudo mv rta /usr/local/bin/
-rta chat` : `rta.exe chat`}
-              </pre>
-            </div>
-          </>
-        )}
+        <DownloadsSection os={os} />
       </div>
     </div>
   );
