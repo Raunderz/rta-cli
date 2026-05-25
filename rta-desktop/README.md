@@ -1,81 +1,72 @@
-# Rta Desktop
+# RTA Desktop (Lite XL)
 
-Rta Desktop is a Real-Time Assistant application based on the Eclipse Theia framework.
+RTA Desktop is a lightweight, AI-powered IDE based on [Lite XL](https://github.com/lite-xl/lite-xl) and powered by the [RTA Agent (Odin)](./agent-odin).
 
-## Prerequisites
+## Overview
 
-Please install all necessary [prerequisites](https://github.com/eclipse-theia/theia/blob/master/doc/Developing.md#prerequisites).
+RTA Desktop pivots from the heavy Eclipse Theia architecture to Lite XL to provide a faster, more stable, and more responsive development experience.
 
-## Running the browser example
+- **Frontend**: Lite XL (C/Lua)
+- **Engine**: RTA Agent (Odin)
+- **Integration**: Lua plugins connecting Lite XL to the Odin-based agent.
 
-    npm run build:browser
-    npm run start:browser
+## Project Structure
 
-*or:*
+- `agent-odin/`: Source code for the RTA Agent in Odin.
+- `src/`: Lite XL core C source code.
+- `data/`: Lite XL Lua core and plugins.
+- `migration_plan.md`: The roadmap for the transition from Theia to Lite XL.
 
-    npm run build:browser
-    cd browser-app
-    npm start
+## Quick Start
 
-*or:* launch `Start Browser Backend` configuration from VS code.
+### Prerequisites
 
-Open http://localhost:3000 in the browser.
+You will need the following tools installed:
 
-## Running the Electron example
+- Meson (>=0.63)
+- Ninja
+- SDL2 (or SDL3 depending on the version)
+- PCRE2
+- FreeType2
+- Lua 5.4
+- A working C compiler (GCC / Clang)
+- Odin (for the agent)
 
-    npm run build:electron
-    npm run start:electron
+### Building RTA Desktop (Lite XL)
 
-*or:*
+1. **Install Build Tools**: Ensure you have `meson`, `ninja`, and a C compiler (GCC/Clang) installed on your system.
+2. **Setup Build Directory**:
+   ```bash
+   meson setup build --wrap-mode=forcefallback
+   ```
+   *Note: `--wrap-mode=forcefallback` ensures all dependencies like Lua, PCRE2, and FreeType2 are downloaded and built statically if not found on your system.*
+3. **Compile**:
+   ```bash
+   meson compile -C build
+   ```
+4. **Run**:
+   ```bash
+   ./build/src/rta-desktop
+   ```
 
-    npm run build:electron
-    cd electron-app
-    npm start
+### Building the RTA Agent (Odin)
 
-*or:* launch `Start Electron Backend` configuration from VS code.
+The agent is located in the `agent-odin` directory.
 
+1. **Install Odin**: Ensure the [Odin compiler](https://odin-lang.org/) is installed.
+2. **Build**:
+   ```bash
+   cd agent-odin
+   odin build src -out:rta-agent -o:speed
+   ```
+   *Note: The agent is currently a standalone binary that will be integrated into the IDE via Lua plugins.*
 
-## Developing with the browser example
+## Proceeding Further
 
-Start watching all packages, including `browser-app`, of your application with
+- **Lua Plugins**: The core integration logic should be placed in `data/plugins/rta_agent.lua`.
+- **UI Customization**: Use `data/core/style.lua` to adjust colors and fonts to match RTA branding.
+- **Odin Development**: Follow the `agent-odin/after_migration.md` plan to implement the agent's core loop and tools.
 
-    npm run watch:browser
+## License
 
-*or* watch only specific packages with
-
-    cd rta-desktop
-    npm run watch
-
-and the browser example.
-
-    cd browser-app
-    npm run watch
-
-Run the example as [described above](#Running-the-browser-example)
-## Developing with the Electron example
-
-Start watching all packages, including `electron-app`, of your application with
-
-    npm run watch:electron
-
-*or* watch only specific packages with
-
-    cd rta-desktop
-    npm run watch
-
-and the Electron example.
-
-    cd electron-app
-    npm run watch
-
-Run the example as [described above](#Running-the-Electron-example)
-
-## Publishing rta-desktop
-
-Create a npm user and login to the npm registry, [more on npm publishing](https://docs.npmjs.com/getting-started/publishing-npm-packages).
-
-    npm login
-
-Publish packages with lerna to update versions properly across local packages, [more on publishing with lerna](https://github.com/lerna/lerna#publish).
-
-    npx lerna publish
+MIT
