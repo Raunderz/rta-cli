@@ -1,7 +1,8 @@
 import { h, render, Component } from 'preact';
 import { useState, useEffect, useRef } from 'preact/hooks';
 import Dashboard from './dashboard.jsx';
-import { Router, Route, Link, useLocation, Switch } from 'wouter';
+import ChatInterface from './chat_interface.jsx';
+import { Router, Route, Link, useLocation, useRoute, Switch } from 'wouter';
 import { BlogPage } from './blog.jsx';
 import { Analytics } from "@vercel/analytics/react";
 import { marked } from 'marked';
@@ -349,7 +350,8 @@ const Hero = () => (
           <h1 style={{ fontStyle: 'normal' }}>Code <br /> anywhere.</h1>
           <p>Your AI coding workspace in your pocket. Build, preview, and iterate on any device—no powerful machine required.</p>
           <div class="hero-actions">
-            <Link href="/auth" class="btn btn-primary">Start Building for Free</Link>
+            <Link href="/chat" class="btn btn-primary">AI Chat</Link>
+            <Link href="/auth" class="btn">Start Building</Link>
             <Link href="/releases" class="btn">Download App</Link>
           </div>
         </div>
@@ -997,32 +999,37 @@ const CookieBanner = () => {
   );
 };
 
-const App = () => (
-  <div class="app-container">
-    <Navbar />
-    <main class="main-content">
-      <Router>
-        <Switch>
-          <Route path="/" component={Home} />
-          <Route path="/pricing" component={PricingPage} />
-          <Route path="/roadmap" component={RoadmapPage} />
-          <Route path="/status" component={StatusPage} />
-          <Route path="/releases" component={ReleasesPage} />
-          <Route path="/auth" component={AuthPage} />
-          <Route path="/legal" component={LegalPage} />
-          <Route path="/privacy" component={PrivacyPage} />
-          <Route path="/blog" component={BlogPage} />
-          <Route path="/blog/:slug" component={BlogPage} />
-          <Route path="/docs" component={DocsPage} />
-          <Route path="/dashboard" component={Dashboard} />
-          <Route component={NotFoundPage} />
-        </Switch>
-      </Router>
-    </main>
-    <CookieBanner />
-    <AppFooter />
-    <Analytics />
-  </div>
-);
+const App = () => {
+  const [match] = useRoute("/chat");
+  if (match) return <ChatInterface />;
+
+  return (
+    <div class="app-container">
+      <Navbar />
+      <main class="main-content">
+        <Router>
+          <Switch>
+            <Route path="/" component={Home} />
+            <Route path="/pricing" component={PricingPage} />
+            <Route path="/roadmap" component={RoadmapPage} />
+            <Route path="/status" component={StatusPage} />
+            <Route path="/releases" component={ReleasesPage} />
+            <Route path="/auth" component={AuthPage} />
+            <Route path="/legal" component={LegalPage} />
+            <Route path="/privacy" component={PrivacyPage} />
+            <Route path="/blog" component={BlogPage} />
+            <Route path="/blog/:slug" component={BlogPage} />
+            <Route path="/docs" component={DocsPage} />
+            <Route path="/dashboard" component={Dashboard} />
+            <Route component={NotFoundPage} />
+          </Switch>
+        </Router>
+      </main>
+      <CookieBanner />
+      <AppFooter />
+      <Analytics />
+    </div>
+  );
+};
 
 render(<App />, document.body);
