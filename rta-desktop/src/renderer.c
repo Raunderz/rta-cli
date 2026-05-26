@@ -799,6 +799,8 @@ int ren_init(void) {
   if (!draw_rect_surface)
     return -1; // error set by SDL_CreateRGBSurface
 
+  SDL_SetSurfaceBlendMode(draw_rect_surface, SDL_BLENDMODE_BLEND);
+
   if ((err = FT_Init_FreeType(&library)) != 0)
     return SDL_SetError("%s", get_ft_error(err));
 
