@@ -49,120 +49,24 @@ local function b64_decode(data)
 end
 
 
-local function json_decode(str)
-  local pos = 1
-  local function skip_ws()
-    while pos <= #str and str:sub(pos, pos):match("%s") do pos = pos + 1 end
+local LogView = require "core.logview"
+
+local function stderr(...)
+  local parts = {}
+  for i = 1, select("#", ...) do
+    parts[#parts+1] = tostring(select(i, ...))
   end
-  local function parse_string()
-    pos = pos + 1
-    local parts = {}
-    while pos <= #str do
-      local c = str:sub(pos, pos)
-      if c == '"' then pos = pos + 1; break end
-      if c == "\\" then
-        pos = pos + 1
-        local esc = str:sub(pos, pos)
-        if esc == '"' or esc == "\\" or esc == "/" then parts[#parts+1] = esc
-        elseif esc == "b" then parts[#parts+1] = "\b"
-        elseif esc == "f" then parts[#parts+1] = "\f"
-        elseif esc == "n" then parts[#parts+1] = "\n"
-        elseif esc == "r" then parts[#parts+1] = "\r"
-        elseif esc == "t" then parts[#parts+1] = "\t"
-        elseif esc == "u" then
-          local hex = str:sub(pos+1, pos+4)
-          parts[#parts+1] = utf8.char(tonumber(hex, 16))
-          pos = pos + 4
-        end
-      else
-        parts[#parts+1] = c
-      end
-      pos = pos + 1
-    end
-    return table.concat(parts)
-  end
-  local function parse_value()
-    skip_ws()
-    local c = str:sub(pos, pos)
-    if c == "{" then
-      pos = pos + 1
-      local obj = {}
-      skip_ws()
-      if str:sub(pos, pos) == "}" then pos = pos + 1; return obj end
-      while pos <= #str do
-        local key = parse_string()
-        skip_ws()
-        if str:sub(pos, pos) == ":" then pos = pos + 1 end
-        obj[key] = parse_value()
-        skip_ws()
-        c = str:sub(pos, pos)
-        if c == "}" then pos = pos + 1; break end
-        if c == "," then pos = pos + 1 end
-      end
-      return obj
-    elseif c == "[" then
-      pos = pos + 1
-      local arr = {}
-      skip_ws()
-      if str:sub(pos, pos) == "]" then pos = pos + 1; return arr end
-      while pos <= #str do
-        arr[#arr+1] = parse_value()
-        skip_ws()
-        c = str:sub(pos, pos)
-        if c == "]" then pos = pos + 1; break end
-        if c == "," then pos = pos + 1 end
-      end
-      return arr
-    elseif c == '"' then
-      return parse_string()
-    elseif c == "t" then pos = pos + 4; return true
-    elseif c == "f" then pos = pos + 5; return false
-    elseif c == "n" then pos = pos + 4; return nil
-    else
-      local _, e = str:find("^-?%d+%.?%d*[eE]?[+-]?%d*", pos)
-      if e then
-        local n = tonumber(str:sub(pos, e))
-        pos = e + 1
-        return n
-      end
-      return nil
-    end
-  end
-  local val = parse_value()
-  return val
+  io.stderr:write(table.concat(parts, "\t"), "\n")
+  io.stderr:flush()
 end
 
 
-local function json_encode(val)
-  local t = type(val)
-  if t == "string" then
-    return '"' .. val:gsub('\\', '\\\\'):gsub('"', '\\"'):gsub('\n', '\\n'):gsub('\r', '\\r'):gsub('\t', '\\t') .. '"'
-  elseif t == "number" then
-    if val % 1 == 0 then return tostring(math.floor(val)) end
-    return tostring(val)
-  elseif t == "boolean" then
-    return tostring(val)
-  elseif t == "nil" then
-    return "null"
-  elseif t == "table" then
-    local is_array = #val > 0
-    if is_array then
-      local parts = {}
-      for _, v in ipairs(val) do
-        parts[#parts+1] = json_encode(v)
-      end
-      return "[" .. table.concat(parts, ",") .. "]"
-    else
-      local parts = {}
-      for k, v in pairs(val) do
-        parts[#parts+1] = json_encode(k) .. ":" .. json_encode(v)
-      end
-      return "{" .. table.concat(parts, ",") .. "}"
-    end
-  end
-  return "null"
-end
+local json = require "core.json"
 
+local function log(msg, ...)
+  if ... then msg = string.format(msg, ...) end
+  core.log("RTA Chat: %s", msg)
+end
 
 local function load_api_key()
   local home = os.getenv("HOME") or ""
@@ -170,7 +74,7 @@ local function load_api_key()
 
   local f, err = io.open(path, "r")
   if not f then
-    core.error("RTA Chat: Failed to open credentials file: %s", err or "unknown error")
+    log("Failed to open credentials file: %s", err or "unknown error")
     return nil
   end
 
@@ -183,12 +87,12 @@ local function load_api_key()
       local ok, decoded = pcall(b64_decode, val)
 
       if not ok then
-        core.error("RTA Chat: Failed to decode API key")
+        log("Failed to decode API key")
         return nil
       end
 
       if type(decoded) ~= "string" or #decoded == 0 then
-        core.error("RTA Chat: Invalid decoded API key")
+        log("Invalid decoded API key")
         return nil
       end
 
@@ -197,7 +101,7 @@ local function load_api_key()
   end
 
   f:close()
-  core.error("RTA Chat: rta_api_key not found in credentials file")
+  log("rta_api_key not found in credentials file")
   return nil
 end
 
@@ -348,7 +252,7 @@ function RtaChat:send_message()
     end
   end
 
-  local body = json_encode({
+  local body = json.encode({
     messages = messages_for_api,
     model = "auto",
     provider = "auto",
@@ -356,9 +260,12 @@ function RtaChat:send_message()
     max_tokens = 2000,
   })
 
+  stderr("Sending request to", self.server_url, "body size:", #body)
+  stderr("API key (first 8):", self.api_key and self.api_key:sub(1, 8) or "nil")
+
   local url = self.server_url .. "/v1/chat"
   local args = {
-    "curl", "-s", "-X", "POST", url,
+    "curl", "-s", "--max-time", "30", "-X", "POST", url,
     "-H", "Content-Type: application/json",
     "-H", "X-API-KEY: " .. self.api_key,
     "-H", "X-Device-ID: " .. self.device_id,
@@ -369,32 +276,68 @@ function RtaChat:send_message()
   }
 
   core.add_thread(function()
+    stderr(">> thread started, calling process.start")
     local proc = process.start(args)
+    stderr(">> process.start returned, pid:", proc and proc:pid() or "nil")
+    stderr(">> reading stdout...")
     local result = proc.stdout:read("a")
+    stderr(">> read returned, result size:", result and #result or 0, "type:", type(result))
     local ok = proc:wait()
 
+    stderr("curl exit code:", ok, "response size:", result and #result or 0)
+
     if ok == 0 and result and #result > 0 then
-      local data = json_decode(result)
-      if data and data.choices and data.choices[1] and data.choices[1].message then
-        local content = data.choices[1].message.content or "(no response)"
-        table.insert(self.messages, {
-          role = "assistant",
-          text = content,
-          time = os.date("%H:%M"),
-        })
-        self.scroll.to.y = self:get_scrollable_size()
-      else
+      stderr("Raw response (first 500):", result:sub(1, 500))
+      local ok, data = pcall(json.decode, result)
+      if not ok then
+        stderr("JSON decode error:", data)
+        log("JSON parse error: %s", tostring(data))
         table.insert(self.messages, {
           role = "system",
-          text = "Error: Unexpected API response format.",
+          text = "Error: Failed to parse API response.",
           time = os.date("%H:%M"),
         })
+      else
+        stderr("Parsed data keys:", data and table.concat(table.keys(data), ", ") or "nil")
+        local content
+        if data.choices and data.choices[1] then
+          local choice = data.choices[1]
+          if choice.message then
+            content = choice.message.content
+            stderr("Found content in choices[1].message.content, length:", #content)
+          end
+        end
+        if not content and data.message and data.message.content then
+          content = data.message.content
+          stderr("Found content in data.message.content, length:", #content)
+        end
+        if not content and data.content then
+          content = data.content
+          stderr("Found content in data.content, length:", #content)
+        end
+        if content then
+          table.insert(self.messages, {
+            role = "assistant",
+            text = content,
+            time = os.date("%H:%M"),
+          })
+          self.scroll.to.y = self:get_scrollable_size()
+        else
+          stderr("No content found in response, full dump:", result)
+          log("No content in API response")
+          table.insert(self.messages, {
+            role = "system",
+            text = "Error: Unexpected response format.",
+            time = os.date("%H:%M"),
+          })
+        end
       end
     else
       local err = "Error: Request failed"
       if result and #result > 0 then
         err = err .. " - " .. result:sub(1, 200)
       end
+      stderr("Request failed:", err)
       table.insert(self.messages, {
         role = "system",
         text = err,
@@ -434,7 +377,7 @@ function RtaChat:draw()
       local text_w = w - pad * 2
       local is_user = msg.role == "user"
       local bg_color = is_user and style.selection or (msg.role == "system" and style.background3 or style.background)
-      local text_color = is_user and style.accent or (msg.role == "system" and style.dim or style.text)
+      local text_color = is_user and style.accent or (msg.role == "system" and style.warn or style.text)
 
       if msg.role == "assistant" then
         renderer.draw_rect(self.position.x + 2, msg_top, 3, mlh, style.accent)
@@ -503,9 +446,22 @@ local function find_doc_node(node)
   end
 end
 
-local view = RtaChat()
+local chat_view = RtaChat()
 local node = find_doc_node(core.root_view.root_node) or core.root_view:get_active_node()
-view.node = node:split("right", view, {x = true}, true)
+chat_view.node = node:split("right", chat_view, {x = true}, true)
+
+
+local log_view = LogView()
+local function toggle_log_view()
+  if log_view.node then
+    log_view.node:close_view(core.root_view.root_node, log_view)
+    log_view.node = nil
+  else
+    local ln = find_doc_node(core.root_view.root_node) or core.root_view:get_active_node()
+    log_view.node = ln:split("right", log_view, {x = true}, true)
+  end
+  core.redraw = true
+end
 
 
 command.add(RtaChat, {
@@ -524,15 +480,17 @@ command.add(RtaChat, {
 
 command.add(nil, {
   ["rta-chat:toggle"] = function()
-    view.visible = not view.visible
+    chat_view.visible = not chat_view.visible
     core.redraw = true
   end,
+  ["log-view:toggle"] = toggle_log_view,
 })
 
 keymap.add {
   ["return"] = "rta-chat:submit",
   ["backspace"] = "rta-chat:backspace",
   ["ctrl+shift+c"] = "rta-chat:toggle",
+  ["ctrl+shift+l"] = "log-view:toggle",
 }
 
-return view
+return chat_view

@@ -96,6 +96,14 @@ The desktop IDE is live and available for Linux. It doesn't have AI agent featur
 
 We're building the Lua plugin layer that will bridge the editor to the Odin agent. When that's done, RTA Desktop will have the same AI capabilities as the CLI, wrapped in a native editing experience that starts in under a second.
 
+### A Note on the Core
+
+Lite XL's C core has been a great foundation, but C is showing its age. Memory bugs, fragile cross-compilation, and the lack of modern tooling are recurring friction points. We've decided to **port the core from C to Nim**.
+
+Why Nim? It compiles to C, so we can port one subsystem at a time — the Meson build system compiles Nim's C output alongside the remaining C files. There's no GC pause risk (we use ARC/ORC), C interop is a single \`{.importc.}\` declaration, and cross-compilation is built into the language. Same memory model, same performance, but with modern tooling, sum types, and a package manager that doesn't fight you.
+
+The port is incremental and non-blocking — the editor ships throughout. We'll announce when the first Nim-based release is ready.
+
 Download the binary from our [Releases page](/releases).
 `
     },
