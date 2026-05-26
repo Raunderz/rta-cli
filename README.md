@@ -1,101 +1,76 @@
 # Rta
 
-Rta is a mobile-first, AI-assisted code editor designed for Android users who want to work with code, Git repositories, and development workflows directly from their phone. It focuses on accessibility, quick edits, and AI-supported development rather than attempting to replicate a full desktop IDE.
+Rta is an AI-assisted development ecosystem spanning a Python CLI, a FastAPI backend, a Go container execution service, a Lite XL-based desktop IDE, a React Native mobile app, and a Preact marketing website.
 
-Rta is intended as a practical alternative to complex mobile development setups such as Termux-based workflows, which often require manual configuration and technical setup. The goal is to provide a “ready-to-use” coding environment that works immediately, especially for quick fixes, emergency debugging, and lightweight development tasks on the go.
+It is designed as a practical alternative to complex development setups — providing a "ready-to-use" environment for AI-assisted coding, quick edits, Git operations, and lightweight development tasks across devices.
 
-## Overview
+## Architecture
 
-Rta combines a lightweight code editor, Git integration, and AI assistance into a single mobile application. It is designed for developers who need fast access to code and intelligent support without setting up a full development environment.
+```
+User
+  ├── CLI (Python)              cli/
+  ├── Desktop IDE (Lite XL)     rta-desktop/
+  ├── Mobile App (Expo/RN)      app/
+  └── Website (Preact)          website/
+              │
+              ▼
+    FastAPI Backend             backend/
+      ├── Auth (Supabase + hCaptcha)
+      ├── AI Proxy (Groq, Cerebras, SambaNova, OpenRouter, Gemini)
+      ├── Rate Limiting (tier-based)
+      └── Telemetry (Supabase)
+              │
+              ▼
+    Go Executor Service         mobile_backend/
+      ├── Docker container lifecycle
+      ├── WebSocket PTY shell
+      ├── Cloudflare Tunnel
+      └── Abuse detection
+              │
+              ▼
+        Docker Containers
+```
 
-The application is being built using React Native with Expo, enabling cross-platform mobile development with fast iteration and simplified deployment.
+## Components
 
-## Core Features
+### CLI (`cli/`)
 
-### Code Editor
+The most mature component — a full-featured AI coding agent with 30+ native tool schemas (file ops, git, search, LSP, MCP), interactive chat, session management, auto-update, and semantic search. Routes all AI calls through the Rta backend middleware.
 
-A mobile-optimized code editor for viewing and editing project files. It supports basic syntax highlighting and file navigation, with a focus on responsiveness and simplicity.
+### Backend (`backend/`)
 
-### Git Integration
+FastAPI middleware providing authentication (API key + GitHub OAuth + hCaptcha), AI provider proxy with automatic fallback across 5 providers, tier-based rate limiting, telemetry logging to Supabase, and a reverse proxy to the Go execution service.
 
-Rta allows users to connect to Git repositories, clone projects, browse file structures, and manage changes directly from the mobile interface.
+### Container Execution Service (`mobile_backend/`)
 
-### AI Assistance
+Go HTTP/WebSocket server managing ephemeral Docker containers for remote code execution. Features WebSocket PTY terminals, Cloudflare tunnel URLs for web previews, abuse detection, and automatic cleanup.
 
-The app integrates multiple AI APIs to assist with development tasks, including:
+### Desktop IDE (`rta-desktop/`)
 
-* Explaining code sections
-* Debugging and error analysis
-* Generating boilerplate or helper functions
-* Refactoring suggestions and improvements
+A lightweight AI-powered IDE forked from Lite XL (C/Lua), integrating an Odin agent via JSON-RPC 2.0 for AI orchestration. Provides a native editing experience with AI assistance.
 
-### Cloud Execution (Future / Premium)
+### Mobile App (`app/`)
 
-Rta is designed with optional cloud execution capabilities, allowing code to be run in remote environments. This feature is intended for more advanced use cases and is not part of the initial core release.
+React Native (Expo) mobile app with file browser, CodeMirror-based editor, Git integration (isomorphic-git), terminal emulator, and AI chat interface.
 
-## Purpose and Motivation
+### Website (`website/`)
 
-Rta is being built to address the difficulty of mobile-based development workflows, especially those relying on tools like Termux. While powerful, such tools often require manual setup, dependency management, and technical knowledge that can be a barrier for many users.
+Preact + Vite SPA hosted on Vercel with auth, pricing tiers, release downloads, docs, blog, dashboard, and a standalone chat interface.
 
-Rta aims to simplify this experience by providing an instant-use environment for:
+## Status
 
-* Quick code edits
-* Emergency bug fixes
-* Viewing and understanding repositories on the go
-* Lightweight development tasks without setup overhead
+This is an active long-term project. The CLI and backend are the most mature components, with the desktop IDE and mobile app under active development.
 
-## Development Status
+## Plan
 
-Rta is an ongoing long-term project and is not expected to be fully completed before August 2026. The current focus is on building a stable core experience, with advanced features planned gradually over time.
+1. **CLI** — Built and actively maintained (v0.4.0). Serves as the primary interface and testing ground for AI agent capabilities.
+2. **Backend** — Fully functional middleware layer handling auth, AI proxying, rate limiting, and telemetry.
+3. **Desktop IDE** — Lite XL fork with Odin agent integration in progress.
+4. **Mobile App** — Expo/React Native client connected to the backend, under active development.
+5. **Container Service** — Go-based Docker execution environment with WebSocket shell and tunneling.
 
-## Development Roadmap
+## License
 
-### Phase 1: Core Editor (Initial Release)
+MIT
 
-* React Native + Expo setup
-* Basic file editor interface
-* Local project structure handling
-* Simple UI for navigation between files
-
-### Phase 2: Git Integration
-
-* Repository cloning support
-* File browsing from Git repos
-* Basic commit and push functionality (where feasible on mobile)
-
-### Phase 3: AI Integration
-
-* Integration with AI APIs
-* Code explanation feature
-* Debugging assistant
-* Code generation tools
-
-### Phase 4: Cloud Layer (Advanced)
-
-* Remote execution environment
-* Project build and run capabilities
-* Authentication and usage limits
-* Premium tier infrastructure
-
-### Phase 5: Optimization and Expansion (Post-MVP)
-
-* Performance improvements
-* Better editor capabilities
-* Plugin or extension system (optional future goal)
-* Enhanced collaboration features
-
-## Positioning
-
-Rta is positioned between a code editor and an AI-powered development assistant. It is not intended to replace full desktop IDEs but to complement them by enabling lightweight, mobile-first development workflows.
-
-It focuses on practicality, speed, and accessibility, especially in situations where traditional development environments are unavailable or inconvenient.
-
-## Plan of building
-
-0. Backend - To make the api calls from the frontend we need a backend and a known structure we can build around. Backend is planned to only serve 3 purposes : Authentication , Data logging ( which will eventually be sent to supabase ) and Billing. All database will be at supabase , backend is just the middle layer. Will be built using FastAPI.
- 
-1. CLI tool - Will provide an insight into how everything will work and will provide a learning base so that the app when built will be easy to work with and will be easy to understand. Will be built using python.
-
-2. Desktop App - After the CLI tool is built and all the learning has been gathered, the project will move onto the desktop app where the CLI tool will get an ui layer and many other features. Will be built upon tauri and preact.js
-
-3. Mobile App - After the desktop app is built and all the learning has been gathered, the project will move onto the mobile app where the desktop app will get an ui layer and many other features. Since all main things will be built before the mobile app, the porting will be rather easy and it will be built very fast. Will be built upon expo and react native.
+Copyright 2026 schallten
