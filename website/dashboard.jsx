@@ -285,9 +285,9 @@ const Dashboard = () => {
                         <div class={`nav-item ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>
                             <Icon d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" /> Chat
                         </div>
-                        <div class="nav-item">
-                            <Icon d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> Projects
-                        </div>
+                        <a href="/chat" class="nav-item">
+                            <Icon d="M12 2a10 10 0 1 0 10 10h-2a8 8 0 1 1-8-8V2z" /> AI Chat
+                        </a>
                     </div>
                     <div class="nav-group">
                         <div class="nav-label">Settings</div>
