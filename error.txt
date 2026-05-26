@@ -1,0 +1,6 @@
+Error: cannot open /home/ribo/Documents/github_work/Rta/website/public/data/core/start.lua: No such file or directory
+stack traceback:
+	[C]: in function 'dofile'
+	[string "local core..."]:11: in function <[string "local core..."]:6>
+	[C]: in function 'xpcall'
+	[string "local core..."]:6: in main chunk
