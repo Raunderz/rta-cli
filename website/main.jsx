@@ -725,12 +725,12 @@ const DownloadsSection = ({ os }) => {
         <div class="status-header">
           <span class="mono">RTA Desktop IDE [Linux]</span>
           <a
-            href="/rta-desktop"
-            download="rta-desktop"
+            href="/rta-desktop-linux.tar.gz"
+            download="rta-desktop-linux.tar.gz"
             class="btn btn-primary"
             style="text-decoration: none;"
           >
-            Download (4.4 MB)
+            Download (623 KB)
           </a>
         </div>
         <div style="padding: 1rem 0;">
@@ -741,8 +741,8 @@ const DownloadsSection = ({ os }) => {
             </p>
           </div>
           <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
-          <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">chmod +x rta-desktop
-sudo mv rta-desktop /usr/local/bin/
+          <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">tar xzf rta-desktop-linux.tar.gz
+sudo mv rta-desktop data /usr/local/bin/
 rta-desktop</pre>
         </div>
       </div>
