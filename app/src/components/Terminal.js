@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   View,
@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-// Base URL for backend; may be undefined in some envs
 const GO_URL = process.env.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_MOBILE_BACKEND_URL || '';
 
 export default function Terminal({ session }) {
@@ -31,11 +30,25 @@ export default function Terminal({ session }) {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; width: 100%; overflow: hidden; background: #0d1117; }
     .xterm { height: 100%; width: 100%; padding: 8px; }
+    .xterm-helper-textarea {
+      opacity: 0.01 !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      position: absolute !important;
+      z-index: 100 !important;
+      outline: none !important;
+      resize: none !important;
+      border: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      pointer-events: auto !important;
+    }
   </style>
 </head>
 <body>
   <div id="terminal-container" style="height:100%;width:100%;"></div>
-  <input id="mobile-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;z-index:9999;caret-color:transparent;" />
   <script>
     var log = function(m) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: m }));
@@ -72,25 +85,19 @@ export default function Terminal({ session }) {
     try { fitAddon.fit(); } catch(e) {}
     setTimeout(function() { try { fitAddon.fit(); } catch(e) {} }, 300);
 
-    function fixTextarea() {
-      var ta = document.querySelector('.xterm-helper-textarea');
-      if (ta) {
-        ta.style.opacity = '0.01';
-        ta.style.left = '0';
-        ta.style.top = '0';
-        ta.style.width = '1px';
-        ta.style.height = '1px';
-        ta.style.position = 'fixed';
-        ta.style.zIndex = '1000';
-        ta.style.pointerEvents = 'none';
-      }
-    }
-
-    for (var i = 0; i < 5; i++) {
-      setTimeout(fixTextarea, i * 200);
-    }
-
     var ws = null;
+
+    term.onData(function(data) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
+    });
+
+    term.onResize(function(size) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ cols: size.cols, rows: size.rows }));
+      }
+    });
 
     function connectShell() {
       log('Connecting: ' + WS_URL);
@@ -99,7 +106,8 @@ export default function Terminal({ session }) {
 
       ws.onopen = function() {
         log('WS Open');
-        ensureKeyboard();
+        var ta = document.querySelector('.xterm-helper-textarea');
+        if (ta) ta.focus();
         var dims = { cols: term.cols, rows: term.rows };
         ws.send(JSON.stringify(dims));
         setTimeout(function() { ws.send('neofetch\\n'); }, 1000);
@@ -122,66 +130,23 @@ export default function Terminal({ session }) {
         log('WS Closed: ' + e.code);
         term.write('\\r\\n\\x1b[33m\\u26A0 Disconnected (' + e.code + ')\\x1b[0m\\r\\n');
       };
-
-      term.onData(function(data) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(data);
-        }
-      });
-
-      term.onResize(function(size) {
-        if (ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(JSON.stringify({ cols: size.cols, rows: size.rows }));
-        }
-      });
     }
-
-    function focusTerminal() {
-      term.focus();
-    }
-
-    var mobileInput = document.getElementById('mobile-input');
-    mobileInput.addEventListener('input', function() {
-      var data = this.value;
-      this.value = '';
-      if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(data);
-      }
-    });
-    mobileInput.addEventListener('focus', function() {
-      fixTextarea();
-    });
-
-
-    function ensureKeyboard() {
-      fixTextarea();
-      try { term.focus(); } catch(e) {}
-      mobileInput.focus();
-    }
-
-    document.getElementById('terminal-container').addEventListener('click', function() {
-      ensureKeyboard();
-    });
 
     document.getElementById('terminal-container').addEventListener('touchend', function(e) {
-      e.preventDefault();
-      ensureKeyboard();
+      var ta = document.querySelector('.xterm-helper-textarea');
+      if (ta) ta.focus();
     });
 
-    window.addEventListener('message', function(event) {
-      try {
-        var data = JSON.parse(event.data);
-        if (data.type === 'control' && ws && ws.readyState === WebSocket.OPEN) {
-          ws.send(data.code);
-        }
-        if (data.type === 'focus') {
-          term.focus();
-        }
-      } catch(e) {}
+    document.getElementById('terminal-container').addEventListener('click', function() {
+      var ta = document.querySelector('.xterm-helper-textarea');
+      if (ta) ta.focus();
     });
 
     window.addEventListener('resize', function() {
       try { fitAddon.fit(); } catch(e) {}
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ cols: term.cols, rows: term.rows }));
+      }
     });
 
     connectShell();
@@ -199,6 +164,12 @@ export default function Terminal({ session }) {
         setTerminalLogs(prev => [data.message, ...prev.slice(0, 5)]);
       }
     } catch(e) {}
+  }, []);
+
+  const sendJS = useCallback((code) => {
+    webViewRef.current?.injectJavaScript(
+      '(function(){try{' + code + '}catch(e){}})();void(0);'
+    );
   }, []);
 
   const reconnect = useCallback(() => {
@@ -249,27 +220,25 @@ export default function Terminal({ session }) {
             domStorageEnabled={true}
             allowsInlineMediaPlayback={true}
             keyboardDisplayRequiresUserAction={false}
-            allowFileAccess={true}
-            allowUniversalAccessFromFileURLs={true}
-            mixedContentMode={'compatibility'}
-            overScrollMode={'never'}
           />
 
           <View style={styles.accessoryBar}>
             {[
-              { label: 'TAB', code: '\\t' },
-              { label: '^C', code: '\\x03' },
-              { label: '^D', code: '\\x04' },
-              { label: 'ESC', code: '\\x1b' },
-              { label: '▲', code: '\\x1b[A' },
-              { label: '▼', code: '\\x1b[B' },
-              { label: '◀', code: '\\x1b[D' },
-              { label: '▶', code: '\\x1b[C' },
+              { label: 'TAB', code: "'\\t'" },
+              { label: '^C', code: "'\\x03'" },
+              { label: '^D', code: "'\\x04'" },
+              { label: 'ESC', code: "'\\x1b'" },
+              { label: '▲', code: "'\\x1b[A'" },
+              { label: '▼', code: "'\\x1b[B'" },
+              { label: '◀', code: "'\\x1b[D'" },
+              { label: '▶', code: "'\\x1b[C'" },
             ].map(({ label, code }) => (
               <TouchableOpacity
                 key={label}
                 style={styles.accBtn}
-                onPress={() => webViewRef.current?.postMessage(JSON.stringify({ type: 'control', code }))}
+                onPress={() => {
+                  sendJS('var w=document.querySelector(".xterm-helper-textarea");if(w){w.focus();}if(window._rta_ws&&window._rta_ws.readyState===1){window._rta_ws.send(' + code + ');}');
+                }}
               >
                 <Text style={styles.accBtnText}>{label}</Text>
               </TouchableOpacity>
@@ -305,6 +274,7 @@ const styles = StyleSheet.create({
   statusTextOn: { color: '#10b981' },
   statusTextOff: { color: '#94a3b8' },
   webview: { flex: 1, backgroundColor: '#0d1117' },
+  terminalArea: { flex: 1 },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
   emptyIcon: { fontSize: 48, marginBottom: 16, opacity: 0.5 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: '#fff', marginBottom: 8 },
