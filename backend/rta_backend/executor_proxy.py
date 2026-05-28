@@ -135,44 +135,69 @@ WS_GO_BASE = GO_BASE_URL.replace("http://", "ws://").replace("https://", "wss://
 async def proxy_websocket(websocket: WebSocket, path: str):
     safe_path = sanitize_path(path)
     await websocket.accept()
+    logger.info(f"WS proxy accepted: /v1/executor/ws/{safe_path}")
 
-    upstream_ws_url = f"{WS_GO_BASE}/{safe_path}"
+    upstream_ws_url = f"{WS_GO_BASE}/ws/{safe_path}"
+    logger.info(f"WS proxy connecting upstream: {upstream_ws_url}")
 
     try:
         async with websockets.connect(upstream_ws_url) as upstream_ws:
+            logger.info(f"WS proxy upstream connected: {upstream_ws_url}")
+
             async def mobile_to_go():
                 try:
                     while True:
                         data = await websocket.receive()
                         if data["type"] == "websocket.receive":
                             if "text" in data and data["text"] is not None:
+                                logger.debug(f"WS proxy text→upstream: {data['text'][:100]}")
                                 await upstream_ws.send(data["text"])
                             elif "bytes" in data and data["bytes"] is not None:
+                                logger.debug(f"WS proxy bytes→upstream: {len(data['bytes'])}b")
                                 await upstream_ws.send(data["bytes"])
                 except WebSocketDisconnect:
-                    pass
-                except Exception:
-                    pass
+                    logger.info("WS proxy: app disconnected (WebSocketDisconnect)")
+                except Exception as e:
+                    logger.warning(f"WS proxy: mobile_to_go error: {e}")
 
             async def go_to_mobile():
                 try:
                     async for message in upstream_ws:
                         if isinstance(message, str):
+                            logger.debug(f"WS proxy text→app: {message[:100]}")
                             await websocket.send_text(message)
                         else:
+                            logger.debug(f"WS proxy bytes→app: {len(message)}b")
                             await websocket.send_bytes(message)
                 except WebSocketDisconnect:
-                    pass
-                except Exception:
-                    pass
+                    logger.info("WS proxy: app disconnected (go_to_mobile)")
+                except Exception as e:
+                    logger.warning(f"WS proxy: go_to_mobile error: {e}")
 
             await asyncio.gather(mobile_to_go(), go_to_mobile())
+            logger.info("WS proxy: gather completed")
     except websockets.exceptions.WebSocketException as e:
-        logger.error(f"Upstream WebSocket error: {e}")
-        await websocket.send_json({"type": "error", "content": "Upstream WebSocket unavailable"})
+        logger.error(f"WS proxy upstream WebSocket error: {e}")
+        try:
+            await websocket.send_text(f"Upstream WebSocket unavailable: {e}")
+        except Exception:
+            pass
+    except ConnectionRefusedError:
+        logger.error("WS proxy: upstream connection refused — Go backend not running on localhost:8080?")
+        try:
+            await websocket.send_text("Error: Go backend unavailable (connection refused)")
+        except Exception:
+            pass
+    except OSError as e:
+        logger.error(f"WS proxy: upstream OS error: {e}")
+        try:
+            await websocket.send_text(f"Error: upstream OS error: {e}")
+        except Exception:
+            pass
     except Exception as e:
-        logger.error(f"WebSocket proxy error: {e}")
+        logger.error(f"WS proxy unexpected error: {e}")
     finally:
+        logger.info("WS proxy: closing")
         try:
             await websocket.close()
         except Exception:
