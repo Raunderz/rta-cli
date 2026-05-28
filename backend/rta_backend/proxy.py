@@ -126,7 +126,7 @@ def get_routing_sequence(
             {"provider": "openrouter", "model": "deepseek/deepseek-v4-flash:free"},
             {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-30b-a3b:free"},
             {"provider": "gemini", "model": "gemini-2.5-flash"},
-            {"provider": "gemini", "model": "gemini-3-flash-preview"},
+            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
             {"provider": "cerebras", "model": "llama3.1-70b"},
             {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
         ]
@@ -170,7 +170,7 @@ def get_routing_sequence(
             "model": pick_model_for_provider(working_model, "openrouter"),
         },
         {"provider": "gemini", "model": "gemini-2.5-flash"},
-        {"provider": "gemini", "model": "gemini-3-flash-preview"},
+        {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
         {
             "provider": "cerebras",
             "model": pick_model_for_provider(working_model, "cerebras"),
