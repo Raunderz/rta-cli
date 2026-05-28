@@ -14,7 +14,7 @@ def _get_manager(workspace: str) -> LSPManager:
         _lsp_manager = LSPManager(workspace)
     return _lsp_manager
 
-def get_diagnostics(working_directory: str, file_path: str):
+def get_diagnostics(working_directory: str, file_path: str, **kwargs):
     """Get type errors and warnings for a file using LSP."""
     try:
         abs_path = os.path.abspath(os.path.join(working_directory, file_path))
