@@ -71,6 +71,24 @@ export default function Terminal({ session }) {
     try { fitAddon.fit(); } catch(e) {}
     setTimeout(function() { try { fitAddon.fit(); } catch(e) {} }, 300);
 
+    function fixTextarea() {
+      var ta = document.querySelector('.xterm-helper-textarea');
+      if (ta) {
+        ta.style.opacity = '0.01';
+        ta.style.left = '0';
+        ta.style.top = '0';
+        ta.style.width = '1px';
+        ta.style.height = '1px';
+        ta.style.position = 'fixed';
+        ta.style.zIndex = '1000';
+        ta.style.pointerEvents = 'none';
+      }
+    }
+
+    for (var i = 0; i < 5; i++) {
+      setTimeout(fixTextarea, i * 200);
+    }
+
     var ws = null;
 
     function connectShell() {
@@ -80,7 +98,7 @@ export default function Terminal({ session }) {
 
       ws.onopen = function() {
         log('WS Open');
-        term.focus();
+        ensureKeyboard();
         var dims = { cols: term.cols, rows: term.rows };
         ws.send(JSON.stringify(dims));
         setTimeout(function() { ws.send('neofetch\\n'); }, 1000);
@@ -121,13 +139,35 @@ export default function Terminal({ session }) {
       term.focus();
     }
 
+    function ensureKeyboard() {
+      fixTextarea();
+      try { term.focus(); } catch(e) {}
+      var ta = document.querySelector('.xterm-helper-textarea');
+      if (ta) {
+        try { ta.focus(); } catch(e) {}
+      } else {
+        var tmp = document.createElement('input');
+        tmp.style.position = 'fixed';
+        tmp.style.left = '0';
+        tmp.style.top = '0';
+        tmp.style.width = '1px';
+        tmp.style.height = '1px';
+        tmp.style.opacity = '0.01';
+        tmp.style.zIndex = '9999';
+        document.body.appendChild(tmp);
+        tmp.focus();
+        tmp.addEventListener('blur', function() { document.body.removeChild(tmp); });
+        setTimeout(function() { try { document.body.removeChild(tmp); } catch(e) {} }, 1000);
+      }
+    }
+
     document.getElementById('terminal-container').addEventListener('click', function() {
-      term.focus();
+      ensureKeyboard();
     });
 
     document.getElementById('terminal-container').addEventListener('touchend', function(e) {
       e.preventDefault();
-      term.focus();
+      ensureKeyboard();
     });
 
     window.addEventListener('message', function(event) {
@@ -211,6 +251,10 @@ export default function Terminal({ session }) {
             domStorageEnabled={true}
             allowsInlineMediaPlayback={true}
             keyboardDisplayRequiresUserAction={false}
+            allowFileAccess={true}
+            allowUniversalAccessFromFileURLs={true}
+            mixedContentMode={'compatibility'}
+            overScrollMode={'never'}
           />
 
           <View style={styles.accessoryBar}>
