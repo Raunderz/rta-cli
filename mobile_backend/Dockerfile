@@ -10,7 +10,7 @@ RUN apt-get update && apt-get install -y \
     openssh-client openssh-server \
     sudo \
     ca-certificates \
-    neofetch \
+    fastfetch \
     python3 python3-pip python3-venv python3-dev \
     nodejs npm \
     && rm -rf /var/lib/apt/lists/*
