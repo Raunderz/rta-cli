@@ -8,6 +8,107 @@ export const BlogPage = ({ params }) => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
+      slug: "mobile-terminal-keyboard",
+      title: "The Mobile Terminal Keyboard Odyssey",
+      date: "May 28, 2026",
+      readTime: "6 min read",
+      excerpt: "Getting Android to show a keyboard inside a WebView terminal took longer than building the entire backend. Here is the full saga.",
+      tags: ["Mobile", "Android", "Terminal", "WebView"],
+      commit: "main",
+      body: `
+# The Mobile Terminal Keyboard Odyssey
+
+This is the story of how something as simple as a keyboard almost broke us.
+
+We built a cloud terminal — bash inside a Docker container, streamed over WebSocket, rendered in a React Native WebView with xterm.js. The container orchestration runs on a [Go-based backend](https://schallten.github.io/container-provider/) (basic version is open source). The desktop version works on the first try. The mobile version took four full rewrites and a descent into the deepest corners of Android WebView.
+
+Here is everything that went wrong and how we fixed it.
+
+## Act 1: It Does Not Connect
+
+The first problem was the easiest. The WebSocket URL was wrong.
+
+We have a backend that manages the Docker containers and a proxy layer in front of it. The WebSocket URL our app was constructing didn't match the proxy's routing — it pointed at the wrong path. The proxy itself also had a routing bug where it forwarded connections to the wrong upstream endpoint.
+
+Fix: align the URL path in the app with the proxy's routes, and fix the proxy's upstream path.
+
+Result: WebSocket connects. Terminal displays output. We can see neofetch running on a phone. Victory lap? Not yet. We cannot type a single character.
+
+## Act 2: The TextInput Trap
+
+The obvious approach: put a \`TextInput\` overlay on top of the WebView, capture keystrokes, and forward them to the WebSocket.
+
+\`\`\`jsx
+<TextInput
+  style={{ position: 'absolute', left: 0, top: 0, width: 1, height: 1, opacity: 0.01 }}
+  onChangeText={(text) => ws.send(text)}
+/>
+\`\`\`
+
+The cursor bleeds through the transparent overlay. You set \`color: transparent\` — the cursor is still there, a blinking vertical line floating on top of your terminal emulator. Set \`caretHidden={true}\` — gone. But now the input itself is unreliable. Sometimes keystrokes arrive, sometimes they disappear into the void. The \`TextInput\` overlay has a mind of its own.
+
+We tried everything: \`pointerEvents\`, z-index stacking, \`position: absolute\` vs \`fixed\`, different opacity values. The \`TextInput\` would randomly lose focus, the keyboard would dismiss, and the user would be stuck staring at a terminal they could see but not touch.
+
+After two rewrites of this approach, we abandoned it entirely.
+
+## Act 3: The about:blank Curse
+
+Next idea: skip React Native's input layer entirely. Handle everything inside the WebView. The WebView renders an HTML page with xterm.js. xterm.js creates a hidden \`<textarea>\` internally. On desktop, clicking the terminal focuses this textarea and you can type. On mobile, the hidden textarea (\`opacity: 0\`, \`left: -9999em\`) cannot be focused by Android — the system keyboard refuses to appear for elements that are fully invisible.
+
+We tried everything to override the textarea's styles after xterm creates it:
+- Setting \`opacity: 0.01\`
+- Moving it to \`left: 0\`, \`top: 0\`
+- Making it \`width: 1px\`, \`height: 1px\`
+- Calling \`term.focus()\` in every lifecycle hook
+- Polling with \`setTimeout\` every 200ms to find and fix the textarea
+
+None of it worked reliably.
+
+We also discovered a nasty restriction: when the WebView source is \`{ html: ... }\`, it renders from \`about:blank\`. Some WebView behaviors — particularly around autofocus and programmatic focus — are restricted on \`about:blank\` origins. We considered switching to a \`data:text/html\` URI but that came with its own set of CORS-like limitations for loading xterm from CDN.
+
+## Act 4: postMessage Betrayal
+
+Even if we could get the keyboard to show, we needed a reliable way to send keystrokes from React Native to the WebView. The canonical approach is \`postMessage\` — sending a JSON payload to the WebView's message handler.
+
+On the WebView side, a \`window.addEventListener('message', ...)\` handler receives it.
+
+This works 90% of the time. The other 10%, the message is silently dropped. No error, no warning — the data just never arrives. This is a known issue with \`postMessage\` on Android WebView when the WebView is still loading or when the JavaScript context is in certain states.
+
+The alternative: \`injectJavaScript\`. It is less elegant but bulletproof. It directly executes a string in the WebView's JavaScript context. It always works.
+
+This was the turning point. We rewrote all accessory bar buttons (TAB, ^C, ^D, arrow keys) to use \`injectJavaScript\`, storing the WebSocket reference globally for direct access.
+
+## Act 5: The Final Shape
+
+The solution that finally worked combined several insights:
+
+1. **Make the textarea full-size and visible.** Instead of hiding xterm's textarea, we made it cover the entire terminal area with \`opacity: 0.01\`, \`width: 100%\`, \`height: 100%\`, \`position: absolute\`. This way, tapping anywhere on the terminal touches the textarea directly.
+
+2. **Focus on tap.** Both \`click\` and \`touchend\` event handlers on the terminal container call \`textarea.focus()\`. This ensures the textarea receives focus regardless of how the user interacts.
+
+3. **\`keyboardDisplayRequiresUserAction={false}\`.** This React Native WebView prop is essential. It tells Android to show the keyboard when a text input is programmatically focused, without requiring a direct user tap on the input itself.
+
+4. **\`injectJavaScript\` for reliable communication.** All input from accessory buttons bypasses \`postMessage\` and goes directly through \`injectJavaScript\`.
+
+5. **No TextInput overlay.** The xterm textarea itself is the input mechanism. \`term.onData()\` captures keystrokes and sends them through the WebSocket. The server echoes back, xterm displays.
+
+## The Result
+
+A React Native terminal component where:
+- The Android keyboard appears when you tap the terminal
+- Every keystroke reaches the server
+- The WebSocket stays connected
+- The accessory bar works reliably
+- The cursor stays in its lane (no more z-order bleed)
+
+The terminal now works on Android. It took four approaches, roughly 15 iterations, and an embarrassing number of commits with titles like "fix: reliable mobile keyboard trigger in terminal" followed by "fix: mobile keyboard not appearing in terminal WebView" followed by "fix: enable keyboard input in terminal WebView".
+
+Some problems can only be solved by trying every wrong answer until the right one is the only option left.
+
+The lesson: WebView + keyboard on Android is a minefield. Use \`injectJavaScript\`, not \`postMessage\`. Make your input element visible — \`opacity: 0.01\` is visible enough for Android but invisible to the user. And never assume something as simple as a keyboard will be simple.
+`
+    },
+    {
       slug: "desktop-ide-evolution",
       title: "RTA Desktop: From Brackets to Lite XL",
       date: "May 25, 2026",
