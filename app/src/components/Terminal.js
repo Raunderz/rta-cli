@@ -25,11 +25,11 @@ export default function Terminal({ session }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <link rel="stylesheet" href="https://unpkg.com/xterm@5.1.0/css/xterm.css" />
   <script src="https://unpkg.com/xterm@5.1.0/lib/xterm.js"><\/script>
-  <script src="https://unpkg.com/xterm-addon-fit@0.7.0/lib/xterm-addon-fit.js"><\/script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { height: 100%; width: 100%; overflow: hidden; background: #0d1117; }
+    html, body { height: 100%; width: 100%; overflow: auto; background: #0d1117; }
     .xterm { height: 100%; width: 100%; padding: 8px; }
+    .xterm-viewport { overflow: auto !important; }
     .xterm-helper-textarea {
       opacity: 0.01 !important;
       left: 0 !important;
@@ -56,7 +56,12 @@ export default function Terminal({ session }) {
 
     var WS_URL = ${JSON.stringify(wsUrl)};
 
+    var cols = Math.max(100, Math.floor(window.innerWidth / 9.5));
+    var rows = Math.max(24, Math.floor(window.innerHeight / 19));
+
     var term = new Terminal({
+      cols: cols,
+      rows: rows,
       cursorBlink: true,
       fontSize: 13,
       fontFamily: "'Courier New', monospace",
@@ -74,16 +79,11 @@ export default function Terminal({ session }) {
         cyan: '#79c0ff',
         white: '#b1bac4',
       },
-      scrollback: 1000,
+      scrollback: 5000,
       tabStopWidth: 4,
     });
 
-    var fitAddon = new FitAddon.FitAddon();
-    term.loadAddon(fitAddon);
     term.open(document.getElementById('terminal-container'));
-
-    try { fitAddon.fit(); } catch(e) {}
-    setTimeout(function() { try { fitAddon.fit(); } catch(e) {} }, 300);
 
     var ws = null;
 
@@ -143,7 +143,6 @@ export default function Terminal({ session }) {
     });
 
     window.addEventListener('resize', function() {
-      try { fitAddon.fit(); } catch(e) {}
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ cols: term.cols, rows: term.rows }));
       }
