@@ -1,6 +1,30 @@
 # Rta — Cloud IDE for Mobile (Expo + React Native)
 
-A mobile-first, AI-driven cloud development environment. Users write and edit code through an AI chat interface, with execution happening in ephemeral Docker containers streamed back to the device in real-time.
+## Current Status (May 2026)
+
+### ✅ Achievements
+- **Restructuring**: App moved to `src/` hierarchy (`components/`, `App.js`, `index.js`).
+- **Session Lifecycle**: "START CLOUD" / "END" logic implemented in `App.js`. Connects to Go Executor via Python Proxy.
+- **Header Forwarding**: Fixed `X-API-KEY` stripping in Python `executor_proxy.py`.
+- **AI Sandbox Chat**: `Chat.js` now routes prompts to `/v1/executor/env/chat/{id}` when cloud active, executing `rta ask` in container.
+- **Terminal UI**: `Terminal.js` integrated with `xterm.js` in a WebView with WebSocket support.
+- **Infra (Server)**: `mobile_backend` Go service and `tempdev:latest` Docker image (Ubuntu 22.04 + Neofetch + Node/Python) active on AWS.
+
+### ❌ Blockers / Stuck At
+- **Terminal I/O**: WebSocket connection handshakes successfully ("Connected"), but:
+    - **No Output**: Shell prompt and `neofetch` results are not visible in the terminal screen.
+    - **Input Lag/Loss**: Typing on mobile keyboard only sends the first character (e.g., `l` from `ls`). Subsequent characters show `In: 1` in logs but don't seem to reach the PTY.
+    - **Binary vs Text**: Potential mismatch in WebSocket frame encoding between WebView, Python Proxy, and Go Backend.
+- **File Sync**: Two-way sync (zipping local project to cloud and vice versa) is pending implementation.
+
+### 💡 Potential Fixes (Next Steps)
+- **The "Native Input Bridge"**: Bypass the unreliable WebView hidden textarea by using a React Native `TextInput` to capture keystrokes. Forward them to the WebView via `postMessage`.
+- **Developer Accessory Bar**: Add a row of native buttons for `TAB`, `ESC`, `CTRL`, and arrows to improve mobile coding speed.
+- **Force Text Frames**: If the Python proxy is dropping binary frames, switch the WebSocket to handle purely string-based data on the frontend.
+- **Base64 Packaging**: (Requires Backend Change) Wrap all PTY bytes in a JSON Base64 package to ensure transparent proxying through all middleware layers.
+
+---
+
 
 ## Architecture Overview
 
@@ -40,34 +64,20 @@ A mobile-first, AI-driven cloud development environment. Users write and edit co
 rta/
 ├── app/                          # Expo + React Native mobile application
 │   ├── src/
-│   │   ├── components/           # Reusable UI (ChatBubble, FileTree, Terminal)
-│   │   ├── screens/              # Main screens (Editor, Chat, Settings)
-│   │   ├── navigation/           # Expo Router configuration
-│   │   ├── hooks/                # Custom hooks (useSession, useAIStream, useGit)
-│   │   ├── context/              # App-wide state (React Context + useReducer)
-│   │   ├── utils/                # API clients, constants, helpers
-│   │   └── types.js              # JSDoc typedefs
+│   │   ├── components/           # Reusable UI (Chat, Editor, Files, GitUI, Terminal)
+│   │   ├── screens/              # Main screens (Future use for navigation)
+│   │   ├── navigation/           # Navigation configuration (Future use)
+│   │   ├── hooks/                # Custom hooks (Future use)
+│   │   ├── context/              # App-wide state (Future use)
+│   │   ├── utils/                # API clients, constants, helpers (Future use)
+│   │   ├── types/                # Type definitions (Future use)
+│   │   ├── App.js                # Core App component
+│   │   └── index.js              # Entry point
 │   ├── assets/                   # Images, fonts
-│   ├── App.js                    # Entry point
+│   ├── .env                      # Local environment configuration
 │   └── package.json
 │
-├── mobile-backend/               # ALL backend code
-│   ├── python/                   # FastAPI auth service (your existing) in our backend folder in root. no need to remake its the same api cli and desktop ide use
-│   │   ├── main.py
-│   │   └── requirements.txt
-│   │
-│   ├── executor/                 # Go execution service
-│   │   ├── main.go               # net/http entry point
-│   │   ├── docker.go             # Container lifecycle
-│   │   ├── websocket.go          # WS bridging (mobile ↔ container PTY)
-│   │   ├── tunnel.go             # localhost.run SSH tunnel orchestration
-│   │   ├── zip.go                # File sync (upload/download)
-│   │   └── go.mod
-│   │
-│   └── scripts/
-│       └── setup.sh
-│
-└── README.md
+├── mobile-backend/               # ALL Go backend code (Execution service)
 ```
 
 ---

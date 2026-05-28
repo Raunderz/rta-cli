@@ -14,15 +14,14 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
-const BACKEND_URL = 'https://divisive-herbs-jolly.ngrok-free.dev';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://divisive-herbs-jolly.ngrok-free.dev';
 
-export default function Chat({ apiKey, onLogout }) {
+export default function Chat({ apiKey, session, onLogout }) {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const scrollViewRef = useRef();
-
 
   const sendMessage = async () => {
     if (!inputText.trim() || isStreaming) return;
@@ -39,8 +38,13 @@ export default function Chat({ apiKey, onLogout }) {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
+      const isCloud = session && session.status === 'on' && session.id;
+      const chatUrl = isCloud 
+        ? `${BACKEND_URL}/v1/executor/env/chat/${session.id}`
+        : `${BACKEND_URL}/v1/chat`;
+
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', `${BACKEND_URL}/v1/chat`);
+      xhr.open('POST', chatUrl);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('X-API-KEY', apiKey);
       xhr.setRequestHeader('X-Device-ID', 'mobile-app');
@@ -54,26 +58,35 @@ export default function Chat({ apiKey, onLogout }) {
           const newData = xhr.responseText.substring(lastProcessedLength);
           lastProcessedLength = xhr.responseText.length;
 
-          const lines = newData.split('\n');
-          lines.forEach(line => {
-            if (line.startsWith('data: ')) {
-              const jsonStr = line.replace('data: ', '').trim();
-              if (jsonStr === '[DONE]') return;
-              
-              try {
-                const data = JSON.parse(jsonStr);
-                if (data.type === 'text') {
-                  setMessages(prev => {
-                    const last = prev[prev.length - 1];
-                    const updated = { ...last, content: last.content + data.content };
-                    return [...prev.slice(0, -1), updated];
-                  });
+          if (isCloud) {
+            // Executor chat returns raw text stream, not SSE JSON
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              const updated = { ...last, content: last.content + newData };
+              return [...prev.slice(0, -1), updated];
+            });
+          } else {
+            const lines = newData.split('\n');
+            lines.forEach(line => {
+              if (line.startsWith('data: ')) {
+                const jsonStr = line.replace('data: ', '').trim();
+                if (jsonStr === '[DONE]') return;
+                
+                try {
+                  const data = JSON.parse(jsonStr);
+                  if (data.type === 'text') {
+                    setMessages(prev => {
+                      const last = prev[prev.length - 1];
+                      const updated = { ...last, content: last.content + data.content };
+                      return [...prev.slice(0, -1), updated];
+                    });
+                  }
+                } catch (e) {
+                  // Ignore parse errors
                 }
-              } catch (e) {
-                // Ignore parse errors
               }
-            }
-          });
+            });
+          }
         }
 
         if (xhr.readyState === 4) {
@@ -86,14 +99,19 @@ export default function Chat({ apiKey, onLogout }) {
         alert('Network error');
       };
 
-      xhr.send(JSON.stringify({
-        messages: newMessages,
-        model: 'auto',
-        provider: 'auto',
-        stream: true,
-        session_id: sessionId,
-        turn_index: newMessages.length
-      }));
+      if (isCloud) {
+        // Go executor expects simple prompt JSON
+        xhr.send(JSON.stringify({ prompt: inputText }));
+      } else {
+        xhr.send(JSON.stringify({
+          messages: newMessages,
+          model: 'auto',
+          provider: 'auto',
+          stream: true,
+          session_id: sessionId,
+          turn_index: newMessages.length
+        }));
+      }
 
     } catch (error) {
       console.error(error);
