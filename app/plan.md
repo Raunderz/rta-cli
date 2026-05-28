@@ -18,6 +18,19 @@
 - **File Sync**: Two-way sync (zipping local project to cloud and vice versa) is pending implementation.
 
 ### 💡 Potential Fixes (Next Steps)
+- **Native WebView Terminal Focus**: Restores full native terminal input and copy-paste on mobile by bridging the mobile WebKit focus gesture limitation.
+  - **Proposed Changes**:
+    - **Mobile Client Component**: Modify `Terminal.js`
+      - Clean up HTML: Remove the `#hidden-input` element.
+      - Listen to click on the `#terminal` element in JS and call `term.focus()` (satisfies mobile WebKit's user gesture requirement for keyboard focus).
+      - Connect xterm's `term.onData(...)` listener directly to the WebSocket to transmit keystrokes.
+      - For accessory buttons, transmit the control code and call `term.focus()` to return focus to the keyboard.
+  - **Verification Plan**:
+    - Manual Verification:
+      - Open the Cloud Session.
+      - Tap the terminal → confirm the virtual keyboard slides up.
+      - Type commands (`ls`, `pwd`, etc.) and press Backspace → verify character echoing and shell output.
+      - Press Tab and arrow keys in the accessory bar → verify completion and history traversal.
 - **The "Native Input Bridge"**: Bypass the unreliable WebView hidden textarea by using a React Native `TextInput` to capture keystrokes. Forward them to the WebView via `postMessage`.
 - **Developer Accessory Bar**: Add a row of native buttons for `TAB`, `ESC`, `CTRL`, and arrows to improve mobile coding speed.
 - **Force Text Frames**: If the Python proxy is dropping binary frames, switch the WebSocket to handle purely string-based data on the frontend.
