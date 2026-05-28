@@ -70,8 +70,18 @@ async def proxy_http(
     client = get_http_client()
     timeout = get_timeout_for_path(safe_path)
 
-    forward_headers = scrub_headers(dict(request.headers))
-    forward_headers.pop("x-api-key", None)
+    # Prepare headers for forwarding
+    forward_headers = {}
+    for k, v in request.headers.items():
+        if k.lower() not in SENSITIVE_HEADERS:
+            forward_headers[k] = v
+    
+    # Ensure critical headers are present with correct case for upstream
+    if "x-api-key" in request.headers:
+        forward_headers["X-API-KEY"] = request.headers["x-api-key"]
+    if "ngrok-skip-browser-warning" in request.headers:
+        forward_headers["ngrok-skip-browser-warning"] = request.headers["ngrok-skip-browser-warning"]
+
     forward_headers["X-User-Id"] = user_id
 
     is_streaming = (

@@ -15,14 +15,15 @@ import * as SecureStore from 'expo-secure-store';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system/legacy';
-import Chat from './Chat';
-import Files from './Files';
-import Editor from './Editor';
-import Terminal from './Terminal';
-import GitUI from './GitUI';
+import Chat from './components/Chat';
+import Files from './components/Files';
+import Editor from './components/Editor';
+import Terminal from './components/Terminal';
+import GitUI from './components/GitUI';
 
 const STORAGE_KEY = 'rta_api_key';
 const WORKSPACE_DIR = `${FileSystem.documentDirectory}workspace/`;
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://divisive-herbs-jolly.ngrok-free.dev';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
@@ -33,6 +34,10 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('chat');
   const [selectedFile, setSelectedFile] = useState(null);
   
+  // Session state
+  const [session, setSession] = useState({ id: null, status: 'off', ws_url: null });
+  const [isStartingSession, setIsStartingSession] = useState(false);
+
   // Local project workspace state
   const [files, setFiles] = useState([]);
 
@@ -137,6 +142,9 @@ export default function App() {
 
   const handleLogout = async () => {
     try {
+      if (session.status === 'on') {
+        await handleEndSession();
+      }
       await SecureStore.deleteItemAsync(STORAGE_KEY);
       setApiKey('');
       setHasKey(false);
@@ -204,6 +212,55 @@ export default function App() {
     }
   };
 
+  const handleStartSession = async () => {
+    if (isStartingSession) return;
+    setIsStartingSession(true);
+    try {
+      const resp = await fetch(`${BACKEND_URL}/v1/executor/env`, {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': apiKey.trim(),
+          'Content-Type': 'application/json',
+          'ngrok-skip-browser-warning': '69420'
+        }
+      });
+      
+      if (!resp.ok) {
+        const err = await resp.text();
+        throw new Error(err || 'Failed to start session');
+      }
+
+      const data = await resp.json();
+      setSession({
+        id: data.id,
+        status: 'on',
+        ws_url: data.ws_url
+      });
+    } catch (e) {
+      alert('Session Error: ' + e.message);
+    } finally {
+      setIsStartingSession(false);
+    }
+  };
+
+  const handleEndSession = async () => {
+    if (!session.id) return;
+    try {
+      await fetch(`${BACKEND_URL}/v1/executor/env/${session.id}`, {
+        method: 'DELETE',
+        headers: { 
+          'X-API-KEY': apiKey.trim(),
+          'ngrok-skip-browser-warning': '69420'
+        }
+      });
+      setSession({ id: null, status: 'off', ws_url: null });
+    } catch (e) {
+      console.error('Failed to end session', e);
+      // Still clear local state
+      setSession({ id: null, status: 'off', ws_url: null });
+    }
+  };
+
   if (!isReady) {
     return (
       <View style={styles.centered}>
@@ -229,6 +286,10 @@ export default function App() {
           handleDeleteItem={handleDeleteItem}
           reloadFiles={reloadFiles}
           files={files}
+          session={session}
+          isStartingSession={isStartingSession}
+          onStartSession={handleStartSession}
+          onEndSession={handleEndSession}
         />
       ) : (
         <KeyboardAvoidingView 
@@ -300,7 +361,11 @@ function MainApp({
   handleCreateFolder,
   handleDeleteItem,
   reloadFiles,
-  files 
+  files,
+  session,
+  isStartingSession,
+  onStartSession,
+  onEndSession
 }) {
   const insets = useSafeAreaInsets();
 
@@ -321,17 +386,41 @@ function MainApp({
       case 'editor':
         return <Editor file={selectedFile} onSave={handleSaveFile} />;
       case 'terminal':
-        return <Terminal files={files} />;
+        return <Terminal files={files} session={session} />;
       case 'git':
         return <GitUI />;
       case 'chat':
       default:
-        return <Chat apiKey={apiKey} onLogout={onLogout} />;
+        return <Chat apiKey={apiKey} session={session} onLogout={onLogout} />;
     }
   };
 
   return (
     <View style={[styles.appContainer, { paddingTop: insets.top }]}>
+      {/* Session Header */}
+      <View style={styles.sessionHeader}>
+        <View style={styles.sessionInfo}>
+          <View style={[styles.statusDot, session.status === 'on' ? styles.statusDotOn : styles.statusDotOff]} />
+          <Text style={styles.sessionText}>
+            {session.status === 'on' ? `Cloud Active: ${session.id}` : 'Local Mode'}
+          </Text>
+        </View>
+        
+        <TouchableOpacity 
+          style={[styles.sessionBtn, session.status === 'on' ? styles.sessionBtnEnd : styles.sessionBtnStart]} 
+          onPress={session.status === 'on' ? onEndSession : onStartSession}
+          disabled={isStartingSession}
+        >
+          {isStartingSession ? (
+            <ActivityIndicator size="small" color="#fff" />
+          ) : (
+            <Text style={styles.sessionBtnText}>
+              {session.status === 'on' ? 'END' : 'START CLOUD'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <View style={styles.mainContent}>
         {renderContent()}
       </View>
@@ -554,5 +643,53 @@ const styles = StyleSheet.create({
   activeTabLabel: {
     color: '#0ea5e9',
     fontWeight: '800',
+  },
+  sessionHeader: {
+    height: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0f2fe',
+  },
+  sessionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 8,
+  },
+  statusDotOn: {
+    backgroundColor: '#10b981',
+  },
+  statusDotOff: {
+    backgroundColor: '#94a3b8',
+  },
+  sessionText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#475569',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  sessionBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  sessionBtnStart: {
+    backgroundColor: '#0ea5e9',
+  },
+  sessionBtnEnd: {
+    backgroundColor: '#f43f5e',
+  },
+  sessionBtnText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '900',
   },
 });
