@@ -236,37 +236,80 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         else:
             result = f"Error: Invalid MCP tool name format '{name}'"
     else:
+        funcs = {
+            "discover_project":   discover_project,
+            "get_files_info":     get_files_info,
+            "get_file_contents":  get_file_contents,
+            "write_file":         write_file,
+            "run_command":        run_command,
+            "grep_search":        grep_search,
+            "glob_search":        glob_search,
+            "edit_file":          edit_file,
+            "edit_file_ast":      edit_file_ast,
+            "apply_diff":         apply_diff,
+            "delete_file":        delete_file,
+            "create_dir":         create_dir,
+            "list_directory":     list_directory,
+            "list_skills":        list_skills,
+            "semantic_search":    semantic_search,
+            "get_repo_skeleton":  get_repo_skeleton,
+            "get_diagnostics":    get_diagnostics,
+            "go_to_definition":   go_to_definition,
+            "question":           ask_question,
+            "git_status":         git_status,
+            "git_diff":           git_diff,
+            "git_log":            git_log,
+            "git_commit":         git_commit,
+            "git_create_pr":      git_create_pr,
+            "git_branch":         git_branch,
+            "web_search":         web_search,
+            "sequential_thinking": sequential_thinking,
+            "memorize":           memorize,
+            "recall":             recall,
+            "forget":             forget,
+        }
+        target_fn = funcs.get(name)
+        if target_fn:
+            import inspect
+            try:
+                sig = inspect.signature(target_fn)
+                has_kwargs = any(p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values())
+                if not has_kwargs:
+                    args = {k: v for k, v in args.items() if k in sig.parameters}
+            except Exception:
+                pass
+
         dispatch = {
             "discover_project":   lambda: discover_project(workspace_dir),
             "get_files_info":     lambda: get_files_info(workspace_dir, **args),
-            "get_file_contents": lambda: get_file_contents(workspace_dir, **args),
+            "get_file_contents":  lambda: get_file_contents(workspace_dir, **args),
             "write_file":         lambda: write_file(workspace_dir, **args),
-            "run_command":       lambda: run_command(workspace_dir, **args, force=force),
-            "grep_search":       lambda: grep_search(workspace_dir, **args),
+            "run_command":        lambda: run_command(workspace_dir, **args, force=force),
+            "grep_search":        lambda: grep_search(workspace_dir, **args),
             "glob_search":        lambda: glob_search(workspace_dir, **args),
-            "edit_file":         lambda: edit_file(workspace_dir, **args),
-            "edit_file_ast":     lambda: edit_file_ast(workspace_dir, **args),
-            "apply_diff":        lambda: apply_diff(workspace_dir, **args),
-            "delete_file":      lambda: delete_file(workspace_dir, **args, force=force),
-            "create_dir":        lambda: create_dir(workspace_dir, **args),
-            "list_directory":    lambda: list_directory(workspace_dir, **args),
-            "list_skills":       lambda: list_skills(workspace_dir),
-            "semantic_search":   lambda: semantic_search(workspace_dir, **args),
-            "get_repo_skeleton": lambda: get_repo_skeleton(workspace_dir),
-            "get_diagnostics":   lambda: get_diagnostics(workspace_dir, **args),
-            "go_to_definition":  lambda: go_to_definition(workspace_dir, **args),
-            "question":          lambda: ask_question(workspace_dir, **args),
-            "git_status":        lambda: git_status(workspace_dir),
-            "git_diff":          lambda: git_diff(workspace_dir, **args),
-            "git_log":           lambda: git_log(workspace_dir, **args),
-            "git_commit":        lambda: git_commit(workspace_dir, **args, force=force),
-            "git_create_pr":     lambda: git_create_pr(workspace_dir, **args),
-            "git_branch":        lambda: git_branch(workspace_dir, **args),
-            "web_search":        lambda: web_search(**args),
+            "edit_file":          lambda: edit_file(workspace_dir, **args),
+            "edit_file_ast":      lambda: edit_file_ast(workspace_dir, **args),
+            "apply_diff":         lambda: apply_diff(workspace_dir, **args),
+            "delete_file":        lambda: delete_file(workspace_dir, **args, force=force),
+            "create_dir":         lambda: create_dir(workspace_dir, **args),
+            "list_directory":     lambda: list_directory(workspace_dir, **args),
+            "list_skills":        lambda: list_skills(workspace_dir),
+            "semantic_search":    lambda: semantic_search(workspace_dir, **args),
+            "get_repo_skeleton":  lambda: get_repo_skeleton(workspace_dir),
+            "get_diagnostics":    get_diagnostics(workspace_dir, **args),
+            "go_to_definition":   go_to_definition(workspace_dir, **args),
+            "question":           lambda: ask_question(workspace_dir, **args),
+            "git_status":         lambda: git_status(workspace_dir),
+            "git_diff":           lambda: git_diff(workspace_dir, **args),
+            "git_log":            lambda: git_log(workspace_dir, **args),
+            "git_commit":         lambda: git_commit(workspace_dir, **args, force=force),
+            "git_create_pr":      lambda: git_create_pr(workspace_dir, **args),
+            "git_branch":         lambda: git_branch(workspace_dir, **args),
+            "web_search":         lambda: web_search(**args),
             "sequential_thinking": lambda: sequential_thinking(**args),
-            "memorize":          lambda: memorize(**args),
-            "recall":            lambda: recall(**args),
-            "forget":            lambda: forget(**args),
+            "memorize":           lambda: memorize(**args),
+            "recall":             lambda: recall(**args),
+            "forget":             lambda: forget(**args),
         }
         fn = dispatch.get(name)
         result = fn() if fn else f"Error: function '{name}' not found"
