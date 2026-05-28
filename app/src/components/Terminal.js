@@ -35,6 +35,7 @@ export default function Terminal({ session }) {
 </head>
 <body>
   <div id="terminal-container" style="height:100%;width:100%;"></div>
+  <input id="mobile-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" style="position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;z-index:9999;caret-color:transparent;" />
   <script>
     var log = function(m) {
       window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: m }));
@@ -139,26 +140,23 @@ export default function Terminal({ session }) {
       term.focus();
     }
 
+    var mobileInput = document.getElementById('mobile-input');
+    mobileInput.addEventListener('input', function() {
+      var data = this.value;
+      this.value = '';
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
+    });
+    mobileInput.addEventListener('focus', function() {
+      fixTextarea();
+    });
+
+
     function ensureKeyboard() {
       fixTextarea();
       try { term.focus(); } catch(e) {}
-      var ta = document.querySelector('.xterm-helper-textarea');
-      if (ta) {
-        try { ta.focus(); } catch(e) {}
-      } else {
-        var tmp = document.createElement('input');
-        tmp.style.position = 'fixed';
-        tmp.style.left = '0';
-        tmp.style.top = '0';
-        tmp.style.width = '1px';
-        tmp.style.height = '1px';
-        tmp.style.opacity = '0.01';
-        tmp.style.zIndex = '9999';
-        document.body.appendChild(tmp);
-        tmp.focus();
-        tmp.addEventListener('blur', function() { document.body.removeChild(tmp); });
-        setTimeout(function() { try { document.body.removeChild(tmp); } catch(e) {} }, 1000);
-      }
+      mobileInput.focus();
     }
 
     document.getElementById('terminal-container').addEventListener('click', function() {
