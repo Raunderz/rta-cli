@@ -117,6 +117,31 @@ export default function Terminal({ session }) {
       });
     }
 
+    function focusTerminal() {
+      term.focus();
+    }
+
+    document.getElementById('terminal-container').addEventListener('click', function() {
+      term.focus();
+    });
+
+    document.getElementById('terminal-container').addEventListener('touchend', function(e) {
+      e.preventDefault();
+      term.focus();
+    });
+
+    window.addEventListener('message', function(event) {
+      try {
+        var data = JSON.parse(event.data);
+        if (data.type === 'control' && ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(data.code);
+        }
+        if (data.type === 'focus') {
+          term.focus();
+        }
+      } catch(e) {}
+    });
+
     window.addEventListener('resize', function() {
       try { fitAddon.fit(); } catch(e) {}
     });
@@ -185,6 +210,7 @@ export default function Terminal({ session }) {
             javaScriptEnabled={true}
             domStorageEnabled={true}
             allowsInlineMediaPlayback={true}
+            keyboardDisplayRequiresUserAction={false}
           />
 
           <View style={styles.accessoryBar}>
