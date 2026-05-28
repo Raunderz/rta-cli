@@ -4,7 +4,8 @@ import {
   View, 
   Text, 
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  KeyboardAvoidingView
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
@@ -16,117 +17,169 @@ export default function Terminal({ session }) {
   const [terminalLogs, setTerminalLogs] = useState([]);
 
   const wsUrl = session.status === 'on' 
-    ? BACKEND_URL.replace('http', 'ws') + `/v1/executor/ws/env/${session.id}`
+    ? BACKEND_URL.replace('http', 'ws') + `/v1/executor/ws/ws/env/${session.id}`
     : null;
 
-  const terminalHtml = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
-        <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
-        <style>
-          body { margin: 0; background: #000; overflow: hidden; height: 100vh; width: 100vw; }
-          #terminal { height: 100%; width: 100%; }
-        </style>
-      </head>
-      <body>
-        <div id="terminal"></div>
-        <script>
-          const log = (m) => window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: m }));
-          
-          const term = new Terminal({
-            cursorBlink: true,
-            fontSize: 13,
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            theme: { background: '#000000', foreground: '#ffffff', cursor: '#0ea5e9' },
-            allowProposedApi: true
-          });
-          const fitAddon = new FitAddon.FitAddon();
-          term.loadAddon(fitAddon);
-          term.open(document.getElementById('terminal'));
-          
-          setTimeout(() => {
-            fitAddon.fit();
-            term.focus();
-          }, 500);
+  // The entire terminal UI lives inside the WebView HTML.
+  // xterm.js handles its own input via an internal textarea.
+  // We use click/touchend to call term.focus() which opens the keyboard.
+  // keyboardDisplayRequiresUserAction={false} on the WebView allows this.
+  const terminalHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
+  <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"><\/script>
+  <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"><\/script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; width: 100%; overflow: hidden; background: #000; }
+    body { display: flex; flex-direction: column; }
+    #terminal-wrap { flex: 1; width: 100%; overflow: hidden; }
+    #accessory-bar {
+      height: 44px; min-height: 44px;
+      background: #1e293b; border-top: 1px solid #334155;
+      display: flex; flex-direction: row; align-items: center;
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      white-space: nowrap; padding: 0 6px; gap: 6px;
+    }
+    #accessory-bar::-webkit-scrollbar { display: none; }
+    .acc-btn {
+      display: inline-flex; justify-content: center; align-items: center;
+      padding: 5px 10px; border-radius: 4px;
+      background: #0f172a; border: 1px solid #334155;
+      color: #94a3b8; font-size: 11px; font-weight: bold; font-family: monospace;
+      -webkit-user-select: none; user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .acc-btn:active { background: #334155; }
+  </style>
+</head>
+<body>
+  <div id="terminal-wrap"></div>
+  <div id="accessory-bar">
+    <button class="acc-btn" id="btn-esc">ESC</button>
+    <button class="acc-btn" id="btn-tab">TAB</button>
+    <button class="acc-btn" id="btn-ctrlc">^C</button>
+    <button class="acc-btn" id="btn-ctrld">^D</button>
+    <button class="acc-btn" id="btn-up">▲</button>
+    <button class="acc-btn" id="btn-down">▼</button>
+    <button class="acc-btn" id="btn-left">◀</button>
+    <button class="acc-btn" id="btn-right">▶</button>
+  </div>
 
-          let socket;
-          
-          function connect(url) {
-            log('Conn...');
-            if (socket) socket.close();
-            term.reset();
-            term.write('\\r\\n\\x1b[1;34m⚡ Rta Cloud...\\x1b[0m\\r\\n');
-            
-            socket = new WebSocket(url);
-            socket.binaryType = 'arraybuffer'; // Crucial for Go BinaryMessage
+  <script>
+    var log = function(m) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'log', message: m }));
+    };
 
-            socket.onopen = () => {
-              log('Open');
-              term.write('\\x1b[1;32m✓ Connected.\\x1b[0m\\r\\n');
-              const dims = JSON.stringify({ cols: term.cols, rows: term.rows });
-              socket.send(dims);
-              
-              // Run neofetch
-              setTimeout(() => {
-                socket.send('neofetch\\n');
-              }, 1000);
-            };
+    var socket = null;
 
-            socket.onmessage = (ev) => {
-              log('Data: ' + (ev.data.byteLength || ev.data.length));
-              if (typeof ev.data === 'string') {
-                term.write(ev.data);
-              } else {
-                term.write(new Uint8Array(ev.data));
-              }
-            };
+    var term = new Terminal({
+      cursorBlink: true,
+      fontSize: 13,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      theme: { background: '#000000', foreground: '#ffffff', cursor: '#0ea5e9' },
+      allowProposedApi: true
+    });
 
-            socket.onclose = (e) => {
-              log('Closed ' + e.code);
-              term.write('\\r\\n\\x1b[1;31m🛑 Off (' + e.code + ')\\x1b[0m\\r\\n');
-            };
+    var fitAddon = new FitAddon.FitAddon();
+    term.loadAddon(fitAddon);
+    term.open(document.getElementById('terminal-wrap'));
 
-            socket.onerror = (err) => {
-              log('Error');
-            };
-          }
+    try { fitAddon.fit(); } catch(e) {}
+    setTimeout(function() { try { fitAddon.fit(); } catch(e) {} }, 300);
 
-          term.onData(data => {
-            log('In: ' + data.length);
-            if (socket && socket.readyState === WebSocket.OPEN) {
-              socket.send(data);
-            }
-          });
+    // xterm.js natively captures keystrokes via its internal textarea.
+    // term.onData fires for every key the user types.
+    term.onData(function(data) {
+      log('In: ' + data.length);
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(data);
+      }
+    });
 
-          document.body.addEventListener('touchstart', () => {
-            term.focus();
-          });
+    // Focus the terminal on tap. Using click satisfies mobile WebKit's
+    // user-gesture requirement for opening the keyboard.
+    document.getElementById('terminal-wrap').addEventListener('click', function() {
+      term.focus();
+    });
+    // touchend fallback for Android WebViews
+    document.getElementById('terminal-wrap').addEventListener('touchend', function(e) {
+      e.preventDefault();
+      term.focus();
+    });
 
-          window.addEventListener('resize', () => {
-            fitAddon.fit();
-            if (socket && socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify({ cols: term.cols, rows: term.rows }));
-            }
-          });
-          
-          window.addEventListener('message', (event) => {
-            try {
-              const data = JSON.parse(event.data);
-              if (data.type === 'connect') connect(data.url);
-              if (data.type === 'focus') term.focus();
-            } catch(e) {}
-          });
+    function connect(url) {
+      log('Conn: ' + url);
+      if (socket) { try { socket.close(); } catch(e){} }
+      term.reset();
+      term.write('\\r\\n\\x1b[1;34m\\u26A1 Connecting to Rta Cloud...\\x1b[0m\\r\\n');
 
-          log('Ready');
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
-        </script>
-      </body>
-    </html>
-  `;
+      socket = new WebSocket(url);
+      socket.binaryType = 'arraybuffer';
+
+      socket.onopen = function() {
+        log('WS Open');
+        term.write('\\x1b[1;32m\\u2713 Connected.\\x1b[0m\\r\\n');
+        socket.send(JSON.stringify({ cols: term.cols, rows: term.rows }));
+        setTimeout(function() { socket.send('neofetch\\n'); }, 1000);
+        term.focus();
+      };
+
+      socket.onmessage = function(ev) {
+        if (typeof ev.data === 'string') {
+          term.write(ev.data);
+        } else {
+          term.write(new Uint8Array(ev.data));
+        }
+      };
+
+      socket.onclose = function(e) {
+        log('WS Closed: ' + e.code);
+        term.write('\\r\\n\\x1b[1;31m\\uD83D\\uDED1 Disconnected (' + e.code + ')\\x1b[0m\\r\\n');
+      };
+
+      socket.onerror = function() { log('WS Error'); };
+    }
+
+    // Accessory bar: send control character then refocus terminal
+    function sendAndFocus(data) {
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(data);
+      }
+      term.focus();
+    }
+
+    document.getElementById('btn-esc').addEventListener('click', function(){ sendAndFocus('\\x1b'); });
+    document.getElementById('btn-tab').addEventListener('click', function(){ sendAndFocus('\\t'); });
+    document.getElementById('btn-ctrlc').addEventListener('click', function(){ sendAndFocus('\\x03'); });
+    document.getElementById('btn-ctrld').addEventListener('click', function(){ sendAndFocus('\\x04'); });
+    document.getElementById('btn-up').addEventListener('click', function(){ sendAndFocus('\\x1b[A'); });
+    document.getElementById('btn-down').addEventListener('click', function(){ sendAndFocus('\\x1b[B'); });
+    document.getElementById('btn-left').addEventListener('click', function(){ sendAndFocus('\\x1b[D'); });
+    document.getElementById('btn-right').addEventListener('click', function(){ sendAndFocus('\\x1b[C'); });
+
+    window.addEventListener('resize', function() {
+      try { fitAddon.fit(); } catch(e) {}
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({ cols: term.cols, rows: term.rows }));
+      }
+    });
+
+    window.addEventListener('message', function(event) {
+      try {
+        var data = JSON.parse(event.data);
+        if (data.type === 'connect') { connect(data.url); }
+        if (data.type === 'focus') { term.focus(); }
+      } catch(e) {}
+    });
+
+    log('Ready');
+    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
+  <\/script>
+</body>
+</html>`;
 
   useEffect(() => {
     if (isLoaded && wsUrl) {
@@ -155,7 +208,11 @@ export default function Terminal({ session }) {
   };
 
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView 
+      style={styles.container} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+    >
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
           <Text style={styles.title}>bash terminal</Text>
@@ -200,10 +257,11 @@ export default function Terminal({ session }) {
             keyboardDisplayRequiresUserAction={false}
             javaScriptEnabled={true}
             domStorageEnabled={true}
+            allowsInlineMediaPlayback={true}
           />
         )}
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
