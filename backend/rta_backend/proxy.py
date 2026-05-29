@@ -173,7 +173,7 @@ def get_routing_sequence(
         {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
         {
             "provider": "cerebras",
-            "model": pick_model_for_provider(working_model, "cerebras"),
+            "model": "gpt-oss-120b",
         },
         {
             "provider": "sambanova",

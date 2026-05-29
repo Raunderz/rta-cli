@@ -237,8 +237,22 @@ def main():
     subparsers.add_parser("update", help="Check for and install updates")
 
     # Parse arguments
-    # If we have unknown args, they might be for the prompt if we didn't specify a command
     args, unknown = parser.parse_known_args()
+
+    # Handle global flags first
+    if args.version:
+        from rta_cli.chat import ASCII_ART
+        print(ASCII_ART)
+        print("Rta CLI v0.4.0")
+        return
+    if args.whoami:
+        return whoami()
+    if args.status:
+        return status()
+    if args.login:
+        return login()
+    if args.logout:
+        return logout()
 
     if args.command == "cd":
         return cd(args.path)
@@ -280,6 +294,26 @@ def main():
         return update()
     else:
         # Default behavior: chat
+        # If user passed a flag that looks like a command but isn't handled above, catch it
+        if unknown:
+            for arg in unknown:
+                if arg.startswith("-"):
+                    # Unknown flag - maybe it's a typo of a command?
+                    cmd_name = arg.lstrip("-")
+                    if cmd_name in ["whoami", "status", "login", "logout", "init", "chat", "ask", "clone"]:
+                        console.print(f"[yellow]Hint: Did you mean 'rta {cmd_name}'?[/yellow]")
+                        # Run it anyway if it's obvious
+                        if cmd_name == "whoami": return whoami()
+                        if cmd_name == "status": return status()
+                        if cmd_name == "login": return login()
+                        if cmd_name == "logout": return logout()
+                    
+                    # If we don't recognize the flag, don't pass it as a prompt if it starts with --
+                    if arg.startswith("--"):
+                        console.print(f"[bold red]Error: Unknown option {arg}[/bold red]")
+                        parser.print_help()
+                        return
+
         prompt = " ".join(unknown) if unknown else None
         return chat(
             prompt=prompt,

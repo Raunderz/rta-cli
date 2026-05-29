@@ -321,6 +321,7 @@ class RtaChat:
         return ">> "
 
     def run(self, initial_prompt=None):
+        import select
         signal.signal(signal.SIGINT, self.handle_sigint)
         os.system('cls' if os.name == 'nt' else 'clear')
         self._load_history()
@@ -345,7 +346,22 @@ class RtaChat:
                     user_input = initial_prompt
                     initial_prompt = None # Only use once
                 else:
-                    user_input = input(self.get_prompt()).strip()
+                    user_input = input(self.get_prompt())
+                    
+                    # Multi-line 'gulper' for pastes
+                    # If we are in a TTY and more data is waiting, it's likely a paste
+                    if sys.stdin.isatty():
+                        lines = [user_input]
+                        while select.select([sys.stdin], [], [], 0.02)[0]:
+                            try:
+                                extra = sys.stdin.readline()
+                                if not extra: break
+                                lines.append(extra.strip())
+                            except EOFError:
+                                break
+                        user_input = "\n".join(lines).strip()
+                    else:
+                        user_input = user_input.strip()
                 
                 if not user_input: continue
                 if user_input.startswith("/"):
