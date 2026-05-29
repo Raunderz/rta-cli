@@ -110,7 +110,7 @@ export default function Terminal({ session }) {
         if (ta) ta.focus();
         var dims = { cols: term.cols, rows: term.rows };
         ws.send(JSON.stringify(dims));
-        setTimeout(function() { ws.send('neofetch\\n'); }, 1000);
+        setTimeout(function() { ws.send('fastfetch\\n'); }, 1000);
       };
 
       ws.onmessage = function(event) {
