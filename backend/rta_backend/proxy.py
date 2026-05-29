@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from rta_backend.providers import (
     ProviderDownError,
+    ProviderError,
     ProviderTimeoutError,
     RateLimitError,
     call_cerebras,
@@ -432,6 +433,61 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
             models_tried.append(f"{provider_name}:unhandled_error")
             last_error = e
             continue
+
+    yield {"type": "error", "content": f"All providers failed: {models_tried}"}
+    meta = {"models_tried": models_tried, "latency_ms": 0, "fallback_used": True}
+    if last_error:
+        meta["last_error"] = str(last_error)
+    yield {"type": "meta", "content": meta}
+    yield {"type": "done"}
+      "latency_ms": latency_ms,
+                    "fallback_used": len(models_tried) > 1,
+                },
+            }
+            yield {"type": "done"}
+            return
+
+        except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
+            models_tried.append(f"{provider_name}:{type(e).__name__}")
+            last_error = e
+            continue
+        except Exception as e:
+            models_tried.append(f"{provider_name}:unhandled_error")
+            last_error = e
+            continue
+
+    yield {"type": "error", "content": f"All providers failed: {models_tried}"}
+    meta = {"models_tried": models_tried, "latency_ms": 0, "fallback_used": True}
+    if last_error:
+        meta["last_error"] = str(last_error)
+    yield {"type": "meta", "content": meta}
+    yield {"type": "done"}
+or event in call_groq_stream(
+                    messages=messages,
+                    model=model_name,
+                    tools=request.tools,
+                    api_key=groq_key,
+                    max_tokens=max_tokens,
+                ):
+                    if event["type"] in ["text", "tool_calls", "usage"]:
+                        has_yielded_content = True
+                    yield event
+
+                if has_yielded_content:
+                    latency_ms = (time.time() - start_time) * 1000
+                    yield {
+                        "type": "meta",
+                        "content": {
+                            "models_tried": models_tried,
+                            "latency_ms": latency_ms,
+                            "fallback_used": True,
+                        },
+                    }
+                    yield {"type": "done"}
+                    return
+            except Exception as e:
+                logging.error(f"Last resort streaming model {model_name} failed: {e}")
+                continue
 
     yield {"type": "error", "content": f"All providers failed: {models_tried}"}
     meta = {"models_tried": models_tried, "latency_ms": 0, "fallback_used": True}
