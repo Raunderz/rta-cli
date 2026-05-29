@@ -59,10 +59,10 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Tier caps for token limits and rate limits
 TIER_CAPS = {
-    "free":       {"calls_day": 10,   "tokens_req": 2000,  "tokens_month": 25000},
-    "basic":      {"calls_day": 50,   "tokens_req": 4000,  "tokens_month": 100000},
-    "pro":        {"calls_day": 100,  "tokens_req": 10000, "tokens_month": 1000000},
-    "enterprise": {"calls_day": 500,  "tokens_req": 32000, "tokens_month": 10000000},
+    "free":       {"calls_day": 10,   "tokens_day": 15000,   "tokens_req": 2000,  "tokens_month": 25000},
+    "basic":      {"calls_day": 50,   "tokens_day": 60000,   "tokens_req": 4000,  "tokens_month": 100000},
+    "pro":        {"calls_day": 100,  "tokens_day": 100000,  "tokens_req": 10000, "tokens_month": 1000000},
+    "enterprise": {"calls_day": 500,  "tokens_day": 500000,  "tokens_req": 32000, "tokens_month": 10000000},
 }
 
 # Limiter key function to use user_id from request state or API key
@@ -133,13 +133,13 @@ async def chat_endpoint(
         caps = TIER_CAPS.get(user_tier.lower(), TIER_CAPS["free"])
         cap = caps["tokens_req"]
 
-        # Step 3.5: Daily call limit check (DB-backed)
-        from rta_backend.db import check_and_update_daily_calls
-        allowed, remaining = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"])
+        # Step 3.5: Daily call & token limit check (DB-backed)
+        from rta_backend.db import check_and_update_daily_calls, update_token_usage
+        allowed, reason = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"], caps["tokens_day"])
         if not allowed:
             raise HTTPException(
                 status_code=429,
-                detail=f"Daily call limit reached ({caps['calls_day']}/day). Upgrade your plan or wait until tomorrow."
+                detail=f"{reason} Upgrade your plan or wait until tomorrow."
             )
 
         # Silently cap max_tokens
@@ -188,6 +188,10 @@ async def chat_endpoint(
                             session_id=payload.session_id,
                             turn_index=payload.turn_index,
                         )
+                        # Bill for tokens used
+                        total_tokens = collected_usage.get("total_tokens", 0)
+                        if total_tokens > 0:
+                            update_token_usage(user_id, total_tokens)
                         await log_telemetry_task(user_id, payload, pr)
                 except Exception as te:
                     import logging
@@ -209,6 +213,12 @@ async def chat_endpoint(
             user_id=user_id,
             user_tier=user_tier
         )
+
+        # Bill for tokens used (non-streaming)
+        if result and result.usage:
+            total_tokens = result.usage.get("total_tokens", 0)
+            if total_tokens > 0:
+                update_token_usage(user_id, total_tokens)
 
         # Step 5: Enqueue background telemetry
         background_tasks.add_task(
@@ -256,13 +266,15 @@ async def usage_endpoint(
     supabase = __import__("rta_backend.db", fromlist=["get_supabase_client"]).get_supabase_client()
     tier = get_user_tier(user_id)
 
-    # Calls today (from profile, same source as enforcement)
-    profile_res = supabase.table("profiles").select("calls_used_today, calls_reset_date").eq("id", user_id).execute()
+    # Calls and tokens today (from profile)
+    profile_res = supabase.table("profiles").select("calls_used_today, credits, calls_reset_date").eq("id", user_id).execute()
     today = datetime.now(timezone.utc).date().isoformat()
+    calls_today = 0
+    tokens_today = 0
     if profile_res.data and profile_res.data[0].get("calls_reset_date") == today:
-        calls_today = profile_res.data[0].get("calls_used_today", 0) or 0
-    else:
-        calls_today = 0
+        row = profile_res.data[0]
+        calls_today = row.get("calls_used_today", 0) or 0
+        tokens_today = row.get("credits", 0) or 0
 
     # Tokens this calendar month
     month_start = datetime.now(timezone.utc).replace(day=1).date().isoformat()
@@ -285,6 +297,8 @@ async def usage_endpoint(
         "tier": tier,
         "calls_today": calls_today,
         "calls_limit": caps["calls_day"],
+        "tokens_today": tokens_today,
+        "tokens_limit_day": caps["tokens_day"],
         "tokens_used_month": tokens_used,
         "tokens_limit_month": caps["tokens_month"],
     }
@@ -321,12 +335,14 @@ async def dashboard_endpoint(
         key_res = supabase.table("api_keys").select("key_hint, created_at").eq("user_id", user_id).execute()
         key_hint = key_res.data[0].get("key_hint", "") if key_res.data else ""
 
-        # Calls today (from profile, same source as enforcement)
-        profile_res = supabase.table("profiles").select("calls_used_today, calls_reset_date").eq("id", user_id).execute()
+        # Calls and tokens today (from profile)
+        profile_res = supabase.table("profiles").select("calls_used_today, credits, calls_reset_date").eq("id", user_id).execute()
+        calls_today = 0
+        tokens_today = 0
         if profile_res.data and profile_res.data[0].get("calls_reset_date") == today:
-            calls_today = profile_res.data[0].get("calls_used_today", 0) or 0
-        else:
-            calls_today = 0
+            row = profile_res.data[0]
+            calls_today = row.get("calls_used_today", 0) or 0
+            tokens_today = row.get("credits", 0) or 0
 
         # Tokens this month
         tokens_res = (
@@ -361,6 +377,8 @@ async def dashboard_endpoint(
             "usage": {
                 "calls_today": calls_today,
                 "calls_limit_day": caps["calls_day"],
+                "tokens_today": tokens_today,
+                "tokens_limit_day": caps["tokens_day"],
                 "tokens_used_month": tokens_month,
                 "tokens_limit_month": caps["tokens_month"],
             },

@@ -100,6 +100,7 @@ CLI calls are not browser-based, so CORS doesn't apply to them. Backend should a
 | 3 | `supabase.auth.admin.get_user_by_id` in `/v1/auth/me` requires service role key | If only anon key is available, email lookup fails silently | Ensure `sp_service_role` env var is always set |
 | 4 | Device ID flagging is log-only | Abuse accounts not auto-flagged in DB | Write device counts to `profiles` table, surface in admin |
 | 5 | `telemetry` monthly sum is O(n) row scan | Slow at scale | Add materialised `monthly_tokens` column to `profiles`, increment on insert |
+| 6 | Manual table creation lacks explicit grants | New tables (post-May 2026) will fail REST API/Auth calls | Always include `GRANT ALL ON TABLE ... TO postgres, anon, authenticated, service_role;` and RLS setup in SQL |
 
 ---
 

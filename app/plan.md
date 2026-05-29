@@ -8,29 +8,15 @@
 - **Header Forwarding**: Fixed `X-API-KEY` stripping in Python `executor_proxy.py`.
 - **AI Sandbox Chat**: `Chat.js` now routes prompts to `/v1/executor/env/chat/{id}` when cloud active, executing `rta ask` in container.
 - **Terminal UI**: `Terminal.js` integrated with `xterm.js` in a WebView with WebSocket support.
-- **Infra (Server)**: `mobile_backend` Go service and `tempdev:latest` Docker image (Ubuntu 22.04 + Neofetch + Node/Python) active on AWS.
+- **Terminal Keyboard Fix**: Resolved Android WebView focus/input issues using `injectJavaScript` for accessory buttons and a full-size `opacity: 0.01` textarea for native touch focus.
+- **Infra (Server)**: `mobile_backend` Go service supports `upload`/`download` ZIP endpoints for workspace sync.
 
 ### ❌ Blockers / Stuck At
-- **Terminal I/O**: WebSocket connection handshakes successfully ("Connected"), but:
-    - **No Output**: Shell prompt and `neofetch` results are not visible in the terminal screen.
-    - **Input Lag/Loss**: Typing on mobile keyboard only sends the first character (e.g., `l` from `ls`). Subsequent characters show `In: 1` in logs but don't seem to reach the PTY.
-    - **Binary vs Text**: Potential mismatch in WebSocket frame encoding between WebView, Python Proxy, and Go Backend.
-- **File Sync**: Two-way sync (zipping local project to cloud and vice versa) is pending implementation.
+- **Binary vs Text**: Potential mismatch in WebSocket frame encoding between WebView, Python Proxy, and Go Backend.
+- **Conflict Handling**: Need strategy for when local files change while cloud session active.
 
 ### 💡 Potential Fixes (Next Steps)
-- **Native WebView Terminal Focus**: Restores full native terminal input and copy-paste on mobile by bridging the mobile WebKit focus gesture limitation.
-  - **Proposed Changes**:
-    - **Mobile Client Component**: Modify `Terminal.js`
-      - Clean up HTML: Remove the `#hidden-input` element.
-      - Listen to click on the `#terminal` element in JS and call `term.focus()` (satisfies mobile WebKit's user gesture requirement for keyboard focus).
-      - Connect xterm's `term.onData(...)` listener directly to the WebSocket to transmit keystrokes.
-      - For accessory buttons, transmit the control code and call `term.focus()` to return focus to the keyboard.
-  - **Verification Plan**:
-    - Manual Verification:
-      - Open the Cloud Session.
-      - Tap the terminal → confirm the virtual keyboard slides up.
-      - Type commands (`ls`, `pwd`, etc.) and press Backspace → verify character echoing and shell output.
-      - Press Tab and arrow keys in the accessory bar → verify completion and history traversal.
+- **Implement Zip Sync**: Connect `App.js` to Go's `/upload` on start and `/download` on end.
 - **The "Native Input Bridge"**: Bypass the unreliable WebView hidden textarea by using a React Native `TextInput` to capture keystrokes. Forward them to the WebView via `postMessage`.
 - **Developer Accessory Bar**: Add a row of native buttons for `TAB`, `ESC`, `CTRL`, and arrows to improve mobile coding speed.
 - **Force Text Frames**: If the Python proxy is dropping binary frames, switch the WebSocket to handle purely string-based data on the frontend.

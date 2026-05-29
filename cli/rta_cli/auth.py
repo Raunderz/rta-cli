@@ -123,11 +123,14 @@ def do_status():
         tier = d.get("tier", "?")
         calls_today = d.get("calls_today", "?")
         calls_limit = d.get("calls_limit", "?")
+        tokens_today = d.get("tokens_today", "?")
+        tokens_limit_day = d.get("tokens_limit_day", "?")
         tokens_month = d.get("tokens_used_month", "?")
         tokens_limit = d.get("tokens_limit_month", "?")
 
         console.print(f"[bold #ff3333]Tier:[/bold #ff3333]         {tier}")
         console.print(f"[bold #ff3333]Calls today:[/bold #ff3333]  {calls_today} / {calls_limit}")
+        console.print(f"[bold #ff3333]Tokens today:[/bold #ff3333] {tokens_today} / {tokens_limit_day}")
         console.print(f"[bold #ff3333]Tokens/mo:[/bold #ff3333]    {tokens_month} / {tokens_limit}")
     elif resp.status_code == 429:
         console.print(f"[red]Daily limit reached. Upgrade at https://rta-three.vercel.app/#/pricing[/red]")

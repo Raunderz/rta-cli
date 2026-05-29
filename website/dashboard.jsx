@@ -317,9 +317,24 @@ const Dashboard = () => {
                             </div>
 
                             {[
-                                { label: "Daily Calls", value: `${dashData.usage.calls_today} / ${dashData.usage.calls_limit_day}`, icon: "M22 12h-4l-3 9L9 3l-3 9H2" },
-                                { label: "Tokens Used", value: dashData.usage.tokens_used_month.toLocaleString(), icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" },
-                                { label: "Current Tier", value: dashData.tier.toUpperCase(), icon: "M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 21" }
+                                { 
+                                    label: "Daily Calls", 
+                                    value: `${dashData.usage.calls_today} / ${dashData.usage.calls_limit_day}`, 
+                                    percent: (dashData.usage.calls_today / dashData.usage.calls_limit_day) * 100,
+                                    icon: "M22 12h-4l-3 9L9 3l-3 9H2" 
+                                },
+                                { 
+                                    label: "Daily Tokens", 
+                                    value: `${dashData.usage.tokens_today.toLocaleString()} / ${dashData.usage.tokens_limit_day.toLocaleString()}`, 
+                                    percent: (dashData.usage.tokens_today / dashData.usage.tokens_limit_day) * 100,
+                                    icon: "M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" 
+                                },
+                                { 
+                                    label: "Current Tier", 
+                                    value: dashData.tier.toUpperCase(), 
+                                    percent: null,
+                                    icon: "M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A10.003 10.003 0 0012 21" 
+                                }
                             ].map((m, i) => (
                                 <div key={i} class="card">
                                     <div class="card-header">
@@ -327,6 +342,11 @@ const Dashboard = () => {
                                         <Icon d={m.icon} />
                                     </div>
                                     <div class="metric-value">{m.value}</div>
+                                    {m.percent !== null && (
+                                        <div class="progress-bar-container">
+                                            <div class="progress-bar-fill" style={{ width: `${Math.min(m.percent, 100)}%` }}></div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
 
