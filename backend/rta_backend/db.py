@@ -60,37 +60,62 @@ def get_user_tier(user_id: str) -> str:
         return res.data[0].get("subscription_tier", "free")
     return "free"
 
-def check_and_update_daily_calls(user_id: str, tier: str, limit: int) -> tuple[bool, int]:
+def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int, token_limit: int) -> tuple[bool, str]:
     """
-    Check if user has calls remaining for today. Reset if new day, increment if allowed.
-    Returns (allowed: bool, remaining: int)
+    Check if user has calls and tokens remaining for today. 
+    Uses 'calls_used_today' for call count and 'credits' for tokens used today.
+    Returns (allowed: bool, reason_if_failed: str)
     """
     from datetime import datetime, timezone
     
     client = get_supabase_client()
     today = datetime.now(timezone.utc).date().isoformat()
     
-    res = client.table("profiles").select("calls_used_today, calls_reset_date").eq("id", user_id).execute()
+    res = client.table("profiles").select("calls_used_today, credits, calls_reset_date").eq("id", user_id).execute()
     
-    if not res.data:
-        return True, limit
+    used_calls = 0
+    used_tokens = 0
     
-    row = res.data[0]
-    reset_date = row.get("calls_reset_date")
-    used_today = row.get("calls_used_today", 0) or 0
+    if res.data:
+        row = res.data[0]
+        reset_date = row.get("calls_reset_date")
+        used_calls = row.get("calls_used_today", 0) or 0
+        used_tokens = row.get("credits", 0) or 0
+        
+        if reset_date != today:
+            used_calls = 0
+            used_tokens = 0
+
+    if used_calls >= call_limit:
+        return False, f"Daily call limit reached ({call_limit}/day)."
     
-    if reset_date != today:
-        used_today = 0
+    if used_tokens >= token_limit:
+        return False, f"Daily token limit reached ({token_limit}/day)."
     
-    if used_today >= limit:
-        return False, 0
-    
+    # Increment call count immediately
     client.table("profiles").update({
-        "calls_used_today": used_today + 1,
+        "calls_used_today": used_calls + 1,
+        "credits": used_tokens,
         "calls_reset_date": today
     }).eq("id", user_id).execute()
     
-    return True, limit - used_today - 1
+    return True, ""
+
+def update_token_usage(user_id: str, tokens_to_add: int):
+    """
+    Bill the user for tokens used today (stored in 'credits').
+    """
+    from datetime import datetime, timezone
+    client = get_supabase_client()
+    today = datetime.now(timezone.utc).date().isoformat()
+    
+    res = client.table("profiles").select("credits, calls_reset_date").eq("id", user_id).execute()
+    
+    if res.data and res.data[0].get("calls_reset_date") == today:
+        used_tokens = res.data[0].get("credits", 0) or 0
+        client.table("profiles").update({
+            "credits": used_tokens + tokens_to_add
+        }).eq("id", user_id).execute()
 
 def insert_telemetry(data: dict):
     """Direct insert into telemetry table."""
