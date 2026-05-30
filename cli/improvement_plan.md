@@ -16,15 +16,20 @@ The transition to an asynchronous, event-driven architecture is complete.
 - **Bash Tool:** Process tree management (kill child processes) and tail-truncation implemented.
 - **Edit Tool:** Surgical precision with `difflib` visual diffs.
 
-## 4. Modern UI/UX Implementation [IN PROGRESS]
+## 4. Modern UI/UX Implementation [DONE]
 - **Block-Based UI:** `RtaTUI` using `rich.live` implemented.
 - **Keyboard Interrupts:** Support for `ESC`/`Ctrl+C` stopping turns is active.
+- **Session Stats:** Duration and token usage displayed on exit (matching legacy mode).
+- **Loading Indicator:** Optimistic spinner shown while awaiting first response chunk.
 - **Theme Support:** [TODO] Finalize centralized styling.
 
-## 5. Integrating Rta Superpowers [IN PROGRESS]
-- **Native MCP Support:** `MCPToolWrapper` implemented for dynamic tool loading.
+## 5. Integrating Rta Superpowers [DONE]
+- **Native MCP Support:** `MCPToolWrapper` implemented with proper OpenAI-compatible schema generation.
+- **MCP Tool Fix:** Raw `inputSchema` used instead of Pydantic `model_json_schema()` to avoid missing `type` fields that caused all providers to reject.
+- **Session History Hygiene:** Empty `AssistantMessage(content=None, tool_calls=None)` filtered out before API calls — stale entries from prior failed runs broke provider message alternation.
+- **Provider Fixes:** Corrected endpoint (`/v1/chat`), payload fields (`model`, `provider`, `max_tokens`), and SSE parser (custom backend event format, not OpenAI).
 - **LSP Integration:** [TODO] Re-integrate diagnostics/definitions into the async structure.
-- **Middleware Sync:** Ngrok/Middleware headers (`ngrok-skip-browser-warning`) handled.
+- **Middleware Sync:** Ngrok/Middleware headers handled.
 
 ## 6. Detailed Implementation Roadmap
 
@@ -48,11 +53,13 @@ The transition to an asynchronous, event-driven architecture is complete.
 - **Summarization Logic:** `ContextManager` active.
 - **State Recovery:** History reloading implemented.
 
-### Phase 4: Modern UI & Integration [IN PROGRESS]
+### Phase 4: Modern UI & Integration [DONE]
 - **Block-Based UI:** Rich Live TUI active.
-- **MCP Merge:** `MCPToolWrapper` active.
+- **MCP Merge:** `MCPToolWrapper` active with schema fixes.
+- **End-to-End Working:** `--modern` flag produces valid payloads, successfully streams responses from all providers (Groq, OpenRouter, Gemini).
+- **Session Summary:** Token usage and duration printed on exit.
+- **CLI Polish:** `--version` flag fixed, argument parsing cleaned up.
 - **LSP Merge:** [TODO]
-- **Final Polish:** Fix remaining CLI flag bugs (`--version`, etc.).
 
 ### Phase 5: Safety & Modularity (Tau-Inspired) [NEW]
 - **Permissioned Tool Wrapper:** Implement a `PermissionedTool` decorator/wrapper to enforce `SandboxMode` (ReadOnly vs. YOLO/Force).
