@@ -189,6 +189,7 @@ def main():
     parser.add_argument("--resume", help="Resume a previous session by ID")
     parser.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     parser.add_argument("--privacy", action="store_true", help="Hide email in header")
+    parser.add_argument("--modern", action="store_true", help="Use the new v0.5.0 async core")
     
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
 
@@ -207,6 +208,7 @@ def main():
     p_chat.add_argument("--resume", help="Resume a previous session by ID")
     p_chat.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     p_chat.add_argument("--privacy", action="store_true", help="Hide email in header")
+    p_chat.add_argument("--modern", action="store_true", help="Use the new v0.5.0 async core")
 
     # ask
     p_ask = subparsers.add_parser("ask", help="Run a one-off agentic request (headless)")
@@ -238,6 +240,11 @@ def main():
 
     # Parse arguments
     args, unknown = parser.parse_known_args()
+
+    # Modern mode check
+    if args.modern:
+        from rta_cli.main_async import main as run_modern
+        return run_modern()
 
     # Handle global flags first
     if args.version:
