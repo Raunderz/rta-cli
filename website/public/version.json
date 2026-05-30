@@ -2,7 +2,7 @@
   "version": "0.5.0",
   "url_linux": "https://rta-three.vercel.app/rta",
   "url_windows": "https://rta-three.vercel.app/rta.exe",
-  "sha256_linux": "aaa7f2f1e3f1c6566e7f2b15d18be67f453c6db8288e58824e5a5acaf6f66a23",
+  "sha256_linux": "9b8e3a633464510e9bcca5fe00196059d716506ebfa444b2d65a1e729fbb60bb",
   "sha256_windows": "",
   "url_linux_desktop": "https://rta-three.vercel.app/rta-desktop-linux.tar.gz",
   "sha256_linux_desktop": "c094f8559891828ede19cf6ac3ffe38e3df83d9a90ab98a6d7d57dbc321d9297"
