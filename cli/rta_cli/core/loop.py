@@ -13,33 +13,55 @@ from .events import (
 )
 from .provider import AsyncRtaProvider
 
+from .tool_manager import ToolManager
+
+from .session import SessionManager
+from .context import ContextManager
+
 class Agent:
     def __init__(
         self, 
         provider: AsyncRtaProvider, 
         system_prompt: str,
-        tools: List[Dict[str, Any]]
+        tool_manager: ToolManager,
+        session_manager: Optional[SessionManager] = None,
+        context_manager: Optional[ContextManager] = None
     ):
         self.provider = provider
         self.system_prompt = system_prompt
-        self.tools = tools
-        self.messages: List[Message] = []
-
-    async def run_turn(self, user_input: str) -> AsyncIterator[Event]:
-        # 1. Setup user message
-        self.messages.append(UserMessage(content=user_input))
+        self.tool_manager = tool_manager
+        self.session_manager = session_manager
+        self.context_manager = context_manager
         
-        # 2. Start turn loop (to handle multiple tool cycles if needed)
+        # Initial message load
+        self.messages: List[Message] = []
+        if self.session_manager:
+            self.messages = self.session_manager.load_messages()
+
+    async def run_turn(self, user_input: str, cancel_event: Optional[asyncio.Event] = None) -> AsyncIterator[Event]:
+        # 0. Check for compaction before turn
+        if self.context_manager and self.context_manager.should_compact(self.messages):
+            summary = await self.context_manager.generate_summary(self.messages)
+            self.messages = self.context_manager.compact(self.messages, summary)
+            if self.session_manager:
+                self.session_manager.append_compaction(summary)
+
+        # 1. Setup user message
+        user_msg = UserMessage(content=user_input)
+        self.messages.append(user_msg)
+        if self.session_manager:
+            self.session_manager.append_message(user_msg)
+        
+        # 2. Start turn loop
         while True:
             current_assistant_content = ""
             current_thinking = ""
             current_tool_calls: List[ToolCall] = []
             
-            # Stream from provider
             async for event in self.provider.stream(
                 messages=self.messages,
                 system_prompt=self.system_prompt,
-                tools=self.tools
+                tools=self.tool_manager.get_schemas()
             ):
                 yield event
                 
@@ -55,37 +77,30 @@ class Agent:
                         )
                     )
                 elif isinstance(event, ErrorEvent):
-                    return # Stop on error
+                    return
 
-            # Create the assistant message
             assistant_msg = AssistantMessage(
                 content=current_assistant_content or None,
                 thinking=current_thinking or None,
                 tool_calls=current_tool_calls or None
             )
             self.messages.append(assistant_msg)
+            if self.session_manager:
+                self.session_manager.append_message(assistant_msg)
 
-            # 3. If no tool calls, turn is done
             if not current_tool_calls:
                 yield TurnEndEvent(message=assistant_msg)
                 return
 
-            # 4. Execute tool calls (Placeholder for Phase 2 Tool Manager)
-            # For now, we yield dummy results to keep the loop valid
+            # 3. Execute tool calls
             for tc in current_tool_calls:
-                # TODO: Implement ToolManager.execute(tc)
-                dummy_result = ToolResult(
-                    success=False, 
-                    result=f"Tool '{tc.function.name}' execution not yet implemented in Phase 1."
-                )
+                result = await self.tool_manager.execute_call(tc, cancel_event=cancel_event)
+                yield ToolResultEvent(tool_call_id=tc.id, result=result)
                 
-                yield ToolResultEvent(tool_call_id=tc.id, result=dummy_result)
-                
-                self.messages.append(
-                    ToolResultMessage(
-                        tool_call_id=tc.id,
-                        content=dummy_result.result
-                    )
+                tool_res_msg = ToolResultMessage(
+                    tool_call_id=tc.id,
+                    content=result.result
                 )
-
-            # Continue the loop for the model to see tool results
+                self.messages.append(tool_res_msg)
+                if self.session_manager:
+                    self.session_manager.append_message(tool_res_msg)
