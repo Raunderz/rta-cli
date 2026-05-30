@@ -1,3 +1,5 @@
+from __future__ import annotations
+import asyncio
 import json
 from typing import Any, Dict, Type, Optional
 from pydantic import create_model, BaseModel
@@ -30,7 +32,6 @@ class MCPToolWrapper(BaseTool):
 
     async def execute(self, params: Any, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
         # call_mcp_tool is currently sync stdio, so we run in thread
-        import asyncio
         args = params.model_dump()
         
         try:
@@ -51,5 +52,3 @@ class MCPToolWrapper(BaseTool):
             return ToolResult(success=True, result=text_res or str(result))
         except Exception as e:
             return ToolResult(success=False, result=f"MCP Error: {str(e)}")
-
-import asyncio
