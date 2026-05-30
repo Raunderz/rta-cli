@@ -7,6 +7,7 @@ a = Analysis(
     binaries=[],
     datas=[],
     hiddenimports=[
+        # Legacy modules
         'rta_cli.functions.get_file_content', 
         'rta_cli.functions.get_files_info', 
         'rta_cli.functions.write_file', 
@@ -25,7 +26,23 @@ a = Analysis(
         'rta_cli.questions',
         'rta_cli.index.manager',
         'rta_cli.lsp.client',
-        'rta_cli.lsp.manager'
+        'rta_cli.lsp.manager',
+        # Modern async core (v0.5.0)
+        'rta_cli.main_async',
+        'rta_cli.core.provider',
+        'rta_cli.core.loop',
+        'rta_cli.core.ui',
+        'rta_cli.core.tool_manager',
+        'rta_cli.core.types',
+        'rta_cli.core.events',
+        'rta_cli.core.bash_tool',
+        'rta_cli.core.edit_tool',
+        'rta_cli.core.file_tools',
+        'rta_cli.core.mcp_tool',
+        'rta_cli.core.tool_base',
+        'rta_cli.core.session',
+        'rta_cli.core.context',
+        'rta_cli.mcp',
     ],
     hookspath=[],
     hooksconfig={},

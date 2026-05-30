@@ -1,12 +1,13 @@
 import json
 import httpx
+import asyncio
 from typing import AsyncIterator, List, Optional, Union
 from .types import Message, TextContent, AssistantMessage, ToolCall, FunctionCall, Usage
 from .events import (
     Event, ThinkingStartEvent, ThinkingDeltaEvent, ThinkingEndEvent,
     TextStartEvent, TextDeltaEvent, TextEndEvent,
     ToolStartEvent, ToolArgsDeltaEvent, ToolEndEvent,
-    ErrorEvent
+    UsageEvent, ErrorEvent
 )
 from rta_cli.utils import load_credential, get_device_id, get_server_url
 
@@ -27,15 +28,23 @@ class AsyncRtaProvider:
             "X-Device-ID": self.device_id,
             "X-CLI-Version": "0.5.0",
             "Content-Type": "application/json",
-            "User-Agent": "rta-cli/1.0"
+            "User-Agent": "rta-cli/1.0",
+            "ngrok-skip-browser-warning": "69420"
         }
 
+        from .types import AssistantMessage
+        clean_messages = [
+            m for m in messages
+            if not (isinstance(m, AssistantMessage) and m.content is None and m.tool_calls is None)
+        ]
+
         payload = {
-            "messages": [m.model_dump() for m in messages],
-            "stream": True
+            "messages": [m.model_dump() for m in clean_messages],
+            "model": "auto",
+            "provider": "auto",
+            "stream": True,
+            "max_tokens": 2000,
         }
-        if system_prompt:
-            payload["system_prompt"] = system_prompt
         if tools:
             payload["tools"] = tools
 
@@ -43,7 +52,7 @@ class AsyncRtaProvider:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 async with client.stream(
                     "POST", 
-                    f"{self.server_url}/v1/chat/completions", 
+                    f"{self.server_url}/v1/chat", 
                     json=payload, 
                     headers=headers
                 ) as response:
@@ -55,7 +64,7 @@ class AsyncRtaProvider:
                     # State for reconstructing the response
                     current_thinking = ""
                     current_text = ""
-                    tool_calls_data = {} # id -> {name, args}
+                    tool_calls_data: dict[int, dict] = {}
 
                     thinking_started = False
                     text_started = False
@@ -63,58 +72,59 @@ class AsyncRtaProvider:
                     async for line in response.aiter_lines():
                         if not line.startswith("data: "):
                             continue
-                        
+
                         data_str = line[6:].strip()
-                        if data_str == "[DONE]":
+                        if not data_str or data_str == "[DONE]":
                             break
 
                         try:
-                            chunk = json.loads(data_str)
-                            delta = chunk.get("choices", [{}])[0].get("delta", {})
-
-                            # 1. Handle Thinking (Reasoning)
-                            reasoning = delta.get("reasoning_content") or delta.get("thinking")
-                            if reasoning:
-                                if not thinking_started:
-                                    yield ThinkingStartEvent()
-                                    thinking_started = True
-                                yield ThinkingDeltaEvent(delta=reasoning)
-                                current_thinking += reasoning
-
-                            # 2. Handle Text Content
-                            content = delta.get("content")
-                            if content:
-                                if not text_started:
-                                    # If thinking was happening, end it
-                                    if thinking_started:
-                                        yield ThinkingEndEvent(thinking=current_thinking)
-                                        thinking_started = False
-                                    yield TextStartEvent()
-                                    text_started = True
-                                yield TextDeltaEvent(delta=content)
-                                current_text += content
-
-                            # 3. Handle Tool Calls
-                            tool_deltas = delta.get("tool_calls", [])
-                            for td in tool_deltas:
-                                index = td.get("index", 0)
-                                tc_id = td.get("id")
-                                fn_delta = td.get("function", {})
-                                
-                                if tc_id: # Start of a tool call
-                                    name = fn_delta.get("name")
-                                    tool_calls_data[index] = {"id": tc_id, "name": name, "args": ""}
-                                    yield ToolStartEvent(tool_call_id=tc_id, name=name)
-                                
-                                args_delta = fn_delta.get("arguments")
-                                if args_delta and index in tool_calls_data:
-                                    tool_calls_data[index]["args"] += args_delta
-                                    yield ToolArgsDeltaEvent(
-                                        tool_call_id=tool_calls_data[index]["id"], 
-                                        delta=args_delta
-                                    )
-
+                            event = json.loads(data_str)
                         except json.JSONDecodeError:
+                            continue
+
+                        event_type = event.get("type", "")
+                        content = event.get("content", "")
+
+                        if event_type == "text" and content:
+                            if thinking_started:
+                                yield ThinkingEndEvent(thinking=current_thinking)
+                                thinking_started = False
+                            if not text_started:
+                                yield TextStartEvent()
+                                text_started = True
+                            yield TextDeltaEvent(delta=content)
+                            current_text += content
+
+                        elif event_type == "thought" and content:
+                            if not thinking_started:
+                                yield ThinkingStartEvent()
+                                thinking_started = True
+                            yield ThinkingDeltaEvent(delta=content)
+                            current_thinking += content
+
+                        elif event_type == "tool_calls":
+                            for tc in content:
+                                tc_id = tc.get("id", "")
+                                fn = tc.get("function", {})
+                                name = fn.get("name", "")
+                                args = fn.get("arguments", "")
+                                if tc_id:
+                                    yield ToolStartEvent(tool_call_id=tc_id, name=name)
+                                    if args:
+                                        yield ToolArgsDeltaEvent(tool_call_id=tc_id, delta=args)
+                                    yield ToolEndEvent(tool_call_id=tc_id, name=name, arguments=args)
+
+                        elif event_type == "error":
+                            yield ErrorEvent(message=content or "Unknown error")
+                            return
+
+                        elif event_type == "usage" and isinstance(content, dict):
+                            yield UsageEvent(
+                                prompt_tokens=content.get("prompt_tokens", 0),
+                                completion_tokens=content.get("completion_tokens", 0),
+                                total_tokens=content.get("total_tokens", 0),
+                            )
+                        elif event_type == "provider" or event_type == "meta":
                             continue
 
                     # Finalize events
@@ -122,13 +132,9 @@ class AsyncRtaProvider:
                         yield ThinkingEndEvent(thinking=current_thinking)
                     if text_started:
                         yield TextEndEvent(text=current_text)
-                    
-                    for index, data in tool_calls_data.items():
-                        yield ToolEndEvent(
-                            tool_call_id=data["id"], 
-                            name=data["name"], 
-                            arguments=data["args"]
-                        )
 
+        except asyncio.CancelledError:
+            # Re-raise to let the caller handle it
+            raise
         except Exception as e:
             yield ErrorEvent(message="Connection Error", details=str(e))

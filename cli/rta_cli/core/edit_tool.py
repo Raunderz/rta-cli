@@ -21,7 +21,7 @@ class EditTool(BaseTool):
 
     async def execute(self, params: EditParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
         try:
-            if not await self._file_exists(params.path):
+            if not os.path.isfile(params.path):
                 return ToolResult(success=False, result=f"Error: File '{params.path}' not found.")
 
             async with aiofiles.open(params.path, mode='r') as f:
@@ -46,9 +46,6 @@ class EditTool(BaseTool):
 
         except Exception as e:
             return ToolResult(success=False, result=f"Error: {str(e)}")
-
-    async def _file_exists(self, path: str) -> bool:
-        return await asyncio.to_thread(lambda: os.path.isfile(path))
 
     def _generate_diff(self, path: str, old: str, new: str) -> str:
         diff = difflib.unified_diff(

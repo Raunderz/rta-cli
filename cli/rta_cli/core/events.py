@@ -45,6 +45,11 @@ class TurnEndEvent(Event):
     message: Message
     usage: Optional[Usage] = None
 
+class UsageEvent(Event):
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
 class ErrorEvent(Event):
     message: str
     details: Optional[str] = None
