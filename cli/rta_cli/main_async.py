@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import time
 import os
 from pathlib import Path
@@ -15,6 +16,41 @@ from .core.loop import Agent
 from .core.ui import RtaTUI
 from .core.events import UsageEvent
 from rta_cli.discovery import discover_project
+
+console = Console()
+
+def handle_slash_command(user_input: str) -> bool:
+    if not user_input.startswith("/"):
+        return False
+    parts = user_input[1:].split()
+    if not parts:
+        return False
+    cmd = parts[0].lower()
+    args = parts[1:]
+
+    if cmd == "help":
+        console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
+        console.print("  /clear         - Clear chat history & screen")
+        console.print("  /exit          - Exit the chat")
+        console.print("\n[dim]You can also run any Rta CLI command here (e.g., /status, /whoami)[/dim]\n")
+        return True
+
+    if cmd in ("clear", "cls"):
+        os.system("cls" if os.name == "nt" else "clear")
+        return True
+
+    if cmd == "exit":
+        return False
+
+    try:
+        from rta_cli.commands import main as rta_main
+        orig_argv = sys.argv
+        sys.argv = ["rta", cmd] + args
+        rta_main()
+        sys.argv = orig_argv
+    except SystemExit:
+        pass
+    return True
 
 async def async_main():
     console = Console()
@@ -110,9 +146,12 @@ async def async_main():
     while True:
         try:
             user_input = console.input("\n[bold cyan]rta>[/bold cyan] ")
-            if user_input.lower() in ("exit", "quit"):
-                break
             if not user_input.strip():
+                continue
+
+            if user_input.startswith("/"):
+                if not handle_slash_command(user_input):
+                    break
                 continue
 
             cancel_event = asyncio.Event()
