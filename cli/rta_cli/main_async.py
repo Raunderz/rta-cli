@@ -1,4 +1,5 @@
 import asyncio
+import json
 import time
 import os
 from pathlib import Path
@@ -13,6 +14,7 @@ from .core.context import ContextManager
 from .core.loop import Agent
 from .core.ui import RtaTUI
 from .core.events import UsageEvent
+from rta_cli.discovery import discover_project
 
 async def async_main():
     console = Console()
@@ -20,6 +22,8 @@ async def async_main():
 
     # 1. Setup Core Components
     provider = AsyncRtaProvider()
+    cwd = os.getcwd()
+    project_info = await asyncio.to_thread(discover_project, cwd)
     
     tool_manager = ToolManager()
     tool_manager.register_tool(BashTool())
@@ -27,9 +31,44 @@ async def async_main():
     tool_manager.register_tool(ListDirTool())
     tool_manager.register_tool(GrepTool())
     tool_manager.register_tool(GlobTool())
+
     from .core.lsp_tools import GetDiagnosticsTool, GoToDefinitionTool
-    tool_manager.register_tool(GetDiagnosticsTool())
-    tool_manager.register_tool(GoToDefinitionTool())
+    tool_manager.register_tool(GetDiagnosticsTool(cwd))
+    tool_manager.register_tool(GoToDefinitionTool(cwd))
+
+    from .core.legacy_tools import (
+        DiscoverProjectTool, GetFileContentsTool, GetFilesInfoTool,
+        WriteFileTool, DeleteFileTool, CreateDirTool, ApplyDiffTool,
+        EditFileAstTool, ListSkillsTool, SemanticSearchTool,
+        GetRepoSkeletonTool, QuestionTool,
+        GitStatusTool, GitDiffTool, GitLogTool, GitCommitTool,
+        GitCreatePrTool, GitBranchTool,
+        WebSearchTool, SequentialThinkingTool,
+        MemorizeTool, RecallTool, ForgetTool,
+    )
+    tool_manager.register_tool(DiscoverProjectTool(cwd))
+    tool_manager.register_tool(GetFileContentsTool(cwd))
+    tool_manager.register_tool(GetFilesInfoTool(cwd))
+    tool_manager.register_tool(WriteFileTool(cwd))
+    tool_manager.register_tool(DeleteFileTool(cwd))
+    tool_manager.register_tool(CreateDirTool(cwd))
+    tool_manager.register_tool(ApplyDiffTool(cwd))
+    tool_manager.register_tool(EditFileAstTool(cwd))
+    tool_manager.register_tool(ListSkillsTool())
+    tool_manager.register_tool(SemanticSearchTool(cwd))
+    tool_manager.register_tool(GetRepoSkeletonTool(cwd))
+    tool_manager.register_tool(QuestionTool())
+    tool_manager.register_tool(GitStatusTool(cwd))
+    tool_manager.register_tool(GitDiffTool(cwd))
+    tool_manager.register_tool(GitLogTool(cwd))
+    tool_manager.register_tool(GitCommitTool(cwd))
+    tool_manager.register_tool(GitCreatePrTool(cwd))
+    tool_manager.register_tool(GitBranchTool(cwd))
+    tool_manager.register_tool(WebSearchTool())
+    tool_manager.register_tool(SequentialThinkingTool())
+    tool_manager.register_tool(MemorizeTool())
+    tool_manager.register_tool(RecallTool())
+    tool_manager.register_tool(ForgetTool())
 
     # Register MCP Tools
     from rta_cli.mcp import load_mcp_config, list_mcp_tools
@@ -45,7 +84,17 @@ async def async_main():
     
     context_manager = ContextManager(provider)
     
-    system_prompt = "You are Rta, an expert AI coding assistant. Use tools to help the user."
+    system_prompt = (
+        f"You are Rta, an expert developer CLI assistant. Working in: {cwd}\n"
+        f"Project: {json.dumps(project_info)}\n"
+        "Rules:\n"
+        "- Run shell commands via bash tool, not Python subprocess\n"
+        "- Read files with get_file_contents before editing\n"
+        "- Verify edits by reading the file back\n"
+        "- Use parallel tool execution for independent reads\n"
+        "- Ask before destructive ops (deletes, force-push, mass rewrites) via the question tool\n"
+        "- Responses stream in real-time — lead with the answer, then details\n"
+    )
     
     agent = Agent(
         provider=provider,
