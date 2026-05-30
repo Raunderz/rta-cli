@@ -59,10 +59,16 @@ The transition to an asynchronous, event-driven architecture is complete.
 - **End-to-End Working:** `--modern` flag produces valid payloads, successfully streams responses from all providers (Groq, OpenRouter, Gemini).
 - **Session Summary:** Token usage and duration printed on exit.
 - **CLI Polish:** `--version` flag fixed, argument parsing cleaned up.
-- **LSP Merge:** [TODO]
 
-### Phase 5: Safety & Modularity (Tau-Inspired) [NEW]
+### Phase 5: LSP Integration & Theme Support [IN PROGRESS]
+- **[DONE] LSP Tools:** Created `GetDiagnosticsTool` and `GoToDefinitionTool` in `core/lsp_tools.py` as `BaseTool` subclasses, wrapping the existing sync LSP layer via `asyncio.to_thread`. Registered in `main_async.py`.
+- **[TODO] Hover/Completions:** Add `get_hover` and `get_completions` tools for richer IDE support.
+- **[TODO] Theme Support:** Finalize centralized styling for the TUI (colors, panels, markdown).
+
+### Phase 6: Safety & Robustness [PLANNED]
 - **Permissioned Tool Wrapper:** Implement a `PermissionedTool` decorator/wrapper to enforce `SandboxMode` (ReadOnly vs. YOLO/Force).
 - **CancellationToken Manager:** Refactor `asyncio.Event` into a centralized `CancellationToken` to handle complex multi-tool cancellation trees.
+
+### Phase 7: Architecture & Modularity [PLANNED]
 - **Core Modularization:** Restructure `rta_cli/core` into distinct sub-packages (e.g., `rta_cli.llm`, `rta_cli.tools`, `rta_cli.ui`) to match the high-performance architecture of Tau.
 - **Headless Mode:** Ensure the core `Agent` and `ToolManager` can run in a pure headless/API mode without any TUI dependencies.

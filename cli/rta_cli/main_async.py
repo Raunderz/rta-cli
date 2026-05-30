@@ -27,6 +27,9 @@ async def async_main():
     tool_manager.register_tool(ListDirTool())
     tool_manager.register_tool(GrepTool())
     tool_manager.register_tool(GlobTool())
+    from .core.lsp_tools import GetDiagnosticsTool, GoToDefinitionTool
+    tool_manager.register_tool(GetDiagnosticsTool())
+    tool_manager.register_tool(GoToDefinitionTool())
 
     # Register MCP Tools
     from rta_cli.mcp import load_mcp_config, list_mcp_tools
