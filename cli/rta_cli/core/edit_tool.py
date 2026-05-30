@@ -1,6 +1,8 @@
+from __future__ import annotations
 import asyncio
 import difflib
 import aiofiles
+import os
 from typing import Optional
 from pydantic import BaseModel, Field
 from .tool_base import BaseTool
@@ -57,5 +59,3 @@ class EditTool(BaseTool):
             lineterm=""
         )
         return "\n".join(diff)
-
-import os # Needed for os.path.isfile
