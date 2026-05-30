@@ -64,6 +64,7 @@ a = Analysis(
         'rta_cli.mcp.search',
         'rta_cli.mcp.sequential_thinking',
         'rta_cli.mcp.memory',
+        'rta_cli.commands',
     ],
     hookspath=[],
     hooksconfig={},
