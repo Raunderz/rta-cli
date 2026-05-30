@@ -8,6 +8,123 @@ export const BlogPage = ({ params }) => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
+      slug: "rta-cli-v050-modern-core",
+      title: "Rta CLI v0.5.0: The Modern Core Rewrite",
+      date: "May 30, 2026",
+      readTime: "7 min read",
+      excerpt: "A complete async event-driven rewrite of the Rta CLI — faster, more reliable, and feature-complete with all legacy tools ported.",
+      tags: ["CLI", "Architecture", "Async", "Python"],
+      commit: "modern-core",
+      body: `
+# Rta CLI v0.5.0: The Modern Core Rewrite
+
+The CLI has been rewritten from the ground up. Not a refactor — a full replacement of the synchronous chat loop with an async event-driven architecture. Every tool, every feature, every edge case from the legacy mode has been ported. But the engine underneath is completely new.
+
+## Why Rewrite?
+
+The original Rta CLI was built as a synchronous loop. It worked — you typed, it responded, tools executed in sequence, text printed to the terminal. But synchronous has hard limits:
+
+- **No streaming**: The response appeared all at once, after the entire completion finished. Perceived latency was terrible.
+- **No cancellation**: Ctrl+C could kill the process, but not gracefully stop a tool execution mid-flight.
+- **No real-time UI**: Tool execution status, thinking blocks, and loading states were impossible to render incrementally.
+- **Blocking I/O**: Every file read, bash command, and API call blocked the entire event loop.
+
+The new architecture solves all of these.
+
+## The Async Engine
+
+The core is now a chain of async generators:
+
+\`\`\`
+User Input → Agent.run_turn() → Provider.stream() → events → TUI.render()
+\`\`\`
+
+Each layer yields typed \`Event\` objects (\`TextDeltaEvent\`, \`ToolStartEvent\`, \`UsageEvent\`, etc.) that flow downstream. The UI renders each event as it arrives — text appears token by token, tools show their execution status in real time, thinking blocks unfold inline.
+
+The \`AsyncRtaProvider\` uses \`httpx.AsyncClient\` for non-blocking SSE streaming. When the backend sends \`{"type": "text", "content": "Hello"}\`, it becomes a \`TextDeltaEvent\` and the UI updates. When \`{"type": "usage"}\` arrives, token counts are accumulated for the session summary.
+
+## Tool Architecture
+
+Every tool is now a \`BaseTool\` subclass with a Pydantic parameter model and an async \`execute()\` method:
+
+\`\`\`python
+class BashParams(BaseModel):
+    command: str = Field(description="The command to execute")
+    timeout: int = Field(default=120)
+
+class BashTool(BaseTool):
+    name = "bash"
+    description = "Execute a bash command"
+    parameters = BashParams
+
+    async def execute(self, params, cancel_event=None):
+        proc = await asyncio.create_subprocess_shell(params.command, ...)
+        stdout, stderr = await proc.communicate()
+        return ToolResult(success=proc.returncode == 0, result=stdout)
+\`\`\`
+
+Legacy tools that were synchronous (file operations, git commands, web search, memory storage) are wrapped via \`asyncio.to_thread\`, preserving the original implementation while running in the async event loop.
+
+## What's New
+
+Beyond the architecture, v0.5.0 introduces several improvements:
+
+### Session Stats on Exit
+\`\`\`
+─ Session: 2m 34s | In: 482 | Out: 26 ─
+\`\`\`
+Token usage and duration printed on exit, matching the legacy behavior. Falls back to character-based estimates when backend usage events aren't available.
+
+### Slash Commands Handled Locally
+\`/help\`, \`/clear\`, \`/exit\`, and any CLI subcommand (\`/status\`, \`/whoami\`) are intercepted before reaching the AI model. \`/help\` shows available commands instantly without consuming API quota.
+
+### Rich TUI with Live Rendering
+The \`RtaTUI\` class uses \`rich.live\` for real-time display updates. Loading spinner shows status messages while waiting for the first response token. Thinking blocks, text output, and tool executions each have their own rendering panel.
+
+### Dynamic MCP Tool Integration
+MCP servers (GitHub, Search, etc.) are loaded dynamically via \`MCPToolWrapper\`. Tool schemas are converted to OpenAI-compatible format using each MCP server's raw \`inputSchema\` rather than Pydantic's \`model_json_schema()\`, avoiding missing type fields that caused all upstream providers to reject the tool definitions.
+
+## All Legacy Tools Ported
+
+Every tool from the original CLI has been ported to the async architecture:
+
+| Category | Tools |
+|---|---|
+| **Read/Write** | \`get_file_contents\`, \`get_files_info\`, \`write_file\`, \`delete_file\`, \`create_dir\`, \`list_directory\` |
+| **Edit** | \`edit\`, \`apply_diff\`, \`edit_file_ast\` |
+| **Search** | \`grep_search\`, \`glob_search\`, \`semantic_search\` |
+| **Execute** | \`bash\` (with timeout, process tree killing, tail truncation) |
+| **LSP** | \`get_diagnostics\`, \`go_to_definition\` |
+| **Git** | \`git_status\`, \`git_diff\`, \`git_log\`, \`git_commit\`, \`git_create_pr\`, \`git_branch\` |
+| **Web** | \`web_search\` (DuckDuckGo, SearXNG, Wikipedia) |
+| **Reasoning** | \`sequential_thinking\` |
+| **Memory** | \`memorize\`, \`recall\`, \`forget\` |
+| **Meta** | \`discover_project\`, \`list_skills\`, \`get_repo_skeleton\`, \`question\` |
+| **MCP** | Dynamic tools from any configured MCP server |
+
+## Provider Compatibility
+
+The backend communication layer was rebuilt to match the actual API contract. After discovering that the legacy endpoint path was incorrect (\`/v1/chat/completions\` instead of \`/v1/chat\`) and that the SSE response format uses custom event types (\`text\`, \`thought\`, \`tool_calls\`, \`usage\`, \`error\`, \`done\`) rather than the OpenAI \`choices[0].delta\` format, the provider now correctly parses the backend's schema.
+
+Empty \`AssistantMessage\` entries (with \`content=None\` and \`tool_calls=None\`) that accumulated in session history from failed turns are filtered before sending — these ghost messages broke provider message alternation and caused all upstream models to return \`ProviderDownError\`.
+
+## The Result
+
+\`\`\`
+uv run rta --modern
+
+rta> hello
+────────────────────────────────────────────────────────────────
+**Hello! How can I assist you today?**
+────────────────────────────────────────────────────────────────
+\`\`\`
+
+Faster startup. Real-time streaming. Graceful cancellation. Proper session persistence. All legacy tools. The same Rta experience, rebuilt for performance and reliability.
+
+Run with \`--modern\` to try the new engine. Legacy mode remains available for comparison.
+`
+    },
+    {
       slug: "mobile-terminal-keyboard",
       title: "The Mobile Terminal Keyboard Odyssey",
       date: "May 28, 2026",

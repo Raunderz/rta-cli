@@ -390,7 +390,7 @@ const Dashboard = () => {
                                     class="download-btn"
                                     download={selectedOS === "linux" ? "rta" : "rta.exe"}
                                 >
-                                    Download for {selectedOS.toUpperCase()} <Icon d="M12 15V3m0 12l-4-4m4 4l4-4" />
+                                    Download for {selectedOS.toUpperCase()} ({selectedOS === "linux" ? "31 MB" : "22 MB"}) <Icon d="M12 15V3m0 12l-4-4m4 4l4-4" />
                                 </a>
                             </div>
                         </div>

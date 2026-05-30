@@ -759,7 +759,7 @@ rta-desktop</pre>
           class="btn btn-primary"
           style="text-decoration: none;"
         >
-          Download for {os === 'linux' ? 'Linux' : 'Windows'}
+          Download for {os === 'linux' ? 'Linux' : 'Windows'} ({os === 'linux' ? '31 MB' : '22 MB'})
         </a>
       </div>
       <div style="padding: var(--space-m);">
