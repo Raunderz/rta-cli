@@ -180,7 +180,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     
-    # Global options for chat (default command)
+    # Global options
     parser.add_argument("--clear-context", action="store_true", help="Clear chat history")
     parser.add_argument("--workspace", help="Working directory")
     parser.add_argument("--no-cache", action="store_true", help="Ignore context")
@@ -190,6 +190,7 @@ def main():
     parser.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     parser.add_argument("--privacy", action="store_true", help="Hide email in header")
     parser.add_argument("--modern", action="store_true", help="Use the new v0.5.0 async core")
+    parser.add_argument("--version", action="store_true", help="Show version info")
     
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
 
@@ -240,27 +241,30 @@ def main():
 
     # Parse arguments
     args, unknown = parser.parse_known_args()
+    known_vars = vars(args)
 
     # Modern mode check
-    if args.modern:
+    if known_vars.get("modern"):
         from rta_cli.main_async import main as run_modern
         return run_modern()
 
     # Handle global flags first
-    if args.version:
+    if known_vars.get("version"):
         from rta_cli.chat import ASCII_ART
         print(ASCII_ART)
-        print("Rta CLI v0.4.0")
+        print("Rta CLI v0.5.0")
         return
-    if args.whoami:
-        return whoami()
-    if args.status:
-        return status()
-    if args.login:
+    
+    if args.command == "login":
         return login()
-    if args.logout:
+    if args.command == "logout":
         return logout()
-
+    if args.command == "whoami":
+        return whoami()
+    if args.command == "status":
+        return status()
+    if args.command == "update":
+        return update()
     if args.command == "cd":
         return cd(args.path)
     elif args.command == "chat":
@@ -289,33 +293,19 @@ def main():
         return clone(args.repo_url)
     elif args.command == "skill":
         return skill(args)
-    elif args.command == "login":
-        return login()
-    elif args.command == "logout":
-        return logout()
-    elif args.command == "whoami":
-        return whoami()
-    elif args.command == "status":
-        return status()
-    elif args.command == "update":
-        return update()
     else:
         # Default behavior: chat
-        # If user passed a flag that looks like a command but isn't handled above, catch it
         if unknown:
             for arg in unknown:
                 if arg.startswith("-"):
-                    # Unknown flag - maybe it's a typo of a command?
                     cmd_name = arg.lstrip("-")
                     if cmd_name in ["whoami", "status", "login", "logout", "init", "chat", "ask", "clone"]:
                         console.print(f"[yellow]Hint: Did you mean 'rta {cmd_name}'?[/yellow]")
-                        # Run it anyway if it's obvious
                         if cmd_name == "whoami": return whoami()
                         if cmd_name == "status": return status()
                         if cmd_name == "login": return login()
                         if cmd_name == "logout": return logout()
                     
-                    # If we don't recognize the flag, don't pass it as a prompt if it starts with --
                     if arg.startswith("--"):
                         console.print(f"[bold red]Error: Unknown option {arg}[/bold red]")
                         parser.print_help()
@@ -324,14 +314,14 @@ def main():
         prompt = " ".join(unknown) if unknown else None
         return chat(
             prompt=prompt,
-            clear_context=args.clear_context,
-            workspace=args.workspace,
-            no_cache=args.no_cache,
-            timeout=args.timeout,
-            force=args.force,
-            resume=args.resume,
-            list_sessions=args.list_sessions,
-            privacy=args.privacy
+            clear_context=known_vars.get("clear_context"),
+            workspace=known_vars.get("workspace"),
+            no_cache=known_vars.get("no_cache"),
+            timeout=known_vars.get("timeout", 120),
+            force=known_vars.get("force"),
+            resume=known_vars.get("resume"),
+            list_sessions=known_vars.get("list_sessions"),
+            privacy=known_vars.get("privacy")
         )
 
 if __name__ == "__main__":

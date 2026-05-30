@@ -14,21 +14,24 @@ class MCPToolWrapper(BaseTool):
         self.name = f"mcp_{server_name}_{self.mcp_name}"
         self.description = mcp_tool_def.get("description", "")
         self.icon = "🧩"
+        self._input_schema = mcp_tool_def.get("inputSchema", {"type": "object", "properties": {}})
         
         # Create a dynamic Pydantic model from MCP inputSchema
-        schema = mcp_tool_def.get("inputSchema", {"type": "object", "properties": {}})
-        self.parameters = self._schema_to_pydantic(schema)
+        self.parameters = self._schema_to_pydantic(self._input_schema)
 
     def _schema_to_pydantic(self, schema: dict) -> Type[BaseModel]:
-        # Very simple conversion, enough for basic tools
         props = schema.get("properties", {})
         fields = {}
         for name, prop in props.items():
-            # For now, we just use 'Any' for simplicity in dynamic conversion
-            # A more robust version would map types properly
             fields[name] = (Any, ...)
-        
         return create_model(f"{self.name}_params", **fields)
+
+    def get_schema(self) -> Dict[str, Any]:
+        return {
+            "name": self.name,
+            "description": self.description,
+            "parameters": self._input_schema,
+        }
 
     async def execute(self, params: Any, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
         # call_mcp_tool is currently sync stdio, so we run in thread

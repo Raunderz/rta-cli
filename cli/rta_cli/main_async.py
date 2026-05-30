@@ -1,4 +1,5 @@
 import asyncio
+import time
 import os
 from pathlib import Path
 from rich.console import Console
@@ -11,6 +12,7 @@ from .core.session import SessionManager
 from .core.context import ContextManager
 from .core.loop import Agent
 from .core.ui import RtaTUI
+from .core.events import UsageEvent
 
 async def async_main():
     console = Console()
@@ -61,14 +63,23 @@ async def async_main():
             if not user_input.strip():
                 continue
 
-            # Run the turn through TUI
-            await tui.handle_events(agent.run_turn(user_input))
+            cancel_event = asyncio.Event()
+            
+            try:
+                await tui.handle_events(agent.run_turn(user_input, cancel_event=cancel_event))
+            except asyncio.CancelledError:
+                console.print("\n[yellow]Interrupted.[/yellow]")
+            except KeyboardInterrupt:
+                cancel_event.set()
+                console.print("\n[yellow]Stopping...[/yellow]")
+                await asyncio.sleep(0.1)
 
-        except KeyboardInterrupt:
-            console.print("\n[yellow]Interrupted by user.[/yellow]")
-            continue
+        except (KeyboardInterrupt, EOFError):
+            break
         except Exception as e:
-            console.print(f"\n[bold red]Error:[/bold red] {str(e)}")
+            console.print(f"\n[bold red]Fatal Error:[/bold red] {str(e)}")
+
+    tui.print_summary()
 
 def main():
     asyncio.run(async_main())
