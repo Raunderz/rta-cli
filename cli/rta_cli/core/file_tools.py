@@ -1,4 +1,8 @@
+from __future__ import annotations
+import asyncio
 import os
+import fnmatch
+import glob
 from typing import List, Optional
 from pydantic import BaseModel, Field
 from .tool_base import BaseTool
@@ -31,8 +35,6 @@ class ListDirTool(BaseTool):
             return ToolResult(success=True, result="\n".join(res) or "(empty directory)")
         except Exception as e:
             return ToolResult(success=False, result=f"Error: {str(e)}")
-
-import fnmatch
 
 class GrepParams(BaseModel):
     pattern: str = Field(description="Regex pattern to search for")
@@ -71,6 +73,5 @@ class GlobTool(BaseTool):
     icon = "🌐"
 
     async def execute(self, params: GlobParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
-        import glob
         files = glob.glob(params.pattern, recursive=True)
         return ToolResult(success=True, result="\n".join(files) or "No files matched.")
