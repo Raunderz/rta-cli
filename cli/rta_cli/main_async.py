@@ -154,6 +154,7 @@ async def async_main():
                     break
                 continue
 
+            tui.track_input(user_input)
             cancel_event = asyncio.Event()
             
             try:

@@ -17,6 +17,7 @@ from .events import (
     ToolStartEvent, ToolArgsDeltaEvent, ToolEndEvent,
     ToolResultEvent, TurnEndEvent, UsageEvent, ErrorEvent
 )
+from .types import UserMessage
 
 LOADING_MESSAGES = [
     "Navigating the codebase...",
@@ -57,6 +58,8 @@ class RtaTUI:
         self.loading = False
         self.total_in = 0
         self.total_out = 0
+        self.char_in = 0
+        self.char_out = 0
 
     def _render_loading(self) -> Panel:
         msg = random.choice(LOADING_MESSAGES)
@@ -121,6 +124,9 @@ class RtaTUI:
             
         return Group(*elements)
 
+    def track_input(self, text: str):
+        self.char_in += len(text)
+
     async def handle_events(self, event_stream):
         # Reset state for new turn
         self.thinking_content = ""
@@ -144,6 +150,7 @@ class RtaTUI:
                         self.thinking_content = event.thinking
                     elif isinstance(event, TextDeltaEvent):
                         self.text_content += event.delta
+                        self.char_out += len(event.delta)
                     elif isinstance(event, ToolStartEvent):
                         self.active_tools[event.tool_call_id] = {"name": event.name, "args": ""}
                     elif isinstance(event, ToolArgsDeltaEvent):
@@ -151,8 +158,10 @@ class RtaTUI:
                     elif isinstance(event, ToolResultEvent):
                         self.active_tools[event.tool_call_id]["result"] = event.result
                     elif isinstance(event, UsageEvent):
-                        self.total_in += event.prompt_tokens
-                        self.total_out += event.completion_tokens
+                        if event.prompt_tokens:
+                            self.total_in += event.prompt_tokens
+                        if event.completion_tokens:
+                            self.total_out += event.completion_tokens
                     elif isinstance(event, ErrorEvent):
                         self.loading = False
                         self.console.print(f"\n[bold red]Error: {event.message}[/bold red]")
@@ -173,4 +182,6 @@ class RtaTUI:
     def print_summary(self):
         duration = time.time() - self.start_time
         mins, secs = divmod(int(duration), 60)
-        self.console.print(f"\n[dim]─ Session: {mins}m {secs}s | In: {self.total_in} | Out: {self.total_out} ─[/]\n")
+        in_tokens = self.total_in or self.char_in // 4
+        out_tokens = self.total_out or self.char_out // 4
+        self.console.print(f"\n[dim]─ Session: {mins}m {secs}s | In: {in_tokens} | Out: {out_tokens} ─[/]\n")
