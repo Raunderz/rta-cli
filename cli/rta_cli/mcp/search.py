@@ -4,6 +4,7 @@ Tries engines in priority order: DuckDuckGo, SearXNG, Wikipedia.
 """
 
 import json
+import re
 import urllib.parse
 import urllib.request
 from ddgs import DDGS
@@ -114,6 +115,81 @@ def web_search(query: str, max_results: int = 8) -> str:
     for i, r in enumerate(all_results[:max_results], 1):
         output += f"{i}. **{r['title']}** ({r['engine']})\n   {r['snippet']}\n   {r['url']}\n\n"
     return output.strip()
+
+
+MAX_FETCH_SIZE = 512 * 1024  # 512KB max download
+
+
+def fetch_url(url: str) -> str:
+    """Download a URL and return its readable text content."""
+    if not url.startswith(("http://", "https://")):
+        return "Error: URL must start with http:// or https://"
+
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; Rta-CLI/0.5.0)"},
+        )
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            content_type = resp.headers.get("Content-Type", "")
+            if "text" not in content_type and "html" not in content_type and "json" not in content_type:
+                return f"Error: Unsupported content type: {content_type}"
+            raw = resp.read(MAX_FETCH_SIZE)
+            # Try UTF-8, fall back to latin-1
+            try:
+                html = raw.decode("utf-8")
+            except UnicodeDecodeError:
+                html = raw.decode("latin-1")
+
+    except Exception as e:
+        return f"Error fetching URL: {e}"
+
+    title = ""
+    m = re.search(r"<title[^>]*>(.*?)</title>", html, re.IGNORECASE | re.DOTALL)
+    if m:
+        title = strip_html(m.group(1)).strip()
+
+    # Remove script/style tags and their contents
+    cleaned = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    # Remove all HTML tags
+    cleaned = re.sub(r"<[^>]+>", " ", cleaned)
+    # Decode HTML entities
+    cleaned = cleaned.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
+    cleaned = cleaned.replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
+    cleaned = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), cleaned)
+    cleaned = re.sub(r"&#[xX]([0-9a-fA-F]+);", lambda m: chr(int(m.group(1), 16)), cleaned)
+    cleaned = re.sub(r"&[a-zA-Z]+;", " ", cleaned)
+    # Collapse whitespace
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    # Truncate to keep response manageable
+    MAX_TEXT = 100 * 1024  # 100KB of text
+    if len(cleaned) > MAX_TEXT:
+        cleaned = cleaned[:MAX_TEXT] + "\n\n[truncated...]"
+
+    if title:
+        return f"Title: {title}\n\n{cleaned}"
+    return cleaned
+
+
+def strip_html(text: str) -> str:
+    return re.sub(r"<[^>]+>", "", text)
+
+
+schema_fetch_url = {
+    "name": "fetch_url",
+    "description": "Download a URL and return its readable text content (title + body). Strips HTML, scripts, and styling. Max 100KB of text, 512KB download limit. Use after web_search to read interesting pages.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "url": {
+                "type": "string",
+                "description": "The full URL to fetch (must start with http:// or https://)",
+            },
+        },
+        "required": ["url"],
+    },
+}
 
 
 schema_web_search = {

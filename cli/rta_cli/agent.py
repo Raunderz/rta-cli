@@ -23,7 +23,7 @@ from rta_cli.functions.list_skills import list_skills, schema_list_skills
 from rta_cli.functions.semantic_search import semantic_search, schema_semantic_search
 from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_repo_skeleton
 from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
-from rta_cli.mcp.search import web_search, schema_web_search
+from rta_cli.mcp.search import web_search, schema_web_search, fetch_url, schema_fetch_url
 from rta_cli.mcp.sequential_thinking import sequential_thinking, schema_sequential_thinking
 from rta_cli.mcp.memory import memorize, recall, forget, schema_memorize, schema_recall, schema_forget
 from rta_cli.mcp import call_mcp_tool, list_mcp_tools, map_mcp_to_openai_schema, load_mcp_config
@@ -63,6 +63,7 @@ _NATIVE_TOOLS = [
     schema_git_create_pr,
     schema_git_branch,
     schema_web_search,
+    schema_fetch_url,
     schema_sequential_thinking,
     schema_memorize,
     schema_recall,
@@ -89,7 +90,7 @@ READ_ONLY_TOOLS = {
     "get_files_info", "get_file_contents", "grep_search", "glob_search",
     "list_directory", "discover_project", "get_repo_skeleton", "semantic_search",
     "get_diagnostics", "go_to_definition",
-    "web_search", "sequential_thinking", "recall",
+    "web_search", "fetch_url", "sequential_thinking", "recall",
     "git_status", "git_diff", "git_log",
     "question",
 }
@@ -203,6 +204,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_create_pr": 120,
         "git_branch": 10,
         "web_search": 30,
+        "fetch_url": 20,
         "sequential_thinking": 30,
         "memorize": 10,
         "recall": 10,
@@ -263,6 +265,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
             "git_create_pr":      git_create_pr,
             "git_branch":         git_branch,
             "web_search":         web_search,
+            "fetch_url":          fetch_url,
             "sequential_thinking": sequential_thinking,
             "memorize":           memorize,
             "recall":             recall,
@@ -306,6 +309,7 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
             "git_create_pr":      lambda: git_create_pr(workspace_dir, **args),
             "git_branch":         lambda: git_branch(workspace_dir, **args),
             "web_search":         lambda: web_search(**args),
+            "fetch_url":          lambda: fetch_url(**args),
             "sequential_thinking": lambda: sequential_thinking(**args),
             "memorize":           lambda: memorize(**args),
             "recall":             lambda: recall(**args),

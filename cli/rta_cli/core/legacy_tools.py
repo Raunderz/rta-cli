@@ -454,6 +454,26 @@ class WebSearchTool(BaseTool):
             return ToolResult(success=False, result=f"Error: {e}")
 
 
+class FetchUrlParams(BaseModel):
+    url: str = Field(description="The full URL to fetch (must start with http:// or https://)")
+
+class FetchUrlTool(BaseTool):
+    name = "fetch_url"
+    description = "Download a URL and return its readable text content (title + body). Strips HTML, scripts, and styling."
+    parameters = FetchUrlParams
+    icon = "?"
+
+    async def execute(self, params: FetchUrlParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+        from rta_cli.mcp.search import fetch_url
+        try:
+            result = await asyncio.to_thread(fetch_url, params.url)
+            if result.startswith("Error"):
+                return ToolResult(success=False, result=result)
+            return ToolResult(success=True, result=result)
+        except Exception as e:
+            return ToolResult(success=False, result=f"Error: {e}")
+
+
 class SequentialThinkingParams(BaseModel):
     thought: str = Field(description="Your current thought or reasoning step")
     thought_number: int = Field(description="Current thought number (starts at 1)")

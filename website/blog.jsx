@@ -8,6 +8,182 @@ export const BlogPage = ({ params }) => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
+      slug: "rta-cli-domain-exploration",
+      title: "Domain Exploration: Web Research Comes to Rta CLI",
+      date: "May 31, 2026",
+      readTime: "5 min read",
+      excerpt: "fetch_url, multi-engine research expansion, and a roadmap for turning the CLI into a full research tool for AI-assisted development.",
+      tags: ["CLI", "Research", "Web", "Architecture"],
+      commit: "domain-exploration",
+      body: `
+# Domain Exploration: Web Research Comes to Rta CLI
+
+Research is one of the hardest things for an AI coding agent to do well. The model only knows what it was trained on. If your codebase uses a library released last week, or you need to understand a rapidly changing API, or you're debugging against live documentation — the agent is blind.
+
+We've been slowly building out the CLI's ability to explore the web, not just search it. This post covers what shipped and what's coming.
+
+## fetch_url: From Snippet to Substance
+
+The original \`web_search\` tool was useful but shallow. It returned three lines of snippet text per result. The agent could see that a page existed, but couldn't read it. Like having a card catalog but no books.
+
+\`fetch_url\` solves this. Give it a URL, and it:
+
+1. Downloads the page (up to 512KB, 15s timeout)
+2. Strips HTML, scripts, styles, nav, footer, headers
+3. Decodes HTML entities (named and numeric)
+4. Extracts the \`<title>\` tag
+5. Returns up to 100KB of clean readable text
+
+Now the agent can search → find an interesting result → read the full page. The research loop is complete.
+
+\`\`\`
+web_search("python 3.13 pattern matching")
+  → gets 8 results with titles, snippets, URLs
+fetch_url(result[0].url)
+  → reads the full article, 80KB of clean text
+  → agent understands the feature in depth
+\`\`\`
+
+## Multi-Engine Research Pipeline
+
+The existing search already aggregates DuckDuckGo, SearXNG, and Wikipedia. But we're expanding to six sources:
+
+| Engine | Type | Status |
+|--------|------|--------|
+| DuckDuckGo | General web | Live |
+| SearXNG | Meta-search (3 instances) | Live |
+| Wikipedia | Encyclopedia | Live |
+| **ArXiv** | Technical papers | Planned |
+| **GitHub search** | Code & repos | Planned |
+| **Stack Exchange** | Q&A with code | Planned |
+| **YouTube transcripts** | Tutorial content | Planned |
+
+Each source is free, API-key-less, and adds a different flavor of knowledge. ArXiv gives you papers. GitHub gives you implementations. Stack Exchange gives you debugging wisdom. YouTube gives you walkthroughs.
+
+## Multi-Query Depth
+
+The biggest quality lever isn't adding sources — it's asking better questions. We're building a sub-query expander: when you ask one question, the agent generates 3-5 specific search queries, runs them all in parallel, and deduplicates the results.
+
+\`\`\`
+User: "How do I implement WebAuthn in Go?"
+  → Sub-queries:
+    "WebAuthn Go library example"
+    "go webauthn registration flow"
+    "passkeys implementation golang"
+    "webauthn server configuration go"
+  → 4 searches × 8 results = 32 deduplicated sources
+\`\`\`
+
+## What's Next
+
+The research pipeline is becoming a first-class subsystem in the CLI, on par with the tool execution engine and the codebase index. Long-term, we want:
+
+- **Research sessions** — persistent, saveable research contexts with visited URLs and extracted facts
+- **Source credibility scoring** — prioritize official docs, trusted authors, recent content
+- **Offline fallback** — cached results from previous sessions when the network is unavailable
+
+The CLI is no longer just an agent — it's an explorer.
+`
+    },
+    {
+      slug: "cli-first-then-editor",
+      title: "CLI-First, Then Editor: Why We're Building a VS Code Extension",
+      date: "May 31, 2026",
+      readTime: "4 min read",
+      excerpt: "Halting work on the standalone Lite XL desktop IDE and refocusing on a VS Code extension that wraps our existing CLI agent.",
+      tags: ["Desktop", "VS Code", "Extension", "Strategy"],
+      commit: "cli-first-editor",
+      body: `
+# CLI-First, Then Editor: Why We're Building a VS Code Extension
+
+For months, we've been working on a standalone desktop IDE — first based on Eclipse Theia, then pivoting to a Lite XL fork, with an Odin agent sidecar planned for Phase 3. We've written about it, we've committed code to it, and we've learned a lot.
+
+We're halting that work.
+
+Not because a desktop IDE is the wrong goal. But because we were building it the wrong way — from the editor inward, instead of from the agent outward.
+
+## The CLI Is the Product
+
+The Rta CLI is a complete AI coding agent. It has:
+
+- Multi-engine web search and URL fetching
+- MCP (Model Context Protocol) plugin support
+- LSP integration (diagnostics, go-to-definition)
+- Full git workflow (status, diff, log, commit, PR)
+- File editing with apply_diff and AST-aware refactoring
+- Semantic codebase search (BM25 index + repo skeleton)
+- Memory persistence (memorize/recall across sessions)
+- Session management, auto-update, and a modern async TUI
+
+The CLI doesn't need an editor. The CLI *is* the editor — it modifies files, runs commands, searches code, and manages projects. What it needs is a good UI surface.
+
+## Why Not Lite XL?
+
+Lite XL is a beautiful piece of engineering. A tiny C core (~11K lines), extensive Lua plugin system, fast rendering. But maintaining a fork means:
+
+- Keeping up with upstream Lite XL changes
+- Building and debugging platform-specific C code (SDL3, Freetype, PCRE2, inotify/kqueue/FSEvents)
+- Maintaining a plugin manager for distribution
+- Bundling a terminal plugin, file tree, syntax highlighting — things VS Code already does perfectly
+
+Every hour spent on editor infrastructure is an hour not spent on the agent.
+
+## The VS Code Extension
+
+The new plan: build a VS Code extension that wraps the existing \`rta\` CLI binary as a sidecar process.
+
+\`\`\`
+┌──────────────────────────────────────────────┐
+│  VS Code Extension (pure JS)                  │
+│  ┌──────────┐ ┌──────────┐ ┌──────────────┐  │
+│  │ Chat     │ │ Agentic  │ │ Codebase     │  │
+│  │ Panel    │ │ Editing  │ │ Indexer      │  │
+│  └────┬─────┘ └────┬─────┘ └──────┬───────┘  │
+│       └────────────┼──────────────┘           │
+│                    │ stdin/stdout JSON-RPC     │
+│  ┌─────────────────┴──────────────────────┐   │
+│  │  rta CLI (sidecar binary)              │   │
+│  │  (web_search, MCP, LSP, git, tools)   │   │
+│  └────────────────────────────────────────┘   │
+└──────────────────────────────────────────────┘
+\`\`\`
+
+The extension never calls an LLM. It delegates everything to the CLI — all existing tools, all future improvements, instantly.
+
+## What This Unlocks
+
+- **Full editor for free** — VS Code's file tree, git integration, syntax highlighting, terminal, multi-window
+- **Cross-platform out of the box** — VS Code runs everywhere
+- **Zero editor maintenance** — we don't fork, we extend
+- **Instant feature parity** — every CLI improvement is an extension improvement
+- **No C core** — the agent is Python, the extension is JS
+
+## What About lite-xl?
+
+The \`rta-desktop/\` directory stays. It's full of working code and lessons learned. The Lite XL knowledge — Lua plugins, rendering pipeline, process management — is valuable. But active development shifts to the extension.
+
+## Phased Rollout
+
+1. **Chat panel** — sidebar webview, streaming responses, file/selection context, slash commands
+2. **Agentic editing** — diff review, multi-file changes, terminal integration
+3. **Codebase awareness** — semantic indexing, @codebase retrieval, dependency graphs
+4. **Self-hosted inline** — optional Ollama integration for local inline completions
+5. **MCP tools** — expose VS Code capabilities as agent-callable tools
+
+## The CLI-First Philosophy
+
+The CLI is the source of truth. The extension is a surface. This means:
+
+- Update the CLI = update the extension
+- Use the CLI headlessly on servers, in CI, from mobile
+- The extension is a desktop GUI for the same agent
+
+We started by building an editor and trying to bolt an agent onto it. Now we're building an agent and wrapping it in an editor.
+
+The difference is everything.
+`
+    },
+    {
       slug: "securing-the-rta-ecosystem",
       title: "Securing the Rta Ecosystem: Hardening Phase Complete",
       date: "May 31, 2026",
