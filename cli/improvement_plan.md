@@ -37,6 +37,10 @@ These are features the other agents have that Rta should adopt, ordered by effor
 
 ### Quick Wins (Low Effort, High Impact)
 
+0. **Make `--modern` default**
+   - Flip default mode to async TUI.
+   - Add `--legacy` flag for old terminal behavior.
+
 1. **Dynamic tool guidelines in system prompt**
    - *Kon pattern:* Each tool has `prompt_guidelines` like `"Use read to view files (NOT cat/head/tail)"` that get injected into the system prompt.
    - *Benefit:* Teaches the LLM when to use each tool, dramatically reducing bash abuse.
