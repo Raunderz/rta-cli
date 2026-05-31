@@ -19,10 +19,14 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
+TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+
 app = FastAPI(
     title="Rta Backend API",
     description="Backend API for Rta - Securing Auth & Threaded Telemetry",
     version="0.1.0",
+    docs_url="/docs" if TEST_MODE else None,
+    redoc_url="/redoc" if TEST_MODE else None,
 )
 
 # Context variable to hold the current request for rate limiting
