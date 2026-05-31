@@ -5,6 +5,7 @@ import time
 import os
 from pathlib import Path
 from rich.console import Console
+from rta_cli.chat import ASCII_ART
 from .core.provider import AsyncRtaProvider
 from .core.tool_manager import ToolManager
 from .core.bash_tool import BashTool
@@ -54,7 +55,8 @@ def handle_slash_command(user_input: str) -> bool:
 
 async def async_main():
     console = Console()
-    console.print("[bold green]Starting Rta CLI v0.5.0 (Async Core)...[/bold green]")
+    console.print(f"[bold red]{ASCII_ART}[/bold red]")
+    console.print("[bold green]Rta CLI v0.5.0[/bold green]")
 
     # 1. Setup Core Components
     provider = AsyncRtaProvider()
