@@ -64,11 +64,11 @@ Each source is free, API-key-less, and adds a different flavor of knowledge. ArX
 
 Reading the open web means reading untrusted content. A malicious page could embed fake system prompts, markdown role blocks, or hidden instructions designed to hijack the agent's behavior. We've built a multi-layer defense:
 
-- **HTML comment stripping** — `<!-- -->` blocks removed before any parsing
-- **Structural tag removal** — `<script>`, `<style>`, `<nav>`, `<footer>`, `<header>` removed with their contents
+- **HTML comment stripping** — \`${"<"}!-- -->\` blocks removed before any parsing
+- **Structural tag removal** — \`${"<"}script>\`, \`${"<"}style>\`, \`${"<"}nav>\`, \`${"<"}footer>\`, \`${"<"}header>\` removed with their contents
 - **Full tag stripping** — all remaining HTML tags removed, leaving only plain text
-- **Pattern-based filtering** — regex detection of common injection patterns: "ignore previous instructions", fake `\`\`\`system` markdown blocks, `[System]` lines, persona-switching commands, and base64-encoded task payloads
-- All matched patterns are replaced with `[redacted]` before the text reaches the LLM
+- **Pattern-based filtering** — regex detection of common injection patterns: "ignore previous instructions", fake \`\`\`\`\`system\` markdown blocks, \`[System]\` lines, persona-switching commands, and base64-encoded task payloads
+- All matched patterns are replaced with \`[redacted]\` before the text reaches the LLM
 
 This means the agent can safely read any URL — documentation, forums, blog posts, even adversarial content — without risk of prompt hijacking from the page itself.
 
