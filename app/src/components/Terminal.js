@@ -10,12 +10,12 @@ import { WebView } from 'react-native-webview';
 
 const GO_URL = process.env.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_MOBILE_BACKEND_URL || '';
 
-export default function Terminal({ session }) {
+export default function Terminal({ apiKey, session }) {
   const webViewRef = useRef(null);
   const [terminalLogs, setTerminalLogs] = useState([]);
 
   const wsUrl = session.status === 'on' && GO_URL
-    ? `${GO_URL.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')}/v1/executor/ws/env/${session.id}`
+    ? `${GO_URL.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:')}/v1/executor/ws/env/${session.id}?api_key=${apiKey}`
     : null;
 
   const terminalHtml = `<!DOCTYPE html>

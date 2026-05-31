@@ -134,13 +134,31 @@ WS_GO_BASE = GO_BASE_URL.replace("http://", "ws://").replace("https://", "wss://
 @executor_router.websocket("/ws/{path:path}")
 async def proxy_websocket(websocket: WebSocket, path: str):
     safe_path = sanitize_path(path)
+    
+    # Extract API key for authentication
+    api_key = websocket.headers.get("X-API-KEY")
+    if not api_key:
+        api_key = websocket.query_params.get("api_key")
+    
+    if not api_key:
+        await websocket.accept()
+        await websocket.send_text("Error: Missing API key")
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
     logger.info(f"WS proxy accepted: /v1/executor/ws/{safe_path}")
 
     upstream_ws_url = f"{WS_GO_BASE}/ws/{safe_path}"
+    if "?" in upstream_ws_url:
+        upstream_ws_url += f"&api_key={api_key}"
+    else:
+        upstream_ws_url += f"?api_key={api_key}"
+        
     logger.info(f"WS proxy connecting upstream: {upstream_ws_url}")
 
     try:
+        # Pass API key to upstream Go backend via query param or headers
         async with websockets.connect(upstream_ws_url) as upstream_ws:
             logger.info(f"WS proxy upstream connected: {upstream_ws_url}")
 

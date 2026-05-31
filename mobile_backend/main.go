@@ -46,6 +46,7 @@ var (
 				"http://localhost:5173",
 				"https://rta-three.vercel.app",
 				"http://localhost:1420",
+				"null", // Android WebView origin
 			}
 			for _, a := range allowed {
 				if origin == a {
@@ -261,6 +262,14 @@ func handleCreateEnv(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func verifyEnvAccess(r *http.Request, env *Env) bool {
+	apiKey := r.Header.Get("X-API-KEY")
+	if apiKey == "" {
+		apiKey = r.URL.Query().Get("api_key")
+	}
+	return apiKey == env.APIKey
+}
+
 func handleEnvAction(w http.ResponseWriter, r *http.Request) {
 	pathParts := strings.Split(strings.TrimPrefix(r.URL.Path, "/env/"), "/")
 	id := pathParts[0]
@@ -277,6 +286,11 @@ func handleEnvAction(w http.ResponseWriter, r *http.Request) {
 	}
 
 	env := val.(*Env)
+
+	if !verifyEnvAccess(r, env) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 	
 	action := ""
 	if len(pathParts) > 1 {
@@ -520,6 +534,11 @@ func handleExpose(w http.ResponseWriter, r *http.Request) {
 	}
 	env := val.(*Env)
 
+	if !verifyEnvAccess(r, env) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	if r.Method == "DELETE" {
 		// Kill cloudflared in container
 		exec.Command("docker", "exec", env.Container, "pkill", "cloudflared").Run()
@@ -752,6 +771,11 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	env := val.(*Env)
+
+	if !verifyEnvAccess(r, env) {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var req struct {
 		Prompt string `json:"prompt"`

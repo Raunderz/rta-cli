@@ -386,7 +386,7 @@ function MainApp({
       case 'editor':
         return <Editor file={selectedFile} onSave={handleSaveFile} />;
       case 'terminal':
-        return <Terminal files={files} session={session} />;
+        return <Terminal apiKey={apiKey} files={files} session={session} />;
       case 'git':
         return <GitUI />;
       case 'chat':
