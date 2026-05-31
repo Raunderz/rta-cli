@@ -120,6 +120,27 @@ def web_search(query: str, max_results: int = 8) -> str:
 MAX_FETCH_SIZE = 512 * 1024  # 512KB max download
 
 
+def _strip_prompt_injection(text: str) -> str:
+    """Remove common prompt injection patterns from fetched content."""
+    patterns = [
+        # "Ignore all previous instructions" and variants
+        r"(?i)(ignore|disregard|forget|override)\s+(all\s+)?(previous|prior|above|earlier)\s+(instructions?|commands?|directives?|prompts?|context)",
+        # "You are now..." / "From now on, you are..." / "Act as..."
+        r"(?i)(from now on|starting now|henceforth|you are now|act as|you will now)\s+.*?(assistant|system|agent|bot|gpt|ai)",
+        # Fake system role blocks in markdown
+        r"(?i)```(system|assistant|user|instruction)\s*\n.*?```",
+        # Explicit "System:" or "[System]" lines
+        r"(?im)^(?:\[system\]|system:)\s+.*$",
+        # "Say/start with/output..." instructions
+        r"(?i)(say|start|begin|output|respond|reply)\s+(with|by)\s+['\"].*?['\"]",
+        # Hidden base64-encoded instructions embedded in text
+        r"(?i)(?:your\s+)?(?:first\s+)?(?:task|mission|goal|purpose|instruction)\s+(?:is|:)\s+[a-z0-9+/]{40,}={0,2}(?:\s|$)",
+    ]
+    for pat in patterns:
+        text = re.sub(pat, " [redacted] ", text)
+    return text
+
+
 def fetch_url(url: str) -> str:
     """Download a URL and return its readable text content."""
     if not url.startswith(("http://", "https://")):
@@ -149,8 +170,10 @@ def fetch_url(url: str) -> str:
     if m:
         title = strip_html(m.group(1)).strip()
 
+    # Remove HTML comments (<!-- ... -->) before any other processing
+    cleaned = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
     # Remove script/style tags and their contents
-    cleaned = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", "", html, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
     # Remove all HTML tags
     cleaned = re.sub(r"<[^>]+>", " ", cleaned)
     # Decode HTML entities
@@ -161,6 +184,9 @@ def fetch_url(url: str) -> str:
     cleaned = re.sub(r"&[a-zA-Z]+;", " ", cleaned)
     # Collapse whitespace
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
+
+    # Strip prompt injection patterns
+    cleaned = _strip_prompt_injection(cleaned)
 
     # Truncate to keep response manageable
     MAX_TEXT = 100 * 1024  # 100KB of text
