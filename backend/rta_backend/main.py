@@ -446,7 +446,10 @@ async def health_check():
 
 def main():
     import uvicorn
-    uvicorn.run("rta_backend.main:app", host="0.0.0.0", port=8000, reload=True)
+    # Disable reload by default in production for security and performance.
+    # Can be enabled for local development via RTA_RELOAD=true
+    should_reload = os.getenv("RTA_RELOAD", "false").lower() == "true"
+    uvicorn.run("rta_backend.main:app", host="0.0.0.0", port=8000, reload=should_reload)
 
 if __name__ == "__main__":
     main()
