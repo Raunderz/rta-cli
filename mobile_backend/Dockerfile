@@ -10,9 +10,17 @@ RUN apt-get update && apt-get install -y \
     openssh-client openssh-server \
     sudo \
     ca-certificates \
-    fastfetch \
     python3 python3-pip python3-venv python3-dev \
     nodejs npm \
+    && rm -rf /var/lib/apt/lists/*
+
+# ============================================================================
+# fastfetch (system info tool)
+# ============================================================================
+
+RUN curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb \
+    && apt-get update && apt-get install -y /tmp/fastfetch.deb \
+    && rm /tmp/fastfetch.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================

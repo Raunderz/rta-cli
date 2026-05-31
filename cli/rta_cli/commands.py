@@ -189,7 +189,7 @@ def main():
     parser.add_argument("--resume", help="Resume a previous session by ID")
     parser.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     parser.add_argument("--privacy", action="store_true", help="Hide email in header")
-    parser.add_argument("--modern", action="store_true", help="Use the new v0.5.0 async core")
+    parser.add_argument("--legacy", action="store_true", help="Use the legacy UI core")
     parser.add_argument("--version", action="store_true", help="Show version info")
     
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
@@ -209,7 +209,7 @@ def main():
     p_chat.add_argument("--resume", help="Resume a previous session by ID")
     p_chat.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     p_chat.add_argument("--privacy", action="store_true", help="Hide email in header")
-    p_chat.add_argument("--modern", action="store_true", help="Use the new v0.5.0 async core")
+    p_chat.add_argument("--legacy", action="store_true", help="Use the legacy UI core")
 
     # ask
     p_ask = subparsers.add_parser("ask", help="Run a one-off agentic request (headless)")
@@ -243,18 +243,20 @@ def main():
     args, unknown = parser.parse_known_args()
     known_vars = vars(args)
 
-    # Modern mode check
-    if known_vars.get("modern"):
-        from rta_cli.main_async import main as run_modern
-        return run_modern()
-
     # Handle global flags first
     if known_vars.get("version"):
         from rta_cli.chat import ASCII_ART
         print(ASCII_ART)
         print("Rta CLI v0.5.0")
         return
-    
+
+    # Modern mode is default unless --legacy is passed
+    # Only applies to 'chat' or default (no command)
+    is_chat = (args.command == "chat" or args.command is None)
+    if is_chat and not known_vars.get("legacy"):
+        from rta_cli.main_async import main as run_modern
+        return run_modern()
+
     if args.command == "login":
         return login()
     if args.command == "logout":
