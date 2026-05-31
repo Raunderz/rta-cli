@@ -53,13 +53,14 @@ async def github_login():
     
     response = RedirectResponse(auth_url)
     # Store verifier in a secure, short-lived cookie
+    cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
     response.set_cookie(
         key="pkce_verifier",
         value=code_verifier,
         httponly=True,
         max_age=600,  # 10 minutes
         samesite="lax",
-        secure=True if "localhost" not in backend_url else False
+        secure=cookie_secure
     )
     return response
 
