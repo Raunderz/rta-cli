@@ -6,6 +6,7 @@ import { Router, Route, Link, useLocation, useRoute, Switch } from 'wouter';
 import { BlogPage } from './blog.jsx';
 import { Analytics } from "@vercel/analytics/react";
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
   const rotations = [0, 45, 90, 135, 180, 225, 270, 315];
@@ -670,7 +671,7 @@ const PrivacyPage = () => {
 
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
-      <div class="markdown-body" dangerouslySetInnerHTML={{ __html: content }} />
+      <div class="markdown-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
     </div>
   );
 };
