@@ -35,28 +35,67 @@ type Env struct {
 
 var (
 	envs       = sync.Map{} // ID -> *Env
-	upgrader   = websocket.Upgrader{CheckOrigin: func(*http.Request) bool { return true }}
+	upgrader   = websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return true // Allow non-browser clients
+			}
+			// Allow known frontend origins
+			allowed := []string{
+				"http://localhost:5173",
+				"https://rta-three.vercel.app",
+				"http://localhost:1420",
+			}
+			for _, a := range allowed {
+				if origin == a {
+					return true
+				}
+			}
+			log.Printf("⚠️ Blocked WebSocket Origin: %s", origin)
+			return false
+		},
+	}
 	rateLimits = sync.Map{} // IP -> count
 	logMutex   = sync.Mutex{}
 )
 
 func main() {
-	// HTTP routes
-	http.HandleFunc("/env", handleCreateEnv)
-	http.HandleFunc("/env/", handleEnvAction)
-	http.HandleFunc("/ws/env/", handleShell)
-	http.HandleFunc("/env/chat/", handleChat)
-	http.HandleFunc("/expose/", handleExpose)
-	http.HandleFunc("/envs", handleListEnvs)
-	http.Handle("/", http.FileServer(http.Dir("./public")))
+	// HTTP routes with body limits and timeouts
+	mux := http.NewServeMux()
+	mux.HandleFunc("/env", limitBody(handleCreateEnv, 1024*1024)) // 1MB limit for env creation
+	mux.HandleFunc("/env/", limitBody(handleEnvAction, 100*1024*1024)) // 100MB limit for uploads
+	mux.HandleFunc("/ws/env/", handleShell) // WebSocket upgrade handles its own auth
+	mux.HandleFunc("/env/chat/", limitBody(handleChat, 10*1024)) // 10KB limit for chat prompts
+	mux.HandleFunc("/expose/", limitBody(handleExpose, 1024))
+	mux.HandleFunc("/envs", limitBody(handleListEnvs, 1024))
+	mux.HandleFunc("/status", limitBody(handleStatus, 1024))
+	mux.Handle("/", http.FileServer(http.Dir("./public")))
 
 	// Background goroutines
 	go cleanupLoop()
 	go abuseDetectLoop()
 	go rateLimitResetLoop()
 
-	log.Println("🚀 TempDev starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	server := &http.Server{
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       15 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		MaxHeaderBytes:    1 << 20, // 1MB
+	}
+
+	log.Println("🚀 TempDev starting on :8080 (hardened)")
+	log.Fatal(server.ListenAndServe())
+}
+
+func limitBody(h http.HandlerFunc, maxBytes int64) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+		h(w, r)
+	}
 }
 
 // ============================================================================
@@ -359,6 +398,23 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	env := val.(*Env)
+
+	// Authentication: Verify API key matches the environment owner
+	// Non-browser clients (CLI) send X-API-KEY header
+	// Browsers can't send custom headers during WebSocket handshake, so they use Sec-WebSocket-Protocol or a query param
+	apiKey := r.Header.Get("X-API-KEY")
+	if apiKey == "" {
+		apiKey = r.URL.Query().Get("api_key")
+	}
+	if apiKey == "" {
+		apiKey = r.Header.Get("Sec-WebSocket-Protocol")
+	}
+
+	if apiKey != env.APIKey {
+		log.Printf("🚫 Unauthorized shell access attempt for env %s", id)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	// Upgrade to WebSocket
 	conn, err := upgrader.Upgrade(w, r, nil)
