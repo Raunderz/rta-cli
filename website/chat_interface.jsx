@@ -1,6 +1,7 @@
 import { h, Fragment } from 'preact';
 import { useState, useRef, useEffect } from 'preact/hooks';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL ? import.meta.env.VITE_BACKEND_URL.replace(/\/?$/, "") : "";
 
@@ -491,7 +492,7 @@ const ChatInterface = ({ user: propUser }) => {
                         }}
                       >
                         {msg.role === "assistant" ? (
-                          <div class="chat-markdown" dangerouslySetInnerHTML={{ __html: marked.parse(msg.content) }} />
+                          <div class="chat-markdown" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(msg.content)) }} />
                         ) : (
                           <div style={{ whiteSpace: "pre-wrap" }}>{msg.content}</div>
                         )}
