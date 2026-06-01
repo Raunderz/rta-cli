@@ -53,14 +53,19 @@ def handle_slash_command(user_input: str) -> bool:
         pass
     return True
 
-async def async_main():
+async def async_main(args=None):
     console = Console()
     console.print(f"[bold red]{ASCII_ART}[/bold red]")
     console.print("[bold green]Rta CLI v0.5.0[/bold green]")
 
     # 1. Setup Core Components
     provider = AsyncRtaProvider()
-    cwd = os.getcwd()
+    
+    # Use workspace from args if provided
+    cwd = args.workspace if (args and args.workspace) else os.getcwd()
+    if not os.path.isabs(cwd):
+        cwd = os.path.abspath(cwd)
+    
     project_info = await asyncio.to_thread(discover_project, cwd)
     
     tool_manager = ToolManager()
@@ -121,6 +126,22 @@ async def async_main():
     session_path = Path.home() / ".rta" / "history.jsonl"
     session_manager = SessionManager(session_path)
     
+    if args and args.list_sessions:
+        sessions = session_manager.list_sessions()
+        if not sessions:
+            console.print("[dim]No previous sessions found.[/dim]")
+        else:
+            console.print("\n[bold]Previous Sessions:[/bold]")
+            for s in sessions:
+                print(f"  {s['id']} - {s['timestamp']} ({s['turns']} turns)")
+        return
+
+    if args and args.clear_context:
+        session_manager.clear()
+        console.print("[dim]Chat history cleared.[/dim]")
+
+    current_session_id = args.resume if (args and args.resume) else None
+    
     context_manager = ContextManager(provider)
     
     system_prompt = (
@@ -146,6 +167,14 @@ async def async_main():
     tui = RtaTUI()
 
     # 2. Main REPL Loop
+    if args and hasattr(args, "prompt") and args.prompt:
+        # Handle initial prompt if passed
+        user_input = args.prompt
+        tui.track_input(user_input)
+        cancel_event = asyncio.Event()
+        await tui.handle_events(agent.run_turn(user_input, session_id=current_session_id, cancel_event=cancel_event))
+        # After initial prompt, we might want to continue to REPL
+    
     while True:
         try:
             user_input = console.input("\n[bold cyan]rta>[/bold cyan] ")
@@ -161,7 +190,7 @@ async def async_main():
             cancel_event = asyncio.Event()
             
             try:
-                await tui.handle_events(agent.run_turn(user_input, cancel_event=cancel_event))
+                await tui.handle_events(agent.run_turn(user_input, session_id=current_session_id, cancel_event=cancel_event))
             except asyncio.CancelledError:
                 console.print("\n[yellow]Interrupted.[/yellow]")
             except KeyboardInterrupt:
@@ -176,8 +205,8 @@ async def async_main():
 
     tui.print_summary()
 
-def main():
-    asyncio.run(async_main())
+def main(args=None):
+    asyncio.run(async_main(args))
 
 if __name__ == "__main__":
     main()
