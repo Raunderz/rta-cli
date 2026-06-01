@@ -23,7 +23,10 @@ from rta_cli.functions.list_skills import list_skills, schema_list_skills
 from rta_cli.functions.semantic_search import semantic_search, schema_semantic_search
 from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_repo_skeleton
 from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
-from rta_cli.mcp.search import web_search, schema_web_search, fetch_url, schema_fetch_url
+from rta_cli.mcp.search import (
+    web_search, schema_web_search, fetch_url, schema_fetch_url,
+    arxiv_search, schema_arxiv_search, so_search, schema_so_search
+)
 from rta_cli.mcp.sequential_thinking import sequential_thinking, schema_sequential_thinking
 from rta_cli.mcp.memory import memorize, recall, forget, schema_memorize, schema_recall, schema_forget
 from rta_cli.mcp import call_mcp_tool, list_mcp_tools, map_mcp_to_openai_schema, load_mcp_config
@@ -64,6 +67,8 @@ _NATIVE_TOOLS = [
     schema_git_branch,
     schema_web_search,
     schema_fetch_url,
+    schema_arxiv_search,
+    schema_so_search,
     schema_sequential_thinking,
     schema_memorize,
     schema_recall,
@@ -90,7 +95,7 @@ READ_ONLY_TOOLS = {
     "get_files_info", "get_file_contents", "grep_search", "glob_search",
     "list_directory", "discover_project", "get_repo_skeleton", "semantic_search",
     "get_diagnostics", "go_to_definition",
-    "web_search", "fetch_url", "sequential_thinking", "recall",
+    "web_search", "fetch_url", "arxiv_search", "so_search", "sequential_thinking", "recall",
     "git_status", "git_diff", "git_log",
     "question",
 }
@@ -205,6 +210,8 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "git_branch": 10,
         "web_search": 30,
         "fetch_url": 20,
+        "arxiv_search": 30,
+        "so_search": 30,
         "sequential_thinking": 30,
         "memorize": 10,
         "recall": 10,
@@ -266,6 +273,8 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
             "git_branch":         git_branch,
             "web_search":         web_search,
             "fetch_url":          fetch_url,
+            "arxiv_search":       arxiv_search,
+            "so_search":          so_search,
             "sequential_thinking": sequential_thinking,
             "memorize":           memorize,
             "recall":             recall,
@@ -310,6 +319,8 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
             "git_branch":         lambda: git_branch(workspace_dir, **args),
             "web_search":         lambda: web_search(**args),
             "fetch_url":          lambda: fetch_url(**args),
+            "arxiv_search":       lambda: arxiv_search(**args),
+            "so_search":          lambda: so_search(**args),
             "sequential_thinking": lambda: sequential_thinking(**args),
             "memorize":           lambda: memorize(**args),
             "recall":             lambda: recall(**args),
@@ -389,8 +400,74 @@ def _call_backend_stream(
     session_id: str = "",
     turn_index: int = 0,
     timeout: int = 120,
+    provider_obj = None,
 ) -> Generator[dict, None, None]:
-    """Streaming POST to /v1/chat. Yields SSE events as dicts."""
+    """Bridges the new Provider classes or direct API calls to the legacy stream_agent loop."""
+    if provider_obj:
+        import asyncio
+        from rta_cli.core.types import UserMessage, AssistantMessage, SystemMessage, ToolMessage
+        from rta_cli.core.events import (
+            TextDeltaEvent, ThinkingDeltaEvent, ToolStartEvent, ToolArgsDeltaEvent, ToolEndEvent,
+            UsageEvent, ErrorEvent
+        )
+        
+        # Convert dict messages to Message objects
+        obj_messages = []
+        for m in messages:
+            role = m.get("role")
+            content = m.get("content")
+            if role == "user": obj_messages.append(UserMessage(content=content))
+            elif role == "assistant": obj_messages.append(AssistantMessage(content=content, tool_calls=m.get("tool_calls")))
+            elif role == "system": obj_messages.append(SystemMessage(content=content))
+            elif role == "tool": obj_messages.append(ToolMessage(content=content, tool_call_id=m.get("tool_call_id")))
+
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
+        try:
+            async def run_provider():
+                current_tool_calls = {} # id -> tc
+                async for event in provider_obj.stream(obj_messages, tools=tools):
+                    if isinstance(event, TextDeltaEvent):
+                        yield {"type": "text", "content": event.delta}
+                    elif isinstance(event, ThinkingDeltaEvent):
+                        yield {"type": "thought", "content": event.delta}
+                    elif isinstance(event, ToolStartEvent):
+                        current_tool_calls[event.tool_call_id] = {
+                            "id": event.tool_call_id, 
+                            "type": "function",
+                            "function": {"name": event.name, "arguments": ""}
+                        }
+                    elif isinstance(event, ToolArgsDeltaEvent):
+                        current_tool_calls[event.tool_call_id]["function"]["arguments"] += event.delta
+                    elif isinstance(event, ToolEndEvent):
+                        # Send the full tool calls once we have them (or wait for the end)
+                        pass 
+                    elif isinstance(event, UsageEvent):
+                        yield {"type": "usage", "content": {
+                            "prompt_tokens": event.prompt_tokens,
+                            "completion_tokens": event.completion_tokens,
+                            "total_tokens": event.total_tokens
+                        }}
+                    elif isinstance(event, ErrorEvent):
+                        yield {"type": "error", "content": f"{event.message}: {event.details}"}
+                
+                if current_tool_calls:
+                    yield {"type": "tool_calls", "content": list(current_tool_calls.values())}
+                yield {"type": "done"}
+
+            it = run_provider()
+            while True:
+                try:
+                    ev = loop.run_until_complete(it.__anext__())
+                    yield ev
+                except StopAsyncIteration:
+                    break
+        finally:
+            loop.close()
+        return
+
+    # Original Rta API Logic
     server_url = get_server_url()
 
     try:
@@ -497,14 +574,20 @@ def stream_agent(
         stream_error = None
 
         tools = [t for t in AVAILABLE_TOOLS if not read_only or t["function"]["name"] in READ_ONLY_TOOLS]
+        
+        # Determine if we use the new provider object or the legacy string-based path
+        p_obj = provider if not isinstance(provider, str) else None
+        p_key = api_key if not p_obj else ""
+
         for event in _call_backend_stream(
             messages=messages,
             tools=tools,
             workspace_path=workspace_dir,
-            api_key=api_key,
+            api_key=p_key,
             session_id=session_id,
             turn_index=current_turn,
             timeout=timeout,
+            provider_obj=p_obj,
         ):
             if event["type"] == "text":
                 yield {"type": "text_chunk", "content": event["content"]}

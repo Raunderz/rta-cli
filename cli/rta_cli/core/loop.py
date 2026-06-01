@@ -38,7 +38,23 @@ class Agent:
         if self.session_manager:
             self.messages = self.session_manager.load_messages()
 
-    async def run_turn(self, user_input: str, cancel_event: Optional[asyncio.Event] = None) -> AsyncIterator[Event]:
+    async def run_turn(
+        self, 
+        user_input: str, 
+        cancel_event: Optional[asyncio.Event] = None,
+        session_id: Optional[str] = None,
+        model: Optional[str] = None
+    ) -> AsyncIterator[Event]:
+        # Switch model if provided (for Ollama)
+        if model and hasattr(self.provider, "model"):
+            self.provider.model = model
+
+        # Switch session if provided
+        if session_id and self.session_manager:
+            if not hasattr(self, "_current_session_id") or self._current_session_id != session_id:
+                self.messages = self.session_manager.load_messages(session_id=session_id)
+                self._current_session_id = session_id
+
         # 0. Check for compaction before turn
         if self.context_manager and self.context_manager.should_compact(self.messages):
             summary = await self.context_manager.generate_summary(self.messages)

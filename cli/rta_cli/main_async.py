@@ -3,6 +3,10 @@ import json
 import sys
 import time
 import os
+try:
+    import readline
+except ImportError:
+    pass
 from pathlib import Path
 from rich.console import Console
 from rta_cli.chat import ASCII_ART
@@ -20,7 +24,13 @@ from rta_cli.discovery import discover_project
 
 console = Console()
 
-def handle_slash_command(user_input: str) -> bool:
+global_provider = None
+
+async def handle_slash_command(user_input: str, provider=None) -> bool:
+    global global_provider
+    if provider:
+        global_provider = provider
+    
     if not user_input.startswith("/"):
         return False
     parts = user_input[1:].split()
@@ -33,7 +43,42 @@ def handle_slash_command(user_input: str) -> bool:
         console.print("\n[bold #ff3333]Available Commands:[/bold #ff3333]")
         console.print("  /clear         - Clear chat history & screen")
         console.print("  /exit          - Exit the chat")
+        console.print("  /thinkmode     - Toggle Ollama thinking mode (on/off)")
+        console.print("  /models        - List and select local Ollama models")
         console.print("\n[dim]You can also run any Rta CLI command here (e.g., /status, /whoami)[/dim]\n")
+        return True
+
+    if cmd == "thinkmode":
+        if hasattr(global_provider, "think"):
+            global_provider.think = not global_provider.think
+            status = "enabled" if global_provider.think else "disabled"
+            console.print(f"[bold green]Ollama thinking mode {status}.[/bold green]")
+        else:
+            console.print("[yellow]Thinking mode only supported for local Ollama.[/yellow]")
+        return True
+
+    if cmd == "models":
+        if hasattr(global_provider, "list_models"):
+            models = await global_provider.list_models()
+            if not models:
+                console.print("[red]No local Ollama models found.[/red]")
+            else:
+                console.print("\n[bold]Available Ollama Models:[/bold]")
+                for i, m in enumerate(models):
+                    console.print(f"  {i+1}. {m}")
+                try:
+                    # In async context, console.input (rich) is blocking but usually OK for REPL.
+                    # For a truly async-safe input we'd need more, but this fixes the loop error.
+                    choice = console.input("\nSelect model number (or press Enter to cancel): ")
+                    if choice.strip():
+                        idx = int(choice) - 1
+                        if 0 <= idx < len(models):
+                            global_provider.model = models[idx]
+                            console.print(f"[bold green]Switched to model: {global_provider.model}[/bold green]")
+                except (ValueError, IndexError):
+                    console.print("[red]Invalid selection.[/red]")
+        else:
+            console.print("[yellow]Model selection only supported for local Ollama.[/yellow]")
         return True
 
     if cmd in ("clear", "cls"):
@@ -59,7 +104,11 @@ async def async_main(args=None):
     console.print("[bold green]Rta CLI v0.5.0[/bold green]")
 
     # 1. Setup Core Components
-    provider = AsyncRtaProvider()
+    if args and args.ollama:
+        from .core.provider import OllamaProvider
+        provider = OllamaProvider(model=args.ollama)
+    else:
+        provider = AsyncRtaProvider()
     
     # Use workspace from args if provided
     cwd = args.workspace if (args and args.workspace) else os.getcwd()
@@ -86,7 +135,7 @@ async def async_main(args=None):
         GetRepoSkeletonTool, QuestionTool,
         GitStatusTool, GitDiffTool, GitLogTool, GitCommitTool,
         GitCreatePrTool, GitBranchTool,
-        WebSearchTool, FetchUrlTool, SequentialThinkingTool,
+        WebSearchTool, FetchUrlTool, ArxivSearchTool, SoSearchTool, SequentialThinkingTool,
         MemorizeTool, RecallTool, ForgetTool,
     )
     tool_manager.register_tool(DiscoverProjectTool(cwd))
@@ -109,6 +158,8 @@ async def async_main(args=None):
     tool_manager.register_tool(GitBranchTool(cwd))
     tool_manager.register_tool(WebSearchTool())
     tool_manager.register_tool(FetchUrlTool())
+    tool_manager.register_tool(ArxivSearchTool())
+    tool_manager.register_tool(SoSearchTool())
     tool_manager.register_tool(SequentialThinkingTool())
     tool_manager.register_tool(MemorizeTool())
     tool_manager.register_tool(RecallTool())
@@ -123,8 +174,8 @@ async def async_main(args=None):
         for t_def in mcp_tools:
             tool_manager.register_tool(MCPToolWrapper(server_name, t_def))
 
-    session_path = Path.home() / ".rta" / "history.jsonl"
-    session_manager = SessionManager(session_path)
+    session_dir = Path.home() / ".rta" / "sessions"
+    session_manager = SessionManager(session_dir)
     
     if args and args.list_sessions:
         sessions = session_manager.list_sessions()
@@ -136,11 +187,11 @@ async def async_main(args=None):
                 print(f"  {s['id']} - {s['timestamp']} ({s['turns']} turns)")
         return
 
+    current_session_id = args.resume if (args and args.resume) else session_manager.current_session_id
+
     if args and args.clear_context:
         session_manager.clear()
         console.print("[dim]Chat history cleared.[/dim]")
-
-    current_session_id = args.resume if (args and args.resume) else None
     
     context_manager = ContextManager(provider)
     
@@ -172,7 +223,12 @@ async def async_main(args=None):
         user_input = args.prompt
         tui.track_input(user_input)
         cancel_event = asyncio.Event()
-        await tui.handle_events(agent.run_turn(user_input, session_id=current_session_id, cancel_event=cancel_event))
+        await tui.handle_events(agent.run_turn(
+            user_input, 
+            session_id=current_session_id, 
+            model=getattr(provider, "model", None),
+            cancel_event=cancel_event
+        ))
         # After initial prompt, we might want to continue to REPL
     
     while True:
@@ -182,7 +238,7 @@ async def async_main(args=None):
                 continue
 
             if user_input.startswith("/"):
-                if not handle_slash_command(user_input):
+                if not await handle_slash_command(user_input, provider=provider):
                     break
                 continue
 
@@ -190,7 +246,12 @@ async def async_main(args=None):
             cancel_event = asyncio.Event()
             
             try:
-                await tui.handle_events(agent.run_turn(user_input, session_id=current_session_id, cancel_event=cancel_event))
+                await tui.handle_events(agent.run_turn(
+                    user_input, 
+                    session_id=current_session_id, 
+                    model=getattr(provider, "model", None),
+                    cancel_event=cancel_event
+                ))
             except asyncio.CancelledError:
                 console.print("\n[yellow]Interrupted.[/yellow]")
             except KeyboardInterrupt:
