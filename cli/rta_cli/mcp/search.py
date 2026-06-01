@@ -7,6 +7,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+import gzip
 from ddgs import DDGS
 
 SEARXNG_INSTANCES = [
@@ -232,6 +233,129 @@ schema_web_search = {
                 "type": "integer",
                 "description": "Maximum number of results to return (default: 8)",
                 "default": 8,
+            },
+        },
+        "required": ["query"],
+    },
+}
+
+
+def arxiv_search(query: str, max_results: int = 5) -> str:
+    """Search ArXiv for technical and scientific papers."""
+    try:
+        params = urllib.parse.urlencode({
+            "search_query": f"all:{query}",
+            "start": 0,
+            "max_results": max_results,
+        })
+        url = f"http://export.arxiv.org/api/query?{params}"
+        with urllib.request.urlopen(url, timeout=10) as resp:
+            data = resp.read().decode("utf-8")
+            
+            entries = re.findall(r"<entry>(.*?)</entry>", data, re.DOTALL)
+            results = []
+            for entry in entries[:max_results]:
+                title_m = re.search(r"<title>(.*?)</title>", entry, re.DOTALL)
+                summary_m = re.search(r"<summary>(.*?)</summary>", entry, re.DOTALL)
+                id_m = re.search(r"<id>(.*?)</id>", entry, re.DOTALL)
+                
+                title = strip_html(title_m.group(1)).strip() if title_m else "No Title"
+                summary = strip_html(summary_m.group(1)).strip() if summary_m else "No Summary"
+                link = id_m.group(1).strip() if id_m else ""
+                
+                results.append({
+                    "title": title,
+                    "url": link,
+                    "snippet": summary[:300] + ("..." if len(summary) > 300 else ""),
+                })
+            
+            if not results:
+                return "No ArXiv results found."
+                
+            output = f"ArXiv results for: {query}\n\n"
+            for i, r in enumerate(results, 1):
+                output += f"{i}. **{r['title']}**\n   {r['snippet']}\n   {r['url']}\n\n"
+            return output.strip()
+    except Exception as e:
+        return f"Error searching ArXiv: {e}"
+
+
+def so_search(query: str, max_results: int = 5) -> str:
+    """Search Stack Overflow for programming questions."""
+    try:
+        params = urllib.parse.urlencode({
+            "order": "desc",
+            "sort": "relevance",
+            "q": query,
+            "site": "stackoverflow",
+        })
+        url = f"https://api.stackexchange.com/2.3/search/advanced?{params}"
+        req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip", "User-Agent": "Rta-CLI"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            content = resp.read()
+            if resp.info().get("Content-Encoding") == "gzip":
+                content = gzip.decompress(content)
+            
+            data = json.loads(content.decode("utf-8"))
+            results = []
+            for item in data.get("items", [])[:max_results]:
+                title = item.get("title", "").replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
+                link = item.get("link", "")
+                tags = ", ".join(item.get("tags", []))
+                score = item.get("score", 0)
+                is_answered = " [Answered]" if item.get("is_answered") else ""
+                
+                results.append({
+                    "title": f"{title}{is_answered}",
+                    "url": link,
+                    "snippet": f"Tags: {tags}. Score: {score}. Views: {item.get('view_count', 0)}",
+                })
+            
+            if not results:
+                return "No Stack Overflow results found."
+                
+            output = f"Stack Overflow results for: {query}\n\n"
+            for i, r in enumerate(results, 1):
+                output += f"{i}. **{r['title']}**\n   {r['snippet']}\n   {r['url']}\n\n"
+            return output.strip()
+    except Exception as e:
+        return f"Error searching Stack Overflow: {e}"
+
+
+schema_arxiv_search = {
+    "name": "arxiv_search",
+    "description": "Search ArXiv for technical and scientific papers. Returns titles, summaries, and links. Ideal for deep technical research.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query (e.g., 'large language model alignment')",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum results to return (default: 5)",
+                "default": 5,
+            },
+        },
+        "required": ["query"],
+    },
+}
+
+schema_so_search = {
+    "name": "so_search",
+    "description": "Search Stack Overflow for programming-related questions and answers. Returns titles, tags, and links. Use for troubleshooting specific code issues.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The programming-related search query",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum results to return (default: 5)",
+                "default": 5,
             },
         },
         "required": ["query"],

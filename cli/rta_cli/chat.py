@@ -51,8 +51,9 @@ LOADING_MESSAGES = [
 ]
 
 class RtaChat:
-    def __init__(self, workspace=None, session_id=None, timeout=300, force=False, privacy=False):
+    def __init__(self, workspace=None, session_id=None, timeout=300, force=False, privacy=False, ollama=None):
         self.last_ctrl_c = 0
+        self.ollama_model = ollama
         
         from rta_cli.config import get_last_workspace, set_last_workspace
         if workspace:
@@ -76,25 +77,33 @@ class RtaChat:
 
         from rta_cli.utils import load_credential
         api_key = load_credential("rta_api_key")
-        if not api_key:
-            console.print("[bold red]No API key found. Run: rta login[/bold red]")
-            sys.exit(1)
-        self.user = "authenticated"
-        try:
-            from rta_cli.utils import get_server_url, get_device_id
-            import httpx
-            with httpx.Client(timeout=3.0) as client:
-                res = client.get(f"{get_server_url()}/v1/auth/me", headers={
-                    "X-API-KEY": api_key,
-                    "X-Device-ID": get_device_id(),
-                    "X-CLI-Version": "0.2.0",
-                    "ngrok-skip-browser-warning": "69420",
-                    "User-Agent": "rta-cli/1.0"
-                })
-                if res.status_code == 200:
-                    self.user = res.json().get("email", "authenticated")
-        except:
-            pass
+        
+        if self.ollama_model:
+            from rta_cli.core.provider import OllamaProvider
+            self.provider = OllamaProvider(model=self.ollama_model)
+            self.user = "local-ollama"
+        else:
+            if not api_key:
+                console.print("[bold red]No API key found. Run: rta login[/bold red]")
+                sys.exit(1)
+            from rta_cli.core.provider import AsyncRtaProvider
+            self.provider = AsyncRtaProvider(api_key=api_key)
+            self.user = "authenticated"
+            try:
+                from rta_cli.utils import get_server_url, get_device_id
+                import httpx
+                with httpx.Client(timeout=3.0) as client:
+                    res = client.get(f"{get_server_url()}/v1/auth/me", headers={
+                        "X-API-KEY": api_key,
+                        "X-Device-ID": get_device_id(),
+                        "X-CLI-Version": "0.2.0",
+                        "ngrok-skip-browser-warning": "69420",
+                        "User-Agent": "rta-cli/1.0"
+                    })
+                    if res.status_code == 200:
+                        self.user = res.json().get("email", "authenticated")
+            except:
+                pass
 
         if hasattr(sys, '_MEIPASS'):
             self.config_path = os.path.join(sys._MEIPASS, 'rta_cli', 'config.json')

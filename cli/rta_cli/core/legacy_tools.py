@@ -554,3 +554,41 @@ class ForgetTool(BaseTool):
             return ToolResult(success=True, result=result)
         except Exception as e:
             return ToolResult(success=False, result=f"Error: {e}")
+
+
+class ArxivSearchParams(BaseModel):
+    query: str = Field(description="The search query (e.g., 'large language model alignment')")
+    max_results: int = Field(default=5, description="Maximum results to return")
+
+class ArxivSearchTool(BaseTool):
+    name = "arxiv_search"
+    description = "Search ArXiv for technical and scientific papers. Returns titles, summaries, and links. Ideal for deep technical research."
+    parameters = ArxivSearchParams
+    icon = "?"
+
+    async def execute(self, params: ArxivSearchParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+        from rta_cli.mcp.search import arxiv_search
+        try:
+            result = await asyncio.to_thread(arxiv_search, params.query, params.max_results)
+            return ToolResult(success=True, result=result)
+        except Exception as e:
+            return ToolResult(success=False, result=f"Error: {e}")
+
+
+class SoSearchParams(BaseModel):
+    query: str = Field(description="The programming-related search query")
+    max_results: int = Field(default=5, description="Maximum results to return")
+
+class SoSearchTool(BaseTool):
+    name = "so_search"
+    description = "Search Stack Overflow for programming-related questions and answers. Returns titles, tags, and links. Use for troubleshooting specific code issues."
+    parameters = SoSearchParams
+    icon = "?"
+
+    async def execute(self, params: SoSearchParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+        from rta_cli.mcp.search import so_search
+        try:
+            result = await asyncio.to_thread(so_search, params.query, params.max_results)
+            return ToolResult(success=True, result=result)
+        except Exception as e:
+            return ToolResult(success=False, result=f"Error: {e}")

@@ -25,6 +25,7 @@ def chat(
     resume=None,
     list_sessions=False,
     privacy=False,
+    ollama=None,
 ):
     """Start the Rta chat interface"""
     if list_sessions:
@@ -33,7 +34,7 @@ def chat(
         if not sessions:
             console.print("[yellow]No saved sessions found.[/yellow]")
             return
-        
+
         console.print("\n[bold]Recent Chat Sessions[/bold]")
         console.print("-" * 60)
         for s in sessions[:15]:
@@ -46,8 +47,7 @@ def chat(
         return
 
     from rta_cli.chat import RtaChat
-    chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force, privacy=privacy)
-    
+    chat_obj = RtaChat(workspace=workspace, session_id=resume, timeout=timeout, force=force, privacy=privacy, ollama=ollama)
     if clear_context or no_cache:
         from rta_cli.context import clear_context as cc
         cc(chat_obj.workspace, session_id=resume)
@@ -210,6 +210,7 @@ def main():
     parser.add_argument("--privacy", action="store_true", help="Hide email in header")
     parser.add_argument("--legacy", action="store_true", help="Use the legacy UI core")
     parser.add_argument("--version", action="store_true", help="Show version info")
+    parser.add_argument("--ollama", nargs="?", const="deepseek-r1", help="Use local Ollama model (default: deepseek-r1)")
     
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
 
@@ -294,7 +295,8 @@ def main():
             force=args.force,
             resume=args.resume,
             list_sessions=args.list_sessions,
-            privacy=args.privacy
+            privacy=args.privacy,
+            ollama=args.ollama
         )
     elif args.command == "ask":
         return ask(
@@ -361,7 +363,8 @@ def main():
             force=known_vars.get("force"),
             resume=known_vars.get("resume"),
             list_sessions=known_vars.get("list_sessions"),
-            privacy=known_vars.get("privacy")
+            privacy=known_vars.get("privacy"),
+            ollama=known_vars.get("ollama")
         )
     else:
         console.print(f"[bold red]Error: Unknown command {args.command}[/bold red]")
