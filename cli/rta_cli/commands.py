@@ -169,6 +169,25 @@ def skill(args):
 
 class RtaParser(argparse.ArgumentParser):
     def error(self, message):
+        # Catch "invalid choice" errors to handle typos
+        import re
+        match = re.search(r"invalid choice: '([^']+)'", message)
+        if match:
+            bad_choice = match.group(1).lower()
+            typo_map = {
+                "whomai": "whoami",
+                "staus": "status",
+                "stats": "status",
+            }
+            if bad_choice in typo_map:
+                corrected = typo_map[bad_choice]
+                console.print(f"[yellow]Hint: Assuming '{corrected}' instead of '{bad_choice}'[/yellow]")
+                # We can't easily restart parsing here without hacky logic, 
+                # but we can trigger the intended function directly.
+                from rta_cli.auth import do_whoami, do_status
+                if corrected == "whoami": do_whoami(); sys.exit(0)
+                if corrected == "status": do_status(); sys.exit(0)
+
         console.print(f"[bold red]Error: {message}[/bold red]")
         self.print_help()
         sys.exit(2)
@@ -250,13 +269,6 @@ def main():
         print("Rta CLI v0.5.0")
         return
 
-    # Modern mode is default unless --legacy is passed
-    # Only applies to 'chat' or default (no command)
-    is_chat = (args.command == "chat" or args.command is None)
-    if is_chat and not known_vars.get("legacy"):
-        from rta_cli.main_async import main as run_modern
-        return run_modern()
-
     if args.command == "login":
         return login()
     if args.command == "logout":
@@ -270,6 +282,9 @@ def main():
     if args.command == "cd":
         return cd(args.path)
     elif args.command == "chat":
+        if not known_vars.get("legacy"):
+            from rta_cli.main_async import main as run_modern
+            return run_modern(args)
         return chat(
             prompt=args.prompt,
             clear_context=args.clear_context,
@@ -295,23 +310,46 @@ def main():
         return clone(args.repo_url)
     elif args.command == "skill":
         return skill(args)
-    else:
+    elif args.command is None:
         # Default behavior: chat
         if unknown:
             for arg in unknown:
                 if arg.startswith("-"):
-                    cmd_name = arg.lstrip("-")
-                    if cmd_name in ["whoami", "status", "login", "logout", "init", "chat", "ask", "clone"]:
-                        console.print(f"[yellow]Hint: Did you mean 'rta {cmd_name}'?[/yellow]")
+                    # Check for common typos or misplaced flags
+                    raw_name = arg.lstrip("-").lower()
+                    # Map common typos
+                    typo_map = {
+                        "whomai": "whoami",
+                        "whoami": "whoami",
+                        "status": "status",
+                        "login": "login",
+                        "logout": "logout",
+                        "init": "init",
+                        "chat": "chat",
+                        "ask": "ask",
+                        "clone": "clone"
+                    }
+                    
+                    if raw_name in typo_map:
+                        cmd_name = typo_map[raw_name]
+                        console.print(f"[yellow]Hint: Executing 'rta {cmd_name}' (matched from '{arg}')[/yellow]")
                         if cmd_name == "whoami": return whoami()
                         if cmd_name == "status": return status()
                         if cmd_name == "login": return login()
                         if cmd_name == "logout": return logout()
+                        if cmd_name == "init": return init(None) # Needs args handling usually
                     
                     if arg.startswith("--"):
                         console.print(f"[bold red]Error: Unknown option {arg}[/bold red]")
                         parser.print_help()
                         return
+
+        if not hasattr(args, "prompt") or not args.prompt:
+            args.prompt = " ".join(unknown) if unknown else None
+
+        if not known_vars.get("legacy"):
+            from rta_cli.main_async import main as run_modern
+            return run_modern(args)
 
         prompt = " ".join(unknown) if unknown else None
         return chat(
@@ -325,6 +363,10 @@ def main():
             list_sessions=known_vars.get("list_sessions"),
             privacy=known_vars.get("privacy")
         )
+    else:
+        console.print(f"[bold red]Error: Unknown command {args.command}[/bold red]")
+        parser.print_help()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
