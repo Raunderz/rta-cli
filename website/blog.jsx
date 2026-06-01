@@ -316,6 +316,15 @@ The \`RtaTUI\` class uses \`rich.live\` for real-time display updates. Loading s
 ### Dynamic MCP Tool Integration
 MCP servers (GitHub, Search, etc.) are loaded dynamically via \`MCPToolWrapper\`. Tool schemas are converted to OpenAI-compatible format using each MCP server's raw \`inputSchema\` rather than Pydantic's \`model_json_schema()\`, avoiding missing type fields that caused all upstream providers to reject the tool definitions.
 
+### Full Ollama Support (Local LLMs)
+You can now run Rta entirely locally. If you have Ollama installed, just pass the flag:
+\`\`\`bash
+rta --ollama
+\`\`\`
+By default, it uses \`deepseek-r1\`, but you can specify any local model: \`rta --ollama qwen2.5-coder:7b\`. 
+
+In the modern chat, use \`/models\` to list and switch between your local models, and \`/thinkmode\` to toggle reasoning traces for models like DeepSeek-R1. We've even added hallucination protection for smaller models (like Qwen 1.5B) to ensure they don't try to call non-existent tools.
+
 ## All Legacy Tools Ported
 
 Every tool from the original CLI has been ported to the async architecture:
