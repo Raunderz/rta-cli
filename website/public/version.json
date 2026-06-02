@@ -1,5 +1,5 @@
 {
   "version": "0.5.0",
-  "url": "https://rta-three.vercel.app/rta",
-  "hash": "c696c63881684ea595c3b9b1bec23d854f68b2172ff7c799785e4e5c7553c2c7"
+  "url_linux": "https://rta-three.vercel.app/rta",
+  "sha256_linux": "55e3c3c84a42b214fe2fa2e8483bb827e7f08d6e6dac11313c68adb9f851ab43"
 }

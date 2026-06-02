@@ -64,7 +64,7 @@ class RtaChat:
         
         set_last_workspace(self.workspace)
         self.workspace_name = os.path.basename(self.workspace)
-        self.version = "v0.4.0"
+        self.version = "v0.5.0"
         self.ascii_art = ASCII_ART
         self.timeout = timeout
         self.force = force
@@ -96,7 +96,7 @@ class RtaChat:
                     res = client.get(f"{get_server_url()}/v1/auth/me", headers={
                         "X-API-KEY": api_key,
                         "X-Device-ID": get_device_id(),
-                        "X-CLI-Version": "0.2.0",
+                        "X-CLI-Version": "0.5.0",
                         "User-Agent": "rta-cli/1.0"
                     })
                     if res.status_code == 200:

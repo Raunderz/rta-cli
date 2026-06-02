@@ -592,3 +592,68 @@ class SoSearchTool(BaseTool):
             return ToolResult(success=True, result=result)
         except Exception as e:
             return ToolResult(success=False, result=f"Error: {e}")
+
+
+class GithubSearchParams(BaseModel):
+    query: str = Field(description="The search query")
+    search_type: str = Field(default="repositories", description="What to search: 'repositories', 'code', or 'issues'")
+    max_results: int = Field(default=5, description="Maximum results to return")
+
+class GithubSearchTool(BaseTool):
+    name = "github_search"
+    description = "Search GitHub for repositories, code, or issues. Rate-limited to 60 requests/hour without authentication."
+    parameters = GithubSearchParams
+    icon = "?"
+
+    async def execute(self, params: GithubSearchParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+        from rta_cli.mcp.search import github_search
+        try:
+            result = await asyncio.to_thread(github_search, params.query, params.search_type, params.max_results)
+            if result.startswith("Error"):
+                return ToolResult(success=False, result=result)
+            return ToolResult(success=True, result=result)
+        except Exception as e:
+            return ToolResult(success=False, result=f"Error: {e}")
+
+
+class YoutubeTranscriptParams(BaseModel):
+    video_url: str = Field(description="The full YouTube video URL")
+    language: str = Field(default="en", description="Language code for subtitles")
+
+class YoutubeTranscriptTool(BaseTool):
+    name = "youtube_transcript"
+    description = "Fetch transcript/subtitles from a YouTube video. No API key required."
+    parameters = YoutubeTranscriptParams
+    icon = "?"
+
+    async def execute(self, params: YoutubeTranscriptParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+        from rta_cli.mcp.search import youtube_transcript
+        try:
+            result = await asyncio.to_thread(youtube_transcript, params.video_url, params.language)
+            if result.startswith("Error"):
+                return ToolResult(success=False, result=result)
+            return ToolResult(success=True, result=result)
+        except Exception as e:
+            return ToolResult(success=False, result=f"Error: {e}")
+
+
+class DeepSearchParams(BaseModel):
+    query: str = Field(description="The research query or topic to explore")
+    max_results: int = Field(default=8, description="Maximum results to return after deduplication")
+    num_queries: int = Field(default=3, description="Number of sub-queries to generate (max: 5)")
+
+class DeepSearchTool(BaseTool):
+    name = "deep_search"
+    description = "Deep research search: auto-generates multiple sub-queries from your query, runs all, and deduplicates results."
+    parameters = DeepSearchParams
+    icon = "?"
+
+    async def execute(self, params: DeepSearchParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+        from rta_cli.mcp.search import deep_search
+        try:
+            result = await asyncio.to_thread(deep_search, params.query, params.max_results, params.num_queries)
+            if result.startswith("No results"):
+                return ToolResult(success=False, result=result)
+            return ToolResult(success=True, result=result)
+        except Exception as e:
+            return ToolResult(success=False, result=f"Error: {e}")

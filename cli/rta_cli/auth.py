@@ -9,7 +9,7 @@ from rta_cli.utils import save_credential, load_credential, delete_credential, g
 
 console = Console()
 
-CLI_VERSION = "0.3.0"
+CLI_VERSION = "0.5.0"
 
 
 def _headers(api_key: str) -> dict:
@@ -102,11 +102,14 @@ def do_whoami():
 
 def do_status():
     """Show usage stats."""
+    import time as _time
     api_key = load_credential("rta_api_key")
     if not api_key:
         console.print("[red]No API key found. Run: rta login[/red]")
         sys.exit(1)
 
+    # Measure ping
+    ping_start = _time.monotonic()
     try:
         with httpx.Client(timeout=15.0) as client:
             resp = client.get(
@@ -116,6 +119,7 @@ def do_status():
     except Exception as e:
         console.print(f"[red]Network error: {e}[/red]")
         sys.exit(1)
+    ping_ms = round((_time.monotonic() - ping_start) * 1000)
 
     if resp.status_code == 200:
         d = resp.json()
@@ -127,6 +131,9 @@ def do_status():
         tokens_month = d.get("tokens_used_month", "?")
         tokens_limit = d.get("tokens_limit_month", "?")
 
+        server = get_server_url().replace("https://", "").replace("http://", "")
+        console.print(f"[bold #ff3333]Server:[/bold #ff3333]       {server}")
+        console.print(f"[bold #ff3333]Ping:[/bold #ff3333]         {ping_ms}ms")
         console.print(f"[bold #ff3333]Tier:[/bold #ff3333]         {tier}")
         console.print(f"[bold #ff3333]Calls today:[/bold #ff3333]  {calls_today} / {calls_limit}")
         console.print(f"[bold #ff3333]Tokens today:[/bold #ff3333] {tokens_today} / {tokens_limit_day}")
