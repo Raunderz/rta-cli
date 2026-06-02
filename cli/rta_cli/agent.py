@@ -25,7 +25,10 @@ from rta_cli.functions.get_repo_skeleton import get_repo_skeleton, schema_get_re
 from rta_cli.functions.lsp_tools import get_diagnostics, go_to_definition, schema_get_diagnostics, schema_go_to_definition
 from rta_cli.mcp.search import (
     web_search, schema_web_search, fetch_url, schema_fetch_url,
-    arxiv_search, schema_arxiv_search, so_search, schema_so_search
+    arxiv_search, schema_arxiv_search, so_search, schema_so_search,
+    github_search, schema_github_search,
+    youtube_transcript, schema_youtube_transcript,
+    deep_search, schema_deep_search,
 )
 from rta_cli.mcp.sequential_thinking import sequential_thinking, schema_sequential_thinking
 from rta_cli.mcp.memory import memorize, recall, forget, schema_memorize, schema_recall, schema_forget
@@ -69,6 +72,9 @@ _NATIVE_TOOLS = [
     schema_fetch_url,
     schema_arxiv_search,
     schema_so_search,
+    schema_github_search,
+    schema_youtube_transcript,
+    schema_deep_search,
     schema_sequential_thinking,
     schema_memorize,
     schema_recall,
@@ -95,7 +101,8 @@ READ_ONLY_TOOLS = {
     "get_files_info", "get_file_contents", "grep_search", "glob_search",
     "list_directory", "discover_project", "get_repo_skeleton", "semantic_search",
     "get_diagnostics", "go_to_definition",
-    "web_search", "fetch_url", "arxiv_search", "so_search", "sequential_thinking", "recall",
+    "web_search", "fetch_url", "arxiv_search", "so_search",
+    "github_search", "youtube_transcript", "deep_search", "sequential_thinking", "recall",
     "git_status", "git_diff", "git_log",
     "question",
 }
@@ -211,6 +218,9 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
         "fetch_url": 20,
         "arxiv_search": 30,
         "so_search": 30,
+        "github_search": 15,
+        "youtube_transcript": 15,
+        "deep_search": 60,
         "sequential_thinking": 30,
         "memorize": 10,
         "recall": 10,
@@ -274,6 +284,9 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
             "fetch_url":          fetch_url,
             "arxiv_search":       arxiv_search,
             "so_search":          so_search,
+            "github_search":      github_search,
+            "youtube_transcript": youtube_transcript,
+            "deep_search":        deep_search,
             "sequential_thinking": sequential_thinking,
             "memorize":           memorize,
             "recall":             recall,
@@ -320,6 +333,9 @@ def call_function(function_call: dict, workspace_dir: str, default_timeout: int 
             "fetch_url":          lambda: fetch_url(**args),
             "arxiv_search":       lambda: arxiv_search(**args),
             "so_search":          lambda: so_search(**args),
+            "github_search":      lambda: github_search(**args),
+            "youtube_transcript": lambda: youtube_transcript(**args),
+            "deep_search":        lambda: deep_search(**args),
             "sequential_thinking": lambda: sequential_thinking(**args),
             "memorize":           lambda: memorize(**args),
             "recall":             lambda: recall(**args),

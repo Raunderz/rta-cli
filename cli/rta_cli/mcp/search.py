@@ -88,7 +88,8 @@ SEARCH_ENGINES = [
 ]
 
 
-def web_search(query: str, max_results: int = 8) -> str:
+def _web_search_structured(query: str, max_results: int = 8) -> tuple[list[dict], str]:
+    """Internal: returns (results, error_string) without formatting."""
     seen_urls = set()
     all_results = []
     errors = []
@@ -108,12 +109,19 @@ def web_search(query: str, max_results: int = 8) -> str:
         if len(all_results) >= max_results:
             break
 
+    return all_results[:max_results], "; ".join(errors) if errors else ""
+
+
+def web_search(query: str, max_results: int = 8) -> str:
+    all_results, err_msg = _web_search_structured(query, max_results)
+
     if not all_results:
-        err_msg = "; ".join(errors) if errors else "All engines returned empty."
+        if not err_msg:
+            err_msg = "All engines returned empty."
         return f"No results found. Errors: {err_msg}"
 
     output = f"Search results for: {query}\n\n"
-    for i, r in enumerate(all_results[:max_results], 1):
+    for i, r in enumerate(all_results, 1):
         output += f"{i}. **{r['title']}** ({r['engine']})\n   {r['snippet']}\n   {r['url']}\n\n"
     return output.strip()
 
@@ -356,6 +364,221 @@ schema_so_search = {
                 "type": "integer",
                 "description": "Maximum results to return (default: 5)",
                 "default": 5,
+            },
+        },
+        "required": ["query"],
+    },
+}
+
+
+def github_search(query: str, search_type: str = "repositories", max_results: int = 5) -> str:
+    """Search GitHub for repositories, code, or issues."""
+    valid_types = {"repositories", "code", "issues"}
+    if search_type not in valid_types:
+        return f"Error: search_type must be one of: {', '.join(sorted(valid_types))}"
+    try:
+        params_v = {"q": query, "per_page": max_results, "sort": "stars" if search_type == "repositories" else None}
+        params_s = urllib.parse.urlencode({k: v for k, v in params_v.items() if v})
+        url = f"https://api.github.com/search/{search_type}?{params_s}"
+        req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "Rta-CLI/0.5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            items = data.get("items", [])[:max_results]
+            if not items:
+                return f"No GitHub {search_type} results found."
+            output = f"GitHub {search_type.capitalize()} results for: {query}\n\n"
+            for i, item in enumerate(items, 1):
+                if search_type == "repositories":
+                    name = item.get("full_name", "")
+                    desc = item.get("description") or "No description"
+                    stars = item.get("stargazers_count", 0)
+                    lang = item.get("language") or "Unknown"
+                    url_link = item.get("html_url", "")
+                    output += f"{i}. **{name}** ({lang}, ⭐{stars})\n   {desc}\n   {url_link}\n\n"
+                elif search_type == "code":
+                    name = item.get("name", "")
+                    path = item.get("path", "")
+                    repo = item.get("repository", {}).get("full_name", "")
+                    url_link = item.get("html_url", "")
+                    output += f"{i}. **{name}** in {repo}\n   {path}\n   {url_link}\n\n"
+                elif search_type == "issues":
+                    title = item.get("title", "")
+                    state = item.get("state", "")
+                    repo_url = item.get("repository_url", "")
+                    repo = repo_url.split("/repos/")[-1] if "/repos/" in repo_url else ""
+                    comments = item.get("comments", 0)
+                    url_link = item.get("html_url", "")
+                    output += f"{i}. **{title}** ({state}, {comments} comments)\n   Repo: {repo}\n   {url_link}\n\n"
+            return output.strip()
+    except urllib.error.HTTPError as e:
+        if e.code == 403:
+            return "GitHub API rate limit exceeded (60 requests/hour without authentication). Try again later."
+        return f"Error searching GitHub: HTTP {e.code}"
+    except Exception as e:
+        return f"Error searching GitHub: {e}"
+
+
+schema_github_search = {
+    "name": "github_search",
+    "description": "Search GitHub for repositories, code, or issues. Rate-limited to 60 requests/hour without authentication. Use for finding open-source projects, example code, or tracking issues.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query (e.g., 'machine learning rust', 'user:torvalds repo:linux')",
+            },
+            "search_type": {
+                "type": "string",
+                "description": "What to search: 'repositories', 'code', or 'issues' (default: repositories)",
+                "enum": ["repositories", "code", "issues"],
+                "default": "repositories",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum results to return (default: 5)",
+                "default": 5,
+            },
+        },
+        "required": ["query"],
+    },
+}
+
+
+def _extract_youtube_id(url: str) -> str | None:
+    patterns = [
+        r"(?:youtube\.com/watch\?v=|youtu\.be/|youtube\.com/embed/|youtube\.com/shorts/)([a-zA-Z0-9_-]{11})",
+    ]
+    for pat in patterns:
+        m = re.search(pat, url)
+        if m:
+            return m.group(1)
+    return None
+
+
+def youtube_transcript(video_url: str, language: str = "en") -> str:
+    """Fetch transcript/subtitles from a YouTube video using the free youtubetranscript.com API."""
+    video_id = _extract_youtube_id(video_url)
+    if not video_id:
+        return "Error: Could not extract YouTube video ID from URL. Expected formats: youtube.com/watch?v=..., youtu.be/..., youtube.com/embed/..."
+    try:
+        api_url = f"https://youtubetranscript.com/api?vid={video_id}&lang={language}"
+        req = urllib.request.Request(api_url, headers={"User-Agent": "Rta-CLI/0.5.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        if not data:
+            return "No transcript available for this video."
+        lines = []
+        for entry in data:
+            text = entry.get("text", "")
+            if text.strip():
+                start = entry.get("start", 0)
+                minutes = int(start // 60)
+                seconds = int(start % 60)
+                timestamp = f"[{minutes:02d}:{seconds:02d}]"
+                lines.append(f"{timestamp} {text}")
+        if not lines:
+            return "No transcript available for this video."
+        output = f"Transcript for video: {video_url}\n\n" + "\n".join(lines)
+        return output.strip()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return "No transcript available for this video (subtitles may be disabled, or language not available)."
+        return f"Error fetching transcript: HTTP {e.code}"
+    except Exception as e:
+        return f"Error fetching transcript: {e}"
+
+
+schema_youtube_transcript = {
+    "name": "youtube_transcript",
+    "description": "Fetch transcript/subtitles from a YouTube video. No API key required. Returns timestamped text. Use for extracting content from tutorial videos, lectures, and talks.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "video_url": {
+                "type": "string",
+                "description": "The full YouTube video URL (e.g., 'https://www.youtube.com/watch?v=...')",
+            },
+            "language": {
+                "type": "string",
+                "description": "Language code for subtitles (default: 'en'). Options vary by video.",
+                "default": "en",
+            },
+        },
+        "required": ["video_url"],
+    },
+}
+
+
+def _expand_queries(query: str, num_queries: int = 3) -> list[str]:
+    """Generate sub-queries from a single query using simple heuristics."""
+    queries = [query]
+    stop_words = {"the", "a", "an", "in", "of", "for", "on", "and", "to", "is", "what", "how", "why", "does", "do", "are", "with", "at", "by", "from", "or", "as", "be", "this", "that"}
+    words = query.split()
+    content_words = [w for w in words if w.lower() not in stop_words]
+    if len(words) > 2:
+        queries.append(" ".join(words[1:]))
+        queries.append(" ".join(words[:-1]))
+    if content_words and len(content_words) > 1 and len(queries) < num_queries:
+        queries.append(" ".join(content_words))
+    if len(words) > 3 and len(queries) < num_queries:
+        mid = len(words) // 2
+        first_half = " ".join(words[:mid])
+        second_half = " ".join(words[mid:])
+        if first_half != query and first_half not in queries:
+            queries.append(first_half)
+        if len(queries) < num_queries and second_half != query and second_half not in queries:
+            queries.append(second_half)
+    seen = set()
+    result = []
+    for q in queries:
+        key = q.lower().strip()
+        if key and key not in seen:
+            seen.add(key)
+            result.append(q)
+    return result[:num_queries]
+
+
+def deep_search(query: str, max_results: int = 8, num_queries: int = 3) -> str:
+    """Deep search: auto-generates 3-5 sub-queries from one query, runs all, deduplicates results."""
+    sub_queries = _expand_queries(query, num_queries)
+    seen_urls = set()
+    all_results = []
+    for sq in sub_queries:
+        results, _ = _web_search_structured(sq, max_results * 2)
+        for r in results:
+            url = r.get("url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                all_results.append(r)
+    all_results = all_results[:max_results]
+    if not all_results:
+        return f"No results found for: {query}"
+    output = f"Deep search results for: {query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
+    for i, r in enumerate(all_results, 1):
+        output += f"{i}. **{r['title']}** ({r.get('engine', 'web')})\n   {r['snippet']}\n   {r['url']}\n\n"
+    return output.strip()
+
+
+schema_deep_search = {
+    "name": "deep_search",
+    "description": "Deep research search: auto-generates multiple sub-queries from your query, runs all of them in parallel, and deduplicates results. Finds more comprehensive and diverse results than a single web_search call. Best for complex research topics.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The research query or topic to explore",
+            },
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum results to return after deduplication (default: 8)",
+                "default": 8,
+            },
+            "num_queries": {
+                "type": "integer",
+                "description": "Number of sub-queries to generate (default: 3, max: 5)",
+                "default": 3,
             },
         },
         "required": ["query"],

@@ -136,6 +136,7 @@ async def async_main(args=None):
         GitStatusTool, GitDiffTool, GitLogTool, GitCommitTool,
         GitCreatePrTool, GitBranchTool,
         WebSearchTool, FetchUrlTool, ArxivSearchTool, SoSearchTool, SequentialThinkingTool,
+        GithubSearchTool, YoutubeTranscriptTool, DeepSearchTool,
         MemorizeTool, RecallTool, ForgetTool,
     )
     tool_manager.register_tool(DiscoverProjectTool(cwd))
@@ -160,6 +161,9 @@ async def async_main(args=None):
     tool_manager.register_tool(FetchUrlTool())
     tool_manager.register_tool(ArxivSearchTool())
     tool_manager.register_tool(SoSearchTool())
+    tool_manager.register_tool(GithubSearchTool())
+    tool_manager.register_tool(YoutubeTranscriptTool())
+    tool_manager.register_tool(DeepSearchTool())
     tool_manager.register_tool(SequentialThinkingTool())
     tool_manager.register_tool(MemorizeTool())
     tool_manager.register_tool(RecallTool())
