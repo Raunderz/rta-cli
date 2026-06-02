@@ -53,7 +53,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "Authorization", "X-API-KEY", "ngrok-skip-browser-warning"],
+    allow_headers=["Content-Type", "Authorization", "X-API-KEY"],
 )
 
 # SlowAPI setup
@@ -444,7 +444,7 @@ async def status_endpoint(request: Request):
 async def root():
     return {"message": "Rta Backend API", "version": "0.1.0"}
 
-@app.get("/health")
+@app.route("/health", methods=["GET", "HEAD"])
 async def health_check():
     return {"status": "healthy"}
 

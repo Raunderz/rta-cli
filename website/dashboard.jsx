@@ -55,7 +55,7 @@ const SupportBot = ({ user }) => {
                 headers: {
                     "Content-Type": "application/json",
                     "X-API-KEY": user?.api_key || "",
-                    "ngrok-skip-browser-warning": "true"
+                    
                 },
                 body: JSON.stringify({
                     messages: [
@@ -138,7 +138,7 @@ const ChatView = ({ user }) => {
                 headers: {
                     "Content-Type": "application/json",
                     "X-API-KEY": user?.api_key || "",
-                    "ngrok-skip-browser-warning": "true"
+                    
                 },
                 body: JSON.stringify({
                     messages: [
@@ -241,7 +241,7 @@ const Dashboard = () => {
         const fetchDashboard = async () => {
             console.log("Fetching dashboard...");
             try {
-                const headers = { "ngrok-skip-browser-warning": "true" };
+                const headers = {  };
                 if (user.api_key) {
                     headers["X-API-KEY"] = user.api_key;
                 } else if (user.access_token) {

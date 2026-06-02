@@ -75,7 +75,7 @@ const ChatInterface = ({ user: propUser }) => {
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
-        const headers = { "ngrok-skip-browser-warning": "true" };
+        const headers = {};
         if (user?.api_key) headers["X-API-KEY"] = user.api_key;
         else if (user?.access_token) headers["Authorization"] = `Bearer ${user.access_token}`;
         const res = await fetch(`${API_BASE_URL}/v1/dashboard`, { headers });
@@ -179,7 +179,6 @@ const ChatInterface = ({ user: propUser }) => {
         headers: {
           "Content-Type": "application/json",
           "X-API-KEY": user?.api_key || "",
-          "ngrok-skip-browser-warning": "true",
         },
         body: JSON.stringify({
           messages: [

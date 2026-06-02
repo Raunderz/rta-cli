@@ -163,7 +163,6 @@ class AsyncRtaProvider:
             "X-CLI-Version": "0.5.0",
             "Content-Type": "application/json",
             "User-Agent": "rta-cli/1.0",
-            "ngrok-skip-browser-warning": "69420"
         }
 
         from .types import AssistantMessage

@@ -14,7 +14,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://divisive-herbs-jolly.ngrok-free.dev';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://rta-tb0k.onrender.com';
 
 export default function Chat({ apiKey, session, onLogout }) {
   const [messages, setMessages] = useState([]);
@@ -49,7 +49,7 @@ export default function Chat({ apiKey, session, onLogout }) {
       xhr.setRequestHeader('X-API-KEY', apiKey);
       xhr.setRequestHeader('X-Device-ID', 'mobile-app');
       xhr.setRequestHeader('X-CLI-Version', '2.0.0');
-      xhr.setRequestHeader('ngrok-skip-browser-warning', '69420');
+
 
       let lastProcessedLength = 0;
 

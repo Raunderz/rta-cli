@@ -97,7 +97,6 @@ class RtaChat:
                         "X-API-KEY": api_key,
                         "X-Device-ID": get_device_id(),
                         "X-CLI-Version": "0.2.0",
-                        "ngrok-skip-browser-warning": "69420",
                         "User-Agent": "rta-cli/1.0"
                     })
                     if res.status_code == 200:

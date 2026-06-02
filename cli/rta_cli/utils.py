@@ -17,7 +17,7 @@ import platform
 # SERVER URL — single point of truth. Change this for dev/staging.
 # Can also be overridden by ~/.rta/config.json  {"server_url": "..."}
 # ──────────────────────────────────────────────────────────────────────────────
-SERVER_URL = "https://divisive-herbs-jolly.ngrok-free.dev"
+SERVER_URL = "https://rta-tb0k.onrender.com"
 
 
 def get_server_url() -> str:
