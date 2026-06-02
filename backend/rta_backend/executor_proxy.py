@@ -79,9 +79,6 @@ async def proxy_http(
     # Ensure critical headers are present with correct case for upstream
     if "x-api-key" in request.headers:
         forward_headers["X-API-KEY"] = request.headers["x-api-key"]
-    if "ngrok-skip-browser-warning" in request.headers:
-        forward_headers["ngrok-skip-browser-warning"] = request.headers["ngrok-skip-browser-warning"]
-
     forward_headers["X-User-Id"] = user_id
 
     is_streaming = (

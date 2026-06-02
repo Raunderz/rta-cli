@@ -23,7 +23,7 @@ import GitUI from './components/GitUI';
 
 const STORAGE_KEY = 'rta_api_key';
 const WORKSPACE_DIR = `${FileSystem.documentDirectory}workspace/`;
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://divisive-herbs-jolly.ngrok-free.dev';
+const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://rta-tb0k.onrender.com';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
@@ -221,7 +221,6 @@ export default function App() {
         headers: {
           'X-API-KEY': apiKey.trim(),
           'Content-Type': 'application/json',
-          'ngrok-skip-browser-warning': '69420'
         }
       });
       
@@ -250,7 +249,6 @@ export default function App() {
         method: 'DELETE',
         headers: { 
           'X-API-KEY': apiKey.trim(),
-          'ngrok-skip-browser-warning': '69420'
         }
       });
       setSession({ id: null, status: 'off', ws_url: null });

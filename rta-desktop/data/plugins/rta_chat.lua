@@ -11,7 +11,7 @@ local process = require "core.process"
 config.plugins.rta_chat = common.merge({
   size = 340 * SCALE,
   visible = true,
-  server_url = "https://divisive-herbs-jolly.ngrok-free.dev",
+  server_url = "https://rta-tb0k.onrender.com",
 }, config.plugins.rta_chat)
 
 
@@ -270,7 +270,6 @@ function RtaChat:send_message()
     "-H", "X-API-KEY: " .. self.api_key,
     "-H", "X-Device-ID: " .. self.device_id,
     "-H", "X-CLI-Version: 0.4.0",
-    "-H", "ngrok-skip-browser-warning: 69420",
     "-H", "User-Agent: rta-cli/1.0",
     "-d", body,
   }

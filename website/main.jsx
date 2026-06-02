@@ -446,7 +446,7 @@ const StatusPage = () => {
 
   useEffect(() => {
     // Primary Server
-    fetch(`${API_BASE_URL}/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
+    fetch(`${API_BASE_URL}/v1/status`)
       .then(res => res.json())
       .then(data => { setStatus(data); setLoading(false); })
       .catch(() => {
@@ -455,7 +455,7 @@ const StatusPage = () => {
       });
 
     // Backup Server
-    fetch(`https://rta-tb0k.onrender.com/v1/status`, { headers: { "ngrok-skip-browser-warning": "true" } })
+    fetch(`https://rta-tb0k.onrender.com/v1/status`)
       .then(res => res.json())
       .then(data => { setBackupStatus(data); setBackupLoading(false); })
       .catch(() => {

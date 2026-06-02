@@ -17,7 +17,6 @@ def _headers(api_key: str) -> dict:
         "X-API-KEY": api_key,
         "X-Device-ID": get_device_id(),
         "X-CLI-Version": CLI_VERSION,
-        "ngrok-skip-browser-warning": "69420",
         "User-Agent": f"rta-cli/1.0",
     }
 
