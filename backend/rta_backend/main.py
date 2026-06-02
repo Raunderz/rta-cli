@@ -444,8 +444,8 @@ async def status_endpoint(request: Request):
 async def root():
     return {"message": "Rta Backend API", "version": "0.1.0"}
 
-@app.route("/health", methods=["GET", "HEAD"])
-async def health_check(request):
+@app.api_route("/health", methods=["GET", "HEAD"])
+async def health_check():
     return {"status": "healthy"}
 
 def main():
