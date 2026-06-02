@@ -439,102 +439,10 @@ const PricingPage = () => {
 };
 
 const StatusPage = () => {
-  const [status, setStatus] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [backupStatus, setBackupStatus] = useState(null);
-  const [backupLoading, setBackupLoading] = useState(true);
-
   useEffect(() => {
-    // Primary Server
-    fetch(`${API_BASE_URL}/v1/status`)
-      .then(res => res.json())
-      .then(data => { setStatus(data); setLoading(false); })
-      .catch(() => {
-        setStatus({ status: "offline", services: { database: "offline", api: "offline", proxy: "offline" } });
-        setLoading(false);
-      });
-
-    // Backup Server
-    fetch(`https://rta-tb0k.onrender.com/v1/status`)
-      .then(res => res.json())
-      .then(data => { setBackupStatus(data); setBackupLoading(false); })
-      .catch(() => {
-        setBackupStatus({ status: "offline", services: { database: "offline", api: "offline", proxy: "offline" } });
-        setBackupLoading(false);
-      });
+    window.location.href = "https://stats.uptimerobot.com/S5Qwww7Jtp";
   }, []);
-
-  const getBadge = (val) => {
-    const isOk = val === "operational" || val === "online";
-    return <span class={`status-badge ${isOk ? 'operational' : ''}`}>{val?.toUpperCase() || "UNKNOWN"}</span>;
-  };
-
-  return (
-    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
-      <div class="section-header">
-        <h2 style={{ fontStyle: 'normal' }}>Status</h2>
-        <p class="mono">Always online</p>
-      </div>
-
-      {/* Primary Server */}
-      <div class="status-board" style={{ marginBottom: '2rem' }}>
-        <div class="status-header">
-          <span class="mono">Primary Server</span>
-          {loading ? <span class="mono">Checking...</span> : getBadge(status?.status)}
-        </div>
-        <div class="status-row">
-          <span class="mono">API Endpoint</span>
-          <span class="mono" style={{ color: status?.services?.api === 'operational' ? '#5BB881' : 'var(--red)' }}>
-            {loading ? "..." : status?.services?.api?.toUpperCase()}
-          </span>
-        </div>
-        <div class="status-row">
-          <span class="mono">Database Cluster</span>
-          <span class="mono" style={{ color: status?.services?.database === 'operational' ? '#5BB881' : 'var(--red)' }}>
-            {loading ? "..." : status?.services?.database?.toUpperCase()}
-          </span>
-        </div>
-        <div class="status-row">
-          <span class="mono">Proxy Mesh</span>
-          <span class="mono" style={{ color: status?.services?.proxy === 'operational' ? '#5BB881' : 'var(--red)' }}>
-            {loading ? "..." : status?.services?.proxy?.toUpperCase()}
-          </span>
-        </div>
-      </div>
-
-      {/* Backup Server */}
-      <div class="status-board">
-        <div class="status-header">
-          <span class="mono">Backup Server (Render)</span>
-          {backupLoading ? <span class="mono">Checking...</span> : getBadge(backupStatus?.status)}
-        </div>
-        <div class="status-row">
-          <span class="mono">API Endpoint</span>
-          <span class="mono" style={{ color: backupStatus?.services?.api === 'operational' ? '#5BB881' : 'var(--red)' }}>
-            {backupLoading ? "..." : backupStatus?.services?.api?.toUpperCase()}
-          </span>
-        </div>
-        <div class="status-row">
-          <span class="mono">Database Cluster</span>
-          <span class="mono" style={{ color: backupStatus?.services?.database === 'operational' ? '#5BB881' : 'var(--red)' }}>
-            {backupLoading ? "..." : backupStatus?.services?.database?.toUpperCase()}
-          </span>
-        </div>
-        <div class="status-row">
-          <span class="mono">Proxy Mesh</span>
-          <span class="mono" style={{ color: backupStatus?.services?.proxy === 'operational' ? '#5BB881' : 'var(--red)' }}>
-            {backupLoading ? "..." : backupStatus?.services?.proxy?.toUpperCase()}
-          </span>
-        </div>
-      </div>
-
-      {!loading && status?.version && (
-        <p class="mono" style="font-size: 10px; color: var(--text-muted); margin-top: 20px; text-align: center;">
-          v{status.version} &middot; Last check: {new Date(status.timestamp * 1000).toLocaleTimeString()}
-        </p>
-      )}
-    </div>
-  );
+  return null;
 };
 
 const AuthPage = () => {
