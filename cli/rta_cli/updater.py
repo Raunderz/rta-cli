@@ -2,6 +2,7 @@ import os
 import sys
 import json
 import hashlib
+import time
 import shutil
 import tempfile
 import subprocess
@@ -10,7 +11,39 @@ from rta_cli.__init__ import __version__
 from rta_cli.ui import Console
 
 VERSION_URL = "https://rta-three.vercel.app/version.json"
+CHECK_INTERVAL = 86400  # 24 hours between checks
 console = Console()
+
+def check_startup_update():
+    """Silent update check on CLI startup. Runs at most once per 24h."""
+    check_file = os.path.expanduser("~/.rta/last_update_check")
+    now = time.time()
+    try:
+        if os.path.exists(check_file):
+            with open(check_file) as f:
+                last_check = float(f.read().strip())
+            if now - last_check < CHECK_INTERVAL:
+                return
+    except (ValueError, OSError):
+        pass
+    try:
+        req = Request(VERSION_URL, headers={"User-Agent": "rta-cli-updater"}, method="GET")
+        with urlopen(req, timeout=2) as resp:
+            data = json.loads(resp.read().decode())
+        latest = data.get("version", "")
+        if latest and latest != __version__:
+            msg = f"\x1b[33mUpdate available: v{latest} (current: v{__version__}). Run 'rta update' to upgrade.\x1b[0m\n"
+            sys.stderr.write(msg)
+            sys.stderr.flush()
+    except Exception:
+        pass
+    try:
+        os.makedirs(os.path.dirname(check_file), exist_ok=True)
+        with open(check_file, "w") as f:
+            f.write(str(now))
+    except OSError:
+        pass
+
 
 def get_latest_version():
     """Fetch version.json from the website."""
