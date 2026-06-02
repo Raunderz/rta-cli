@@ -193,6 +193,9 @@ class RtaParser(argparse.ArgumentParser):
         sys.exit(2)
 
 def main():
+    from rta_cli.updater import check_startup_update
+    check_startup_update()
+
     parser = RtaParser(
         prog="rta",
         description="Rta - AI-assisted code editor CLI",
