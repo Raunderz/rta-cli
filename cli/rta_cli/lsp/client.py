@@ -15,6 +15,9 @@ class LSPClient:
         self._diagnostics: List[Any] = []
         self._running = False
 
+    def is_alive(self) -> bool:
+        return self._running and self.process is not None and self.process.poll() is None
+
     def start(self) -> bool:
         try:
             self.process = subprocess.Popen(
@@ -26,6 +29,7 @@ class LSPClient:
                 bufsize=0
             )
             self._running = True
+            self._responses.clear()
             threading.Thread(target=self._read_loop, daemon=True).start()
             
             # Initialize
@@ -41,10 +45,22 @@ class LSPClient:
             pass
         return False
 
+    def restart(self) -> bool:
+        self.stop()
+        return self.start()
+
     def stop(self):
         self._running = False
         if self.process:
-            self.process.terminate()
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=3)
+            except Exception:
+                try:
+                    self.process.kill()
+                except Exception:
+                    pass
+            self.process = None
 
     def _send(self, data: Dict[str, Any]):
         body = json.dumps(data).encode("utf-8")

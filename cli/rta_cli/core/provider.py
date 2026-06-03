@@ -143,7 +143,8 @@ class OllamaProvider:
                         yield TextEndEvent(text=current_text)
 
         except Exception as e:
-            yield ErrorEvent(message="Ollama Connection Error", details=str(e))
+            from rta_cli.debug import format_provider_error
+            yield ErrorEvent(message="Ollama Connection Error", details=format_provider_error(e))
 
 class AsyncRtaProvider:
     def __init__(self, api_key: Optional[str] = None):
@@ -270,4 +271,5 @@ class AsyncRtaProvider:
             # Re-raise to let the caller handle it
             raise
         except Exception as e:
-            yield ErrorEvent(message="Connection Error", details=str(e))
+            from rta_cli.debug import format_provider_error
+            yield ErrorEvent(message="Connection Error", details=format_provider_error(e))
