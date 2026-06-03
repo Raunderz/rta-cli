@@ -25,6 +25,16 @@
     "onStartupFinished"
   ],
   "main": "./src/extension.js",
+  "configuration": {
+    "title": "RTA",
+    "properties": {
+      "rta.apiKey": {
+        "type": "string",
+        "default": "",
+        "description": "Your RTA API key. Get one at https://rta-three.vercel.app/dashboard.html"
+      }
+    }
+  },
   "contributes": {
     "commands": [
       {
@@ -111,7 +121,7 @@
       }
     ]
   },
-  "icon": "icon.png",
+  "icon": "icon.svg",
   "devDependencies": {
     "@types/vscode": "^1.96.0"
   }
