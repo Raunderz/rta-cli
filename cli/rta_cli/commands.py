@@ -214,6 +214,7 @@ def main():
     parser.add_argument("--legacy", action="store_true", help="Use the legacy UI core")
     parser.add_argument("--version", action="store_true", help="Show version info")
     parser.add_argument("--ollama", nargs="?", const="deepseek-r1", help="Use local Ollama model (default: deepseek-r1)")
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging to ~/.rta/debug.log")
     
     subparsers = parser.add_subparsers(dest="command", help="Subcommands")
 
@@ -233,6 +234,7 @@ def main():
     p_chat.add_argument("--list-sessions", action="store_true", help="List previous chat sessions")
     p_chat.add_argument("--privacy", action="store_true", help="Hide email in header")
     p_chat.add_argument("--legacy", action="store_true", help="Use the legacy UI core")
+    p_chat.add_argument("--debug", action="store_true", help="Enable debug logging to ~/.rta/debug.log")
 
     # ask
     p_ask = subparsers.add_parser("ask", help="Run a one-off agentic request (headless)")
@@ -289,6 +291,9 @@ def main():
         if not known_vars.get("legacy"):
             from rta_cli.main_async import main as run_modern
             return run_modern(args)
+        if known_vars.get("debug"):
+            from rta_cli.debug import setup_debug_logging
+            setup_debug_logging()
         return chat(
             prompt=args.prompt,
             clear_context=args.clear_context,
@@ -351,6 +356,10 @@ def main():
 
         if not hasattr(args, "prompt") or not args.prompt:
             args.prompt = " ".join(unknown) if unknown else None
+
+        if known_vars.get("debug"):
+            from rta_cli.debug import setup_debug_logging
+            setup_debug_logging()
 
         if not known_vars.get("legacy"):
             from rta_cli.main_async import main as run_modern

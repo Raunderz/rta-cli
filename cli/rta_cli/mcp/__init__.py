@@ -1,10 +1,13 @@
 """MCP (Model Context Protocol) client for Rta CLI."""
 import json
+import logging
 import os
 import subprocess
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+log = logging.getLogger("rta.mcp")
 
 MCP_CONFIG_PATH = Path.home() / ".rta" / "mcp_config.json"
 
@@ -74,6 +77,7 @@ def _get_cached_process(server_name: str, sc: dict) -> subprocess.Popen | None:
         if proc.poll() is None:  # Process is still running
             return proc
         # Process died, remove it
+        log.warning("MCP server '%s' process died, restarting...", server_name)
         del _PROCESS_CACHE[server_name]
 
     full_env = os.environ.copy()
@@ -91,7 +95,8 @@ def _get_cached_process(server_name: str, sc: dict) -> subprocess.Popen | None:
         )
         _PROCESS_CACHE[server_name] = proc
         return proc
-    except Exception:
+    except Exception as e:
+        log.error("Failed to start MCP server '%s': %s", server_name, e)
         return None
 
 
@@ -139,7 +144,7 @@ def map_mcp_to_openai_schema(server_name: str, mcp_tool: dict[str, Any]) -> dict
     }
 
 
-def _send_rpc_stdio(server_name: str, sc: dict, request: dict) -> Any:
+def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = True) -> Any:
     proc = _get_cached_process(server_name, sc)
     if not proc:
         return {"error": f"Could not start MCP server '{server_name}'"}
@@ -152,9 +157,12 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict) -> Any:
         while True:
             line = proc.stdout.readline()
             if not line:
-                # Process likely died
+                # Process likely died — retry once with a fresh process
                 if server_name in _PROCESS_CACHE:
                     del _PROCESS_CACHE[server_name]
+                if _retry:
+                    log.warning("MCP server '%s' died mid-RPC, retrying...", server_name)
+                    return _send_rpc_stdio(server_name, sc, request, _retry=False)
                 break
             try:
                 data = json.loads(line)
@@ -165,6 +173,9 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict) -> Any:
     except Exception as e:
         if server_name in _PROCESS_CACHE:
             del _PROCESS_CACHE[server_name]
+        if _retry:
+            log.warning("MCP RPC error for '%s': %s, retrying...", server_name, e)
+            return _send_rpc_stdio(server_name, sc, request, _retry=False)
         return {"error": f"RPC Error: {e}"}
     return None
 

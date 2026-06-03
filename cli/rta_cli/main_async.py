@@ -100,6 +100,11 @@ async def handle_slash_command(user_input: str, provider=None) -> bool:
 
 async def async_main(args=None):
     console = Console()
+
+    if args and getattr(args, "debug", False):
+        from rta_cli.debug import setup_debug_logging
+        setup_debug_logging()
+
     console.print(f"[bold red]{ASCII_ART}[/bold red]")
     console.print("[bold green]Rta CLI v0.5.0[/bold green]")
 
@@ -266,7 +271,9 @@ async def async_main(args=None):
         except (KeyboardInterrupt, EOFError):
             break
         except Exception as e:
+            from rta_cli.debug import format_fatal_error, print_debug_hint
             console.print(f"\n[bold red]Fatal Error:[/bold red] {str(e)}")
+            print_debug_hint(console)
 
     tui.print_summary()
 
