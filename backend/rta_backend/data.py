@@ -12,12 +12,16 @@ class TelemetryPayload(BaseModel):
     session_id: str | None = None
     turn_index: int | None = None
     role: str | None = None
+    system_prompt: str | None = None
     ai_prompt: str | None = None
     ai_response: str | None = None
+    provider: str | None = None
     model_used: str | None = None
     is_fallback: bool = False
     tokens_in: int = 0
     tokens_out: int = 0
+    latency_ms: int | None = None
+    schema_version: int = 1
     file_info: dict | None = None
 
 class ContainerLogPayload(BaseModel):
@@ -39,12 +43,16 @@ async def collect_telemetry(
         "session_id": payload.session_id,
         "turn_index": payload.turn_index,
         "role": payload.role,
+        "system_prompt": Sanitizer.strip_secrets(payload.system_prompt) if payload.system_prompt else None,
         "ai_prompt": Sanitizer.strip_secrets(payload.ai_prompt) if payload.ai_prompt else None,
         "ai_response": Sanitizer.strip_secrets(payload.ai_response) if payload.ai_response else None,
+        "provider": payload.provider,
         "model_used": payload.model_used,
         "is_fallback": payload.is_fallback,
         "tokens_in": payload.tokens_in,
         "tokens_out": payload.tokens_out,
+        "latency_ms": payload.latency_ms,
+        "schema_version": payload.schema_version,
         "file_info": payload.file_info,
         "created_at": "now()"
     }
@@ -82,39 +90,47 @@ async def collect_container_log(
     return {"status": "Accepted"}
 
 async def log_telemetry_task(user_id: str, request, result):
-    """Background task to log enriched AI interaction telemetry for fine-tuning."""
+    """
+    Background task to log enriched AI interaction telemetry.
+    Captures full context (history + tools) to create a high-quality fine-tuning dataset.
+    """
     try:
         session_id = result.session_id
         turn_index = result.turn_index
         
-        # 1. Identify what triggered this response
-        trigger_messages = []
+        # 1. Sanitize the entire message history for the training dataset
+        sanitized_history = []
+        system_prompt = None
         if request.messages:
-            last_msg = request.messages[-1]
-            if last_msg.get("role") == "user":
-                trigger_messages.append(last_msg)
-            else:
-                # Get all tool results since the last assistant message
-                for m in reversed(request.messages):
-                    if m.get("role") == "tool":
-                        trigger_messages.insert(0, m)
-                    elif m.get("role") == "assistant":
-                        break
-        
-        # 2. Log the Assistant response with full context in file_info for fine-tuning
+            for m in request.messages:
+                s_msg = m.copy()
+                if s_msg.get("content"):
+                    s_msg["content"] = Sanitizer.strip_secrets(s_msg["content"])
+                
+                sanitized_history.append(s_msg)
+                
+                # Capture the first system prompt for the explicit column
+                if s_msg.get("role") == "system" and not system_prompt:
+                    system_prompt = s_msg["content"]
+
+        # 2. Extract Assistant response and tool calls
         assistant_msg = result.choices[0].get("message", {}) if result.choices else {}
         response_text = assistant_msg.get("content") or ""
-        
-        # Structured tool calls
         tool_calls = assistant_msg.get("tool_calls") or []
         
-        # Log assistant turn
+        # 3. Determine the primary 'ai_prompt' (the last user message or tool result)
+        primary_prompt = ""
+        if sanitized_history:
+            primary_prompt = sanitized_history[-1].get("content") or ""
+
+        # 4. Construct the comprehensive telemetry record
         data = {
             "user_id": user_id,
             "session_id": session_id,
             "turn_index": turn_index,
             "role": "assistant",
-            "ai_prompt": Sanitizer.strip_secrets(trigger_messages[-1].get("content")) if trigger_messages else None,
+            "system_prompt": system_prompt,
+            "ai_prompt": primary_prompt,
             "ai_response": response_text,
             "provider": result.provider_used,
             "model_used": result.model,
@@ -125,33 +141,24 @@ async def log_telemetry_task(user_id: str, request, result):
             "tokens_cached": result.usage.get("cached_tokens", 0),
             "tool_calls": tool_calls,
             "latency_ms": int(result.latency_ms),
+            "schema_version": 1,
             "file_info": {
                 "workspace_path": request.workspace_path,
-                "provider": result.provider_used,
-                "latency_ms": int(result.latency_ms),
-                "tool_calls": tool_calls,
-                "trigger_context": trigger_messages, # Crucial for fine-tuning
-                "full_history_count": len(request.messages)
+                "full_history": sanitized_history,  # CRITICAL: The full context for fine-tuning
+                "available_tools": request.tools,   # Knowledge of what the model COULD have done
+                "full_history_count": len(request.messages),
+                "provider_meta": {
+                    "provider": result.provider_used,
+                    "latency_ms": int(result.latency_ms),
+                    "models_tried": result.models_tried
+                }
             },
             "created_at": "now()"
         }
         
         insert_telemetry(data)
 
-        # 3. Optional: Log individual trigger messages if they are tool results 
-        # (User messages are usually the 'ai_prompt' of the assistant turn, but tools can be multiple)
-        if len(trigger_messages) > 1 or (trigger_messages and trigger_messages[0].get("role") == "tool"):
-            for i, msg in enumerate(trigger_messages):
-                t_data = {
-                    "user_id": user_id,
-                    "session_id": session_id,
-                    "turn_index": turn_index - len(trigger_messages) + i,
-                    "role": msg.get("role"),
-                    "ai_prompt": Sanitizer.strip_secrets(msg.get("content")),
-                    "file_info": {"workspace_path": request.workspace_path, "is_trigger_part": True},
-                    "created_at": "now()"
-                }
-                insert_telemetry(t_data)
-
     except Exception as e:
-        logging.error(f"Telemetry logging failed: {e}")
+        import logging
+        logging.error(f"Enhanced telemetry logging failed: {e}")
+

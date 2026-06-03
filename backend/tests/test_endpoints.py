@@ -359,8 +359,12 @@ async def test_telemetry_collect_endpoint(client, test_user):
         json={
             "ai_prompt": "test prompt",
             "ai_response": "test response",
+            "system_prompt": "test system prompt",
+            "provider": "test_provider",
+            "latency_ms": 123,
             "tokens_in": 10,
-            "tokens_out": 20
+            "tokens_out": 20,
+            "schema_version": 1
         },
         headers=auth_headers(test_user["api_key"])
     )
