@@ -162,11 +162,16 @@ class RtaTUI:
                             self.total_in += event.prompt_tokens
                         if event.completion_tokens:
                             self.total_out += event.completion_tokens
+                    elif isinstance(event, TurnEndEvent):
+                        from rta_cli.notify import notify
+                        notify("completion")
                     elif isinstance(event, ErrorEvent):
                         self.loading = False
                         self.console.print(f"\n[bold red]Error: {event.message}[/bold red]")
                         if event.details:
                             self.console.print(f"[dim]{event.details}[/dim]")
+                        from rta_cli.notify import notify
+                        notify("error")
                     
                     if self.live:
                         self.live.update(self._generate_display())
