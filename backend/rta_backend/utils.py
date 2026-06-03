@@ -7,24 +7,28 @@ class Sanitizer:
     def strip_secrets(text: str) -> str:
         """
         Scrubs sensitive information from the given text.
+        Includes patterns for major AI providers and generic high-entropy strings.
         """
         if not text:
             return ""
             
-        # AWS Access Key pattern
-        aws_key_pattern = r'AKIA[0-9A-Z]{16}'
-        # GCP Access Key pattern 
-        gcp_key_pattern = r'AIza[0-9A-Za-z_-]{35}'
-        # Generic Secret/Key pattern (simplified)
-        secret_pattern = r'(?i)(password|secret|key|token|auth)["\s:]+[A-Za-z0-9\-\._~\+\/]{16,}'
+        patterns = {
+            "AWS": r'AKIA[0-9A-Z]{16}',
+            "GCP": r'AIza[0-9A-Za-z_-]{35}',
+            "OpenAI": r'sk-[a-zA-Z0-9]{48}',
+            "Anthropic": r'sk-ant-api03-[a-zA-Z0-9\-_]{93}',
+            "Stripe": r'sk_live_[0-9a-zA-Z]{24}',
+            "Generic_Secret": r'(?i)(password|secret|key|token|auth|credential|api_key|private_key)["\s:]+([A-Za-z0-9\-\._~\+\/]{20,})',
+        }
 
-        text = re.sub(aws_key_pattern, '[SCRUBBED_AWS]', text)
-        text = re.sub(gcp_key_pattern, '[SCRUBBED_GCP]', text)
-        # Only scrub if it looks like a long hex/base64 string after a keyword
-        # text = re.sub(secret_pattern, r'\1: [SCRUBBED]', text)
+        for label, pattern in patterns.items():
+            if label == "Generic_Secret":
+                # For generic secrets, we preserve the label but scrub the value
+                text = re.sub(pattern, r'\1: [SCRUBBED]', text)
+            else:
+                text = re.sub(pattern, f'[SCRUBBED_{label}]', text)
 
-        # Path scrubbing was too aggressive. Agents need paths to function.
-        # We only scrub absolute paths that look like they belong to a user's home.
+        # Path scrubbing: only absolute paths that look like they belong to a user's home.
         home_path_pattern = r'/home/[a-zA-Z0-9_-]+'
         text = re.sub(home_path_pattern, '/home/[USER]', text)
 
