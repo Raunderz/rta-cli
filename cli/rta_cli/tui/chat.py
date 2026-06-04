@@ -13,33 +13,37 @@ class ChatLog(VerticalScroll):
         self._current_thinking: ThinkingBlock | None = None
         self._current_content: ContentBlock | None = None
         self._tool_blocks: dict[str, ToolBlock] = {}
+        self._anchor_released = False
 
     def on_mount(self) -> None:
         self.anchor()
 
-    def add_user_message(self, text: str) -> None:
-        self.mount(UserBlock(text))
+    def add_user_message(self, text: str) -> UserBlock:
+        block = UserBlock(text)
+        self.mount(block)
+        self._anchor_released = False
         self.scroll_end(animate=False)
+        return block
 
     def start_thinking(self) -> ThinkingBlock:
         block = ThinkingBlock()
         self.mount(block)
         self._current_thinking = block
-        self.scroll_end(animate=False)
+        self._scroll_if_anchored()
         return block
 
     def start_content(self) -> ContentBlock:
         block = ContentBlock()
         self.mount(block)
         self._current_content = block
-        self.scroll_end(animate=False)
+        self._scroll_if_anchored()
         return block
 
     def start_tool(self, tool_call_id: str, name: str) -> ToolBlock:
         block = ToolBlock(tool_call_id=tool_call_id, name=name)
         self.mount(block)
         self._tool_blocks[tool_call_id] = block
-        self.scroll_end(animate=False)
+        self._scroll_if_anchored()
         return block
 
     def get_tool(self, tool_call_id: str) -> ToolBlock | None:
@@ -55,5 +59,16 @@ class ChatLog(VerticalScroll):
             self._current_content.finalize()
             self._current_content = None
 
+    def _scroll_if_anchored(self) -> None:
+        if not self._anchor_released:
+            self.scroll_end(animate=False)
+
     def scroll_to_bottom(self) -> None:
         self.scroll_end(animate=False)
+
+    def clear(self) -> None:
+        for child in list(self.children):
+            child.remove()
+        self._current_thinking = None
+        self._current_content = None
+        self._tool_blocks.clear()

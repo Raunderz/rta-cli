@@ -31,15 +31,19 @@ class _StreamingMixin:
         self._pending = ""
         self._completed = ""
         self._content = ""
+        self._finalized = False
 
     def _append_streaming(self, text: str) -> None:
         self._content += text
         self._pending += text
+        self._flush_completed_lines()
+        self._schedule_streaming_update()
+
+    def _flush_completed_lines(self) -> None:
         last_nl = self._pending.rfind("\n")
         if last_nl != -1:
             self._completed += self._pending[: last_nl + 1]
             self._pending = self._pending[last_nl + 1 :]
-        self._schedule_streaming_update()
 
     def _schedule_streaming_update(self) -> None:
         self.call_after_refresh(self._flush_streaming_update)
@@ -92,9 +96,11 @@ class ThinkingBlock(_StreamingMixin, Static):
 
     def finalize(self, collapse: bool = False) -> None:
         self._finalized = True
+        self._completed += self._pending
+        self._pending = ""
         display = Text()
-        if self._content:
-            lines = self._content.strip().split("\n")
+        if self._completed:
+            lines = self._completed.strip().split("\n")
             visible = lines[:5] if collapse else lines
             for i, line in enumerate(visible):
                 if i > 0:
@@ -133,8 +139,10 @@ class ContentBlock(_StreamingMixin, Static):
 
     def finalize(self) -> None:
         self._finalized = True
-        if self._content:
-            self._label_widget.update(self._content)
+        self._completed += self._pending
+        self._pending = ""
+        if self._completed:
+            self._label_widget.update(self._completed)
 
 
 class ToolBlock(Static):
