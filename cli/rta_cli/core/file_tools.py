@@ -17,6 +17,7 @@ class ListDirTool(BaseTool):
     description = "List files and directories in a given path."
     parameters = ListDirParams
     icon = "📁"
+    mutating: bool = False
 
     async def execute(
         self, params: ListDirParams, cancel_event: Optional[asyncio.Event] = None
@@ -54,9 +55,10 @@ class GrepParams(BaseModel):
 
 class GrepTool(BaseTool):
     name = "grep_search"
-    description = "Search for a regex pattern in file contents."
+    description = "Search file contents using regex patterns."
     parameters = GrepParams
     icon = "🔍"
+    mutating: bool = False
 
     async def execute(
         self, params: GrepParams, cancel_event: Optional[asyncio.Event] = None
@@ -84,6 +86,7 @@ class GlobTool(BaseTool):
     description = "Find files matching a glob pattern."
     parameters = GlobParams
     icon = "🌐"
+    mutating: bool = False
 
     async def execute(
         self, params: GlobParams, cancel_event: Optional[asyncio.Event] = None

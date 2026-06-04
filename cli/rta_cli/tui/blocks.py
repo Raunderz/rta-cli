@@ -174,6 +174,15 @@ class ToolBlock(Static):
             self._body = self.query_one(f"#tool-body-{self._tool_call_id}", Label)
         return self._body
 
+    def show_approval(self, preview: str | None = None) -> None:
+        header = Text()
+        header.append("  △ ", style="bold yellow")
+        header.append(self._name, style="bold blue")
+        header.append("  Permission required [y/n]", style="bold yellow")
+        self._get_header().update(header)
+        if preview:
+            self._get_body().update(preview[:300])
+
     def set_args(self, text: str) -> None:
         self._args_text = text
 

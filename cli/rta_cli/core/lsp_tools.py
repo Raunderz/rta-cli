@@ -23,6 +23,7 @@ class GetDiagnosticsTool(BaseTool):
     description = "Returns type errors and warnings for a specific file. Useful for finding bugs and fixing lint errors."
     parameters = GetDiagnosticsParams
     icon = "!"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -51,6 +52,7 @@ class GoToDefinitionTool(BaseTool):
     )
     parameters = GoToDefinitionParams
     icon = "->"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()

@@ -17,6 +17,7 @@ class DiscoverProjectTool(BaseTool):
     description = "Automatically detect the project language, framework, test framework, linter, type checker, and build configuration."
     parameters = DiscoverProjectParams
     icon = "?"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -51,6 +52,7 @@ class GetFileContentsTool(BaseTool):
     )
     parameters = GetFileContentsParams
     icon = "→"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -86,6 +88,7 @@ class GetFilesInfoTool(BaseTool):
     description = "Lists files in a directory with file size and directory status"
     parameters = GetFilesInfoParams
     icon = "→"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -296,6 +299,7 @@ class ListSkillsTool(BaseTool):
     description = "List all available specialized skills with their descriptions."
     parameters = ListSkillsParams
     icon = "!"
+    mutating: bool = False
 
     async def execute(
         self, params: ListSkillsParams, cancel_event: Optional[asyncio.Event] = None
@@ -321,6 +325,7 @@ class SemanticSearchTool(BaseTool):
     description = "Searches the codebase for relevant snippets using natural language semantic search."
     parameters = SemanticSearchParams
     icon = "?"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -351,6 +356,7 @@ class GetRepoSkeletonTool(BaseTool):
     description = "Returns a markdown skeleton of the project, showing classes and functions across all files."
     parameters = GetRepoSkeletonParams
     icon = "→"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -392,6 +398,7 @@ class QuestionTool(BaseTool):
     )
     parameters = QuestionParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: QuestionParams, cancel_event: Optional[asyncio.Event] = None
@@ -423,6 +430,7 @@ class GitStatusTool(BaseTool):
     description = "Show the working tree status (modified, staged, untracked files)."
     parameters = GitStatusParams
     icon = "●"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -451,6 +459,7 @@ class GitDiffTool(BaseTool):
     description = "Show changes in the working tree (diff)."
     parameters = GitDiffParams
     icon = "●"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -479,6 +488,7 @@ class GitLogTool(BaseTool):
     description = "Show recent commit history."
     parameters = GitLogParams
     icon = "●"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -583,6 +593,7 @@ class GitBranchTool(BaseTool):
     description = "List, create, or delete git branches."
     parameters = GitBranchParams
     icon = "●"
+    mutating: bool = False
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
@@ -618,6 +629,7 @@ class WebSearchTool(BaseTool):
     description = "Search the web using multiple free search engines (DuckDuckGo, SearXNG, Wikipedia). No API key required."
     parameters = WebSearchParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: WebSearchParams, cancel_event: Optional[asyncio.Event] = None
@@ -644,6 +656,7 @@ class FetchUrlTool(BaseTool):
     description = "Download a URL and return its readable text content (title + body). Strips HTML, scripts, and styling."
     parameters = FetchUrlParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: FetchUrlParams, cancel_event: Optional[asyncio.Event] = None
@@ -688,6 +701,7 @@ class SequentialThinkingTool(BaseTool):
     description = "A tool for dynamic, structured, and reflective problem-solving. Use this when working through complex problems step by step."
     parameters = SequentialThinkingParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self,
@@ -725,6 +739,7 @@ class MemorizeTool(BaseTool):
     description = "Store a fact persistently. Use for user preferences, project decisions, or any info you want to recall later."
     parameters = MemorizeParams
     icon = "!"
+    mutating: bool = False
 
     async def execute(
         self, params: MemorizeParams, cancel_event: Optional[asyncio.Event] = None
@@ -749,6 +764,7 @@ class RecallTool(BaseTool):
     description = "Search stored memories by keyword."
     parameters = RecallParams
     icon = "!"
+    mutating: bool = False
 
     async def execute(
         self, params: RecallParams, cancel_event: Optional[asyncio.Event] = None
@@ -771,6 +787,7 @@ class ForgetTool(BaseTool):
     description = "Delete a specific memory by key."
     parameters = ForgetParams
     icon = "!"
+    mutating: bool = False
 
     async def execute(
         self, params: ForgetParams, cancel_event: Optional[asyncio.Event] = None
@@ -796,6 +813,7 @@ class ArxivSearchTool(BaseTool):
     description = "Search ArXiv for technical and scientific papers. Returns titles, summaries, and links. Ideal for deep technical research."
     parameters = ArxivSearchParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: ArxivSearchParams, cancel_event: Optional[asyncio.Event] = None
@@ -821,6 +839,7 @@ class SoSearchTool(BaseTool):
     description = "Search Stack Overflow for programming-related questions and answers. Returns titles, tags, and links. Use for troubleshooting specific code issues."
     parameters = SoSearchParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: SoSearchParams, cancel_event: Optional[asyncio.Event] = None
@@ -850,6 +869,7 @@ class GithubSearchTool(BaseTool):
     description = "Search GitHub for repositories, code, or issues. Rate-limited to 60 requests/hour without authentication."
     parameters = GithubSearchParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: GithubSearchParams, cancel_event: Optional[asyncio.Event] = None
@@ -879,6 +899,7 @@ class YoutubeTranscriptTool(BaseTool):
     )
     parameters = YoutubeTranscriptParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self,
@@ -913,6 +934,7 @@ class DeepSearchTool(BaseTool):
     description = "Deep research search: auto-generates multiple sub-queries from your query, runs all, and deduplicates results."
     parameters = DeepSearchParams
     icon = "?"
+    mutating: bool = False
 
     async def execute(
         self, params: DeepSearchParams, cancel_event: Optional[asyncio.Event] = None

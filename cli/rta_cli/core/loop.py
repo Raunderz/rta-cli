@@ -8,6 +8,7 @@ from .types import (
     AssistantMessage,
     ToolResultMessage,
     ToolCall,
+    ToolResult,
     StopReason,
 )
 from .events import (
@@ -16,12 +17,14 @@ from .events import (
     TextEndEvent,
     ToolEndEvent,
     ToolResultEvent,
+    ToolApprovalEvent,
     TurnStartEvent,
     TurnEndEvent,
     ErrorEvent,
     CompactionStartEvent,
     CompactionEndEvent,
 )
+from .permissions import ApprovalResponse, PermissionDecision, check_permission
 from .provider import AsyncRtaProvider
 
 from .tool_manager import ToolManager
@@ -135,15 +138,49 @@ class Agent:
                 )
                 return
 
-            # 3. Execute tool calls
+            # 3. Execute tool calls (with permission checks)
             for tc in current_tool_calls:
+                tool = self.tool_manager.tools.get(tc.name)
+                decision = check_permission(tool, tc.arguments)
+                if decision == PermissionDecision.PROMPT:
+                    loop = asyncio.get_running_loop()
+                    future: asyncio.Future[ApprovalResponse] = loop.create_future()
+                    approval_event = ToolApprovalEvent(
+                        tool_call_id=tc.id,
+                        tool_name=tc.name,
+                        display=json.dumps(tc.arguments),
+                    )
+                    approval_event.set_future(future)
+                    yield approval_event
+                    try:
+                        approved = await future == ApprovalResponse.APPROVE
+                    except asyncio.CancelledError:
+                        approved = False
+
+                    if not approved:
+                        skipped = ToolResult(
+                            success=False,
+                            result="Tool call denied by user. Ask them what they'd like you to do instead.",
+                        )
+                        yield ToolResultEvent(tool_call_id=tc.id, result=skipped)
+                        tool_res_msg = ToolResultMessage(
+                            tool_call_id=tc.id,
+                            content=skipped.result,
+                            is_error=True,
+                        )
+                        self.messages.append(tool_res_msg)
+                        if self.session_manager:
+                            self.session_manager.append_message(tool_res_msg)
+                        continue
+
                 result = await self.tool_manager.execute_call(
                     tc, cancel_event=cancel_event
                 )
                 yield ToolResultEvent(tool_call_id=tc.id, result=result)
 
                 tool_res_msg = ToolResultMessage(
-                    tool_call_id=tc.id, content=result.result
+                    tool_call_id=tc.id,
+                    content=result.result,
                 )
                 self.messages.append(tool_res_msg)
                 if self.session_manager:

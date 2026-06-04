@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 
 from pydantic import BaseModel
 
@@ -110,6 +111,12 @@ class ToolApprovalEvent(Event):
     tool_call_id: str = ""
     tool_name: str = ""
     display: str = ""
+
+    def set_future(self, future: asyncio.Future) -> None:
+        self._approval_future = future
+
+    def get_future(self) -> asyncio.Future | None:
+        return getattr(self, "_approval_future", None)
 
 
 # =================================================================================================
