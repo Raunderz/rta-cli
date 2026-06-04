@@ -24,7 +24,6 @@ def _blend_hex(base: str, overlay: str, overlay_weight: float) -> str:
 def get_styles() -> str:
     """Generate Textual CSS from the current theme colors."""
     colors = get_current_theme().colors
-    approval_bg = _blend_hex(colors.bg, colors.accent, overlay_weight=0.05)
 
     return f"""
 Screen {{
@@ -33,90 +32,46 @@ Screen {{
 }}
 
 #chat-log {{
-    height: 100%;
-    padding: 0 0 1 0;
+    height: 1fr;
+    background: {colors.bg};
+    color: {colors.fg};
     scrollbar-size: 0 0;
-    align-vertical: bottom;
-    background: transparent;
+    padding: 0;
+}}
+
+.thinking-block {{
+    padding: 0 1;
+    margin: 0;
+    color: {colors.dim};
+}}
+
+.content-block {{
+    padding: 0 1;
+    margin: 0;
+}}
+
+.user-block {{
+    padding: 1 1;
+    margin: 0;
+    background: {colors.editor};
+}}
+
+.tool-block {{
+    padding: 0 1;
+    margin: 0;
+}}
+
+#input-box {{
+    dock: bottom;
+    margin: 0 1 1 1;
+    background: {colors.editor};
     color: {colors.fg};
 }}
 
-/* Thinking block */
-.thinking-block {{
-    color: {colors.dim};
-    text-style: italic;
-    padding: 0 1 0 1;
-    margin: 1 0 0 0;
-}}
-
-/* Content block */
-.content-block {{
-    padding: 0 1;
-    margin-top: 1;
-}}
-
-/* Ensure text wraps in all blocks */
-.thinking-block Label,
-.content-block Label,
-.user-block Label,
-.tool-block Label {{
-    width: 100%;
-}}
-
-/* User message */
-.user-block {{
-    padding: 1 1;
-    margin: 1 0 0 0;
-    background: {colors.editor};
-}}
-
-/* Tool block */
-.tool-block {{
-    padding: 0 1;
-    margin-top: 1;
-    background: transparent;
-}}
-
-.tool-block.-pending,
-.tool-block.-success,
-.tool-block.-error {{
-    background: transparent;
-    color: {colors.dim};
-    border: none;
-}}
-
-.tool-block.-approval {{
-    background: {approval_bg};
-    color: {colors.dim};
-    border-left: outer {colors.accent};
-    margin: 1 0 1 1;
-    padding: 1 1;
-}}
-
-#tool-output,
-.tool-output {{
-    color: {colors.dim};
-    padding: 0 0 0 2;
-}}
-
-/* Input area */
-#input-box {{
-    background: {colors.editor};
-    border-top: solid {colors.editor};
-    border-bottom: solid {colors.editor};
-    border-title-color: {colors.dim};
-    border-subtitle-color: {colors.dim};
-}}
-
-/* Info bar */
 .info-bar {{
+    dock: bottom;
     height: 1;
-    color: {colors.dim};
     background: {colors.panel};
-}}
-
-/* Notifications */
-Notification {{
-    layer: notification;
+    color: {colors.dim};
 }}
 """
