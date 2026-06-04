@@ -4,6 +4,8 @@ from rich.text import Text
 from textual.app import ComposeResult
 from textual.widgets import Label, Static
 
+from .themes import get_current_theme
+
 
 class UserBlock(Static):
     ALLOW_SELECT = True
@@ -15,8 +17,9 @@ class UserBlock(Static):
         self.add_class("user-block")
 
     def compose(self) -> ComposeResult:
+        colors = get_current_theme().colors
         text = Text()
-        text.append("You  ", style="bold green")
+        text.append("You  ", style=f"bold {colors.accent}")
         text.append(self._content)
         yield Label(text, id="user-text", markup=False)
 
@@ -49,13 +52,14 @@ class _StreamingMixin:
         self._streaming_update_label(display)
 
     def _render_streaming_display(self) -> Text:
+        colors = get_current_theme().colors
         display = Text()
         if self._completed:
             display.append(self._completed)
         if self._pending:
             if self._completed:
                 display.append("\n")
-            display.append(self._pending, style="italic")
+            display.append(self._pending, style=f"italic {colors.dim}")
         return display
 
     def _streaming_update_label(self, display: Text) -> None:
@@ -73,9 +77,10 @@ class ThinkingBlock(_StreamingMixin, Static):
         self.add_class("thinking-block")
 
     def compose(self) -> ComposeResult:
+        colors = get_current_theme().colors
         header = Text()
-        header.append("  🤔", style="bold yellow")
-        header.append(" Thinking...", style="italic dim")
+        header.append("  🤔", style=f"bold {colors.title}")
+        header.append(" Thinking...", style=f"italic {colors.dim}")
         yield Label(header, id="thinking-header", markup=False)
         yield Label("", id="thinking-content", markup=False)
 
@@ -92,6 +97,7 @@ class ThinkingBlock(_StreamingMixin, Static):
         self._append_streaming(text)
 
     def finalize(self, collapse: bool = False) -> None:
+        colors = get_current_theme().colors
         self._finalized = True
         display = Text()
         if self._content:
@@ -100,10 +106,12 @@ class ThinkingBlock(_StreamingMixin, Static):
             for i, line in enumerate(visible):
                 if i > 0:
                     display.append("\n")
-                display.append(line.strip(), style="italic dim")
+                display.append(line.strip(), style=f"italic {colors.dim}")
             remaining = len(lines) - len(visible)
             if remaining > 0 and collapse:
-                display.append(f" ... ({remaining} more lines)", style="italic dim")
+                display.append(
+                    f" ... ({remaining} more lines)", style=f"italic {colors.dim}"
+                )
         self._label_widget.update(display)
 
 
@@ -118,8 +126,9 @@ class ContentBlock(_StreamingMixin, Static):
         self.add_class("content-block")
 
     def compose(self) -> ComposeResult:
+        colors = get_current_theme().colors
         header = Text()
-        header.append("  ✦", style="bold cyan")
+        header.append("  ✦", style=f"bold {colors.accent}")
         yield Label(header, id="content-header", markup=False)
         yield Label("", id="content-text", markup=False)
 
@@ -157,10 +166,11 @@ class ToolBlock(Static):
         self.add_class("tool-block")
 
     def compose(self) -> ComposeResult:
+        colors = get_current_theme().colors
         header = Text()
-        header.append("  → ", style="bold")
-        header.append(self._name, style="bold blue")
-        header.append("  ...", style="dim")
+        header.append("  → ", style=f"bold {colors.dim}")
+        header.append(self._name, style=f"bold {colors.accent}")
+        header.append("  ...", style=f"dim {colors.dim}")
         yield Label(header, id=f"tool-header-{self._tool_call_id}", markup=False)
         yield Label("", id=f"tool-body-{self._tool_call_id}", markup=False)
 
@@ -175,10 +185,11 @@ class ToolBlock(Static):
         return self._body
 
     def show_approval(self, preview: str | None = None) -> None:
+        colors = get_current_theme().colors
         header = Text()
-        header.append("  △ ", style="bold yellow")
-        header.append(self._name, style="bold blue")
-        header.append("  Permission required [y/n]", style="bold yellow")
+        header.append("  △ ", style=f"bold {colors.notice}")
+        header.append(self._name, style=f"bold {colors.accent}")
+        header.append("  Permission required [y/n]", style=f"bold {colors.notice}")
         self._get_header().update(header)
         if preview:
             self._get_body().update(preview[:300])
@@ -187,14 +198,16 @@ class ToolBlock(Static):
         self._args_text = text
 
     def set_result(self, result: str, success: bool) -> None:
+        colors = get_current_theme().colors
         self._success = success
         self._result_text = result
         header = Text()
-        header.append("  → ", style="bold")
-        header.append(self._name, style="bold blue")
-        status = " ✓" if success else " ✗"
-        status_style = "bold green" if success else "bold red"
-        header.append(status, style=status_style)
+        header.append("  → ", style=f"bold {colors.dim}")
+        header.append(self._name, style=f"bold {colors.accent}")
+        if success:
+            header.append(" ✓", style=f"bold {colors.success}")
+        else:
+            header.append(" ✗", style=f"bold {colors.failed}")
         self._get_header().update(header)
         if result:
             body = Text()

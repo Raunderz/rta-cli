@@ -3,7 +3,7 @@ import os
 from typing import Optional
 from pydantic import BaseModel, Field
 from .tool_base import BaseTool
-from .types import ToolResult
+from .types import FileChanges, ToolResult
 
 
 class DiscoverProjectParams(BaseModel):
@@ -122,13 +122,18 @@ class WriteFileParams(BaseModel):
 
 class WriteFileTool(BaseTool):
     name = "write_file"
-    description = "Writes content to a file. Overwrites by default."
+    description = (
+        "Writes content to a file. Overwrites by default. Creates parent directories."
+    )
     parameters = WriteFileParams
     icon = "+"
 
     def __init__(self, working_directory: Optional[str] = None):
         super().__init__()
         self.working_directory = working_directory or os.getcwd()
+
+    def format_call(self, params: WriteFileParams) -> str:
+        return params.file_path
 
     async def execute(
         self, params: WriteFileParams, cancel_event: Optional[asyncio.Event] = None
@@ -145,7 +150,13 @@ class WriteFileTool(BaseTool):
             )
             if result.startswith("Error") or result.startswith("Failed"):
                 return ToolResult(success=False, result=result)
-            return ToolResult(success=True, result=result)
+            n_lines = params.content.count("\n") + 1
+            return ToolResult(
+                success=True,
+                result=result,
+                ui_summary=f"[green]+{n_lines}[/green]",
+                file_changes=FileChanges(path=params.file_path, added=n_lines),
+            )
         except Exception as e:
             return ToolResult(success=False, result=f"Error: {e}")
 
