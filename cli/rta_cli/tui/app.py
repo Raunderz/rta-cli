@@ -74,7 +74,8 @@ class RtaApp(App):
     """
 
     BINDINGS: ClassVar[list] = [
-        ("ctrl+c", "handle_ctrl_c", "Clear/Exit"),
+        ("ctrl+c", "handle_ctrl_c", "Interrupt/Exit"),
+        ("ctrl+q", "quit", "Quit"),
         ("escape", "interrupt", "Interrupt"),
         ("y", "approve_tool", "Approve"),
         ("n", "deny_tool", "Deny"),
@@ -91,7 +92,7 @@ class RtaApp(App):
         self._agent = agent
         self._cwd = cwd
         self._model = model
-        self._running = False
+        self._agent_busy = False
         self._cancel_event: asyncio.Event | None = None
         self._current_turn = 0
         self._pending_approval: ToolApprovalEvent | None = None
@@ -106,14 +107,14 @@ class RtaApp(App):
         self.title = f"RTA — {self._cwd}"
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if self._running:
+        if self._agent_busy:
             return
         prompt = event.value.strip()
         if not prompt:
             return
         self.query_one("#input-box", Input).value = ""
         self.query_one("#input-box", Input).disabled = True
-        self._running = True
+        self._agent_busy = True
         asyncio.create_task(self._run_turn(prompt))
 
     async def _run_turn(self, prompt: str) -> None:
@@ -148,7 +149,7 @@ class RtaApp(App):
         except Exception as e:
             chat_log.mount(_error_block(f"Error: {e}"))
         finally:
-            self._running = False
+            self._agent_busy = False
             self._cancel_event = None
             self._pending_approval = None
             self.query_one("#input-box", Input).disabled = False
@@ -208,12 +209,17 @@ class RtaApp(App):
             chat_log.mount(_error_block(f"{event.message}: {event.details or ''}"))
 
     def action_handle_ctrl_c(self) -> None:
-        if self._running and self._cancel_event:
+        if self._agent_busy and self._cancel_event:
             self._cancel_event.set()
+        else:
+            self.exit()
 
     def action_interrupt(self) -> None:
-        if self._running and self._cancel_event:
+        if self._agent_busy and self._cancel_event:
             self._cancel_event.set()
+
+    def action_quit(self) -> None:
+        self.exit()
 
     def action_approve_tool(self) -> None:
         if self._pending_approval:
