@@ -5,8 +5,6 @@ from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Label
 
-from .themes import get_current_theme
-
 
 class InfoBar(Horizontal):
     can_focus = False
@@ -33,17 +31,16 @@ class InfoBar(Horizontal):
         return self._label
 
     def _render_text(self) -> Text:
-        colors = get_current_theme().colors
         text = Text()
-        text.append(f" {self._cwd}", style=f"dim {colors.dim}")
+        text.append(f" {self._cwd}", style="dim")
         if self._model:
-            text.append(" | model: ", style=f"dim {colors.dim}")
-            text.append(self._model, style=f"bold {colors.accent}")
+            text.append(" | model: ", style="dim")
+            text.append(self._model, style="bold cyan")
         if self._input_tokens or self._output_tokens:
-            text.append(" | in: ", style=f"dim {colors.dim}")
-            text.append(str(self._input_tokens), style=f"green {colors.success}")
-            text.append(" out: ", style=f"dim {colors.dim}")
-            text.append(str(self._output_tokens), style=f"yellow {colors.notice}")
+            text.append(" | in: ", style="dim")
+            text.append(str(self._input_tokens), style="green")
+            text.append(" out: ", style="dim")
+            text.append(str(self._output_tokens), style="yellow")
         return text
 
     def update_tokens(self, input_tokens: int, output_tokens: int) -> None:

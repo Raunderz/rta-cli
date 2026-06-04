@@ -27,7 +27,6 @@ from ..core.loop import Agent
 from ..core.permissions import ApprovalResponse
 from .chat import ChatLog
 from .styles import get_styles
-from .themes import get_current_theme_id, get_theme_ids, get_theme_options, set_theme
 from .widgets import InfoBar
 
 
@@ -73,66 +72,10 @@ class RtaApp(App):
         prompt = event.value.strip()
         if not prompt:
             return
-
-        # Handle slash commands before dispatching to agent
-        if prompt.startswith("/"):
-            if self._handle_slash_command(prompt):
-                self.query_one("#input-box", Input).value = ""
-                return
-
         self.query_one("#input-box", Input).value = ""
         self.query_one("#input-box", Input).disabled = True
         self._agent_busy = True
         asyncio.create_task(self._run_turn(prompt))
-
-    def _handle_slash_command(self, prompt: str) -> bool:
-        """Handle slash commands. Returns True if handled."""
-        parts = prompt[1:].split()
-        if not parts:
-            return False
-        cmd = parts[0].lower()
-
-        if cmd == "theme":
-            chat_log = self.query_one("#chat-log", ChatLog)
-            if len(parts) > 1:
-                theme_id = parts[1]
-                try:
-                    set_theme(theme_id)
-                    type(self).CSS = get_styles()
-                    self.refresh_css()
-                    from rich.text import Text
-
-                    msg = Text()
-                    msg.append(f"Theme: {theme_id}", style="bold green")
-                    chat_log.mount(self._info_block(str(msg)))
-                except ValueError:
-                    from rich.text import Text
-
-                    msg = Text()
-                    msg.append(
-                        f"Unknown theme: {theme_id}. Use /theme to list.",
-                        style="bold red",
-                    )
-                    chat_log.mount(self._info_block(str(msg)))
-            else:
-                from rich.text import Text
-
-                msg = Text()
-                msg.append("Themes:\n", style="bold")
-                for tid, label in get_theme_options():
-                    marker = " ● " if tid == get_current_theme_id() else "   "
-                    msg.append(f"{marker}{tid} - {label}\n")
-                msg.append("\nUsage: /theme <id>", style="dim")
-                chat_log.mount(self._info_block(str(msg)))
-            self.query_one("#input-box", Input).value = ""
-            chat_log.scroll_to_bottom()
-            return True
-        return False
-
-    def _info_block(self, text: str):
-        from .blocks import UserBlock
-
-        return UserBlock(content=text)
 
     async def _run_turn(self, prompt: str) -> None:
         chat_log = self.query_one("#chat-log", ChatLog)
