@@ -3,7 +3,31 @@
  * @typedef {{ type: string, content: any }} StreamEvent
  */
 
-const SERVER_URL = 'https://rta-tb0k.onrender.com';
+const PRIMARY_URL = 'https://schallten-a2xtbb49ws.hf.space';
+const BACKUP_URL = 'https://rta-tb0k.onrender.com';
+const FAILOVER_TIMEOUT = 5000;
+
+async function resolveServerUrl() {
+  for (const url of [BACKUP_URL, PRIMARY_URL]) {
+    try {
+      const res = await fetch(`${url}/health`, {
+        method: 'GET',
+        signal: AbortSignal.timeout(FAILOVER_TIMEOUT),
+      });
+      if (res.ok) return url;
+    } catch {
+      continue;
+    }
+  }
+  return PRIMARY_URL;
+}
+
+let _resolvedUrl = null;
+
+async function getServerUrl() {
+  if (!_resolvedUrl) _resolvedUrl = await resolveServerUrl();
+  return _resolvedUrl;
+}
 
 class AgentSidecar {
   constructor() {
@@ -43,7 +67,8 @@ class AgentSidecar {
     this._abort?.abort();
     this._abort = new AbortController();
 
-    const response = await fetch(`${SERVER_URL}/v1/chat`, {
+    const serverUrl = await getServerUrl();
+    const response = await fetch(`${serverUrl}/v1/chat`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -130,4 +155,4 @@ class AgentSidecar {
   }
 }
 
-module.exports = { AgentSidecar, SERVER_URL };
+module.exports = { AgentSidecar, getServerUrl };

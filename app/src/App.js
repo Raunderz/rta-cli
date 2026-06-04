@@ -23,7 +23,7 @@ import GitUI from './components/GitUI';
 
 const STORAGE_KEY = 'rta_api_key';
 const WORKSPACE_DIR = `${FileSystem.documentDirectory}workspace/`;
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://rta-tb0k.onrender.com';
+import { resolveBackendUrl } from './utils/backend';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
@@ -216,7 +216,8 @@ export default function App() {
     if (isStartingSession) return;
     setIsStartingSession(true);
     try {
-      const resp = await fetch(`${BACKEND_URL}/v1/executor/env`, {
+      const backendUrl = await resolveBackendUrl();
+      const resp = await fetch(`${backendUrl}/v1/executor/env`, {
         method: 'POST',
         headers: {
           'X-API-KEY': apiKey.trim(),
@@ -245,7 +246,8 @@ export default function App() {
   const handleEndSession = async () => {
     if (!session.id) return;
     try {
-      await fetch(`${BACKEND_URL}/v1/executor/env/${session.id}`, {
+      const backendUrl = await resolveBackendUrl();
+      await fetch(`${backendUrl}/v1/executor/env/${session.id}`, {
         method: 'DELETE',
         headers: { 
           'X-API-KEY': apiKey.trim(),

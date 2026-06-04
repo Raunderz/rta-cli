@@ -13,8 +13,7 @@ import {
 
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || 'https://rta-tb0k.onrender.com';
+import { resolveBackendUrl } from '../utils/backend';
 
 export default function Chat({ apiKey, session, onLogout }) {
   const [messages, setMessages] = useState([]);
@@ -38,10 +37,11 @@ export default function Chat({ apiKey, session, onLogout }) {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
+      const backendUrl = await resolveBackendUrl();
       const isCloud = session && session.status === 'on' && session.id;
       const chatUrl = isCloud 
-        ? `${BACKEND_URL}/v1/executor/env/chat/${session.id}`
-        : `${BACKEND_URL}/v1/chat`;
+        ? `${backendUrl}/v1/executor/env/chat/${session.id}`
+        : `${backendUrl}/v1/chat`;
 
       const xhr = new XMLHttpRequest();
       xhr.open('POST', chatUrl);
