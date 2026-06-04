@@ -1,5 +1,5 @@
 """Sequential Thinking tool for structured multi-step reasoning."""
-import json
+
 from typing import Any
 
 _thread_store: dict[str, Any] = {}
@@ -129,6 +129,11 @@ schema_sequential_thinking = {
                 "default": True,
             },
         },
-        "required": ["thought", "thought_number", "total_thoughts", "next_thought_needed"],
+        "required": [
+            "thought",
+            "thought_number",
+            "total_thoughts",
+            "next_thought_needed",
+        ],
     },
 }

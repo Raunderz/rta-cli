@@ -1,4 +1,5 @@
 """MCP (Model Context Protocol) client for Rta CLI."""
+
 import json
 import logging
 import os
@@ -21,22 +22,20 @@ def load_mcp_config() -> dict[str, Any]:
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-duckduckgo"],
                     "env": {},
-                    "_comment": "Search the web using DuckDuckGo (No API key needed)"
+                    "_comment": "Search the web using DuckDuckGo (No API key needed)",
                 },
                 "github": {
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-github"],
-                    "env": {
-                        "GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_YOUR_TOKEN"
-                    },
-                    "_comment": "Manage GitHub issues and PRs. Requires a Personal Access Token."
-                }
+                    "env": {"GITHUB_PERSONAL_ACCESS_TOKEN": "REPLACE_WITH_YOUR_TOKEN"},
+                    "_comment": "Manage GitHub issues and PRs. Requires a Personal Access Token.",
+                },
             },
-            "_instructions": "Add your MCP servers here. Supports 'command' (stdio) or 'url' (http-sse) transports. Namespaced as mcp_{server_name}_{tool_name}."
+            "_instructions": "Add your MCP servers here. Supports 'command' (stdio) or 'url' (http-sse) transports. Namespaced as mcp_{server_name}_{tool_name}.",
         }
         save_mcp_config(template)
         return template
-    
+
     with open(MCP_CONFIG_PATH) as f:
         try:
             return json.load(f)
@@ -54,6 +53,7 @@ import atexit
 
 _PROCESS_CACHE: dict[str, subprocess.Popen] = {}
 
+
 def cleanup_mcp_servers():
     """Terminate all cached MCP server processes."""
     for server_name, proc in _PROCESS_CACHE.items():
@@ -66,6 +66,7 @@ def cleanup_mcp_servers():
             except Exception:
                 pass
     _PROCESS_CACHE.clear()
+
 
 atexit.register(cleanup_mcp_servers)
 
@@ -91,7 +92,7 @@ def _get_cached_process(server_name: str, sc: dict) -> subprocess.Popen | None:
             stderr=subprocess.PIPE,
             env=full_env,
             text=True,
-            bufsize=1, # Line buffered
+            bufsize=1,  # Line buffered
         )
         _PROCESS_CACHE[server_name] = proc
         return proc
@@ -122,29 +123,36 @@ def list_mcp_tools(server_name: str) -> list[dict[str, Any]]:
             response = _send_rpc_http(sc, request)
         else:
             return []
-        
+
         return response.get("tools", []) if response else []
     except Exception:
         return []
 
 
-def map_mcp_to_openai_schema(server_name: str, mcp_tool: dict[str, Any]) -> dict[str, Any]:
+def map_mcp_to_openai_schema(
+    server_name: str, mcp_tool: dict[str, Any]
+) -> dict[str, Any]:
     """Convert MCP tool definition to OpenAI/Gemini function schema."""
     name = mcp_tool.get("name", "unknown")
     # Namespace to avoid collisions: mcp_{server}_{tool}
     namespaced_name = f"mcp_{server_name}_{name}"
-    
+
     return {
         "name": namespaced_name,
         "description": mcp_tool.get("description", ""),
-        "parameters": mcp_tool.get("inputSchema", {
-            "type": "object",
-            "properties": {},
-        }),
+        "parameters": mcp_tool.get(
+            "inputSchema",
+            {
+                "type": "object",
+                "properties": {},
+            },
+        ),
     }
 
 
-def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = True) -> Any:
+def _send_rpc_stdio(
+    server_name: str, sc: dict, request: dict, _retry: bool = True
+) -> Any:
     proc = _get_cached_process(server_name, sc)
     if not proc:
         return {"error": f"Could not start MCP server '{server_name}'"}
@@ -152,7 +160,7 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = Tr
     try:
         proc.stdin.write(json.dumps(request) + "\n")
         proc.stdin.flush()
-        
+
         # Read until we get a valid JSON-RPC response
         while True:
             line = proc.stdout.readline()
@@ -161,7 +169,9 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = Tr
                 if server_name in _PROCESS_CACHE:
                     del _PROCESS_CACHE[server_name]
                 if _retry:
-                    log.warning("MCP server '%s' died mid-RPC, retrying...", server_name)
+                    log.warning(
+                        "MCP server '%s' died mid-RPC, retrying...", server_name
+                    )
                     return _send_rpc_stdio(server_name, sc, request, _retry=False)
                 break
             try:
@@ -184,12 +194,10 @@ def _send_rpc_http(sc: dict, request: dict) -> Any:
     # Use urllib.request to avoid httpx dependency if possible (as per plan 12)
     try:
         import httpx
+
         with httpx.Client() as client:
             resp = client.post(
-                sc["url"],
-                json=request,
-                headers=sc.get("headers", {}),
-                timeout=30.0
+                sc["url"], json=request, headers=sc.get("headers", {}), timeout=30.0
             )
             resp.raise_for_status()
             return resp.json().get("result")
@@ -199,7 +207,7 @@ def _send_rpc_http(sc: dict, request: dict) -> Any:
             req = urllib.request.Request(
                 sc["url"],
                 data=json.dumps(request).encode("utf-8"),
-                headers={"Content-Type": "application/json", **sc.get("headers", {})}
+                headers={"Content-Type": "application/json", **sc.get("headers", {})},
             )
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read().decode("utf-8")).get("result")

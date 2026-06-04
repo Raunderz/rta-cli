@@ -5,6 +5,7 @@ from typing import Type, Optional, Any, Dict
 from pydantic import BaseModel
 from .types import ToolResult
 
+
 class BaseTool(ABC):
     name: str
     description: str
@@ -13,9 +14,7 @@ class BaseTool(ABC):
 
     @abstractmethod
     async def execute(
-        self, 
-        params: Any, 
-        cancel_event: Optional[asyncio.Event] = None
+        self, params: Any, cancel_event: Optional[asyncio.Event] = None
     ) -> ToolResult:
         """Execute the tool logic asynchronously."""
         pass
@@ -25,7 +24,7 @@ class BaseTool(ABC):
         return {
             "name": self.name,
             "description": self.description,
-            "parameters": self.parameters.model_json_schema()
+            "parameters": self.parameters.model_json_schema(),
         }
 
     def format_call(self, params: Any) -> str:

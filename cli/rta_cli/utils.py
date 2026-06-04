@@ -7,6 +7,7 @@ Single source of truth for:
   - Device fingerprint (UUID, persisted across runs)
   - Server URL (edit SERVER_URL below to change for dev/staging/prod)
 """
+
 import os
 import sys
 import uuid
@@ -33,6 +34,7 @@ def get_server_url() -> str:
     if os.path.exists(user_cfg):
         try:
             import json
+
             with open(user_cfg) as f:
                 cfg = json.load(f)
             url = cfg.get("server_url")
@@ -52,6 +54,7 @@ def get_server_url() -> str:
             cfg_path = os.path.join(os.path.dirname(__file__), "config.json")
         if os.path.exists(cfg_path):
             import json
+
             with open(cfg_path) as f:
                 cfg = json.load(f)
             url = cfg.get("server_url")
@@ -85,6 +88,7 @@ def _failover_check(primary: str, backup: str) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 # Directory helpers — cross-platform
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def _rta_dir() -> str:
     """
@@ -120,6 +124,7 @@ def _ensure_rta_dir() -> None:
         # Windows: set hidden attribute on the directory
         try:
             import ctypes
+
             ctypes.windll.kernel32.SetFileAttributesW(d, 0x02)  # FILE_ATTRIBUTE_HIDDEN
         except Exception:
             pass
@@ -138,6 +143,7 @@ def _set_file_perms(path: str) -> None:
 # Obfuscation (NOT encryption — prevents casual copy-paste leaking only)
 # ──────────────────────────────────────────────────────────────────────────────
 
+
 def _encode(value: str) -> str:
     return base64.b64encode(value.encode()).decode()
 
@@ -152,6 +158,7 @@ def _decode(value: str) -> str:
 # ──────────────────────────────────────────────────────────────────────────────
 # Credential store
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def save_credential(key_name: str, value: str) -> None:
     """Write key_name=<obfuscated value> to the credentials file."""
@@ -213,6 +220,7 @@ def delete_credential(key_name: str) -> None:
 # ──────────────────────────────────────────────────────────────────────────────
 # Device fingerprint
 # ──────────────────────────────────────────────────────────────────────────────
+
 
 def get_device_id() -> str:
     """Return a stable random UUID for this machine. Created on first call."""

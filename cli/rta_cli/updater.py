@@ -3,7 +3,6 @@ import sys
 import json
 import hashlib
 import time
-import shutil
 import tempfile
 import subprocess
 from urllib.request import urlopen, Request
@@ -13,6 +12,7 @@ from rta_cli.ui import Console
 VERSION_URL = "https://rta-three.vercel.app/version.json"
 CHECK_INTERVAL = 86400  # 24 hours between checks
 console = Console()
+
 
 def check_startup_update():
     """Silent update check on CLI startup. Runs at most once per 24h."""
@@ -27,7 +27,9 @@ def check_startup_update():
     except (ValueError, OSError):
         pass
     try:
-        req = Request(VERSION_URL, headers={"User-Agent": "rta-cli-updater"}, method="GET")
+        req = Request(
+            VERSION_URL, headers={"User-Agent": "rta-cli-updater"}, method="GET"
+        )
         with urlopen(req, timeout=2) as resp:
             data = json.loads(resp.read().decode())
         latest = data.get("version", "")
@@ -55,27 +57,29 @@ def get_latest_version():
         console.print(f"[red]Error fetching version info: {e}[/red]")
         return None
 
+
 def check_for_updates():
     """Compare current version with latest."""
     latest_info = get_latest_version()
     if not latest_info:
         return None
-    
+
     latest_version = latest_info.get("version")
     if latest_version and latest_version != __version__:
         return latest_info
     return None
+
 
 def download_file(url, dest_path):
     """Download file with a simple progress indicator."""
     try:
         req = Request(url, headers={"User-Agent": "rta-cli-updater"})
         with urlopen(req, timeout=30) as response:
-            total_size = int(response.info().get('Content-Length', 0))
+            total_size = int(response.info().get("Content-Length", 0))
             downloaded = 0
             block_size = 8192
-            
-            with open(dest_path, 'wb') as f:
+
+            with open(dest_path, "wb") as f:
                 while True:
                     buffer = response.read(block_size)
                     if not buffer:
@@ -85,23 +89,25 @@ def download_file(url, dest_path):
                     if total_size:
                         percent = int(downloaded * 100 / total_size)
                         print(f"\rDownloading: {percent}%", end="", flush=True)
-            print() # New line after progress
+            print()  # New line after progress
         return True
     except Exception as e:
         console.print(f"\n[red]Download failed: {e}[/red]")
         return False
 
+
 def verify_sha256(file_path, expected_hash):
     """Verify file integrity."""
     if not expected_hash:
-        return True # Skip if no hash provided
-    
+        return True  # Skip if no hash provided
+
     sha256_hash = hashlib.sha256()
     with open(file_path, "rb") as f:
         for byte_block in iter(lambda: f.read(4096), b""):
             sha256_hash.update(byte_block)
-    
+
     return sha256_hash.hexdigest() == expected_hash
+
 
 def perform_update():
     """Main update flow."""
@@ -111,15 +117,17 @@ def perform_update():
         return
 
     latest_version = latest_info["version"]
-    console.print(f"[yellow]New version available: v{latest_version} (current: v{__version__})[/yellow]")
-    
+    console.print(
+        f"[yellow]New version available: v{latest_version} (current: v{__version__})[/yellow]"
+    )
+
     is_windows = sys.platform.startswith("win")
     url_key = "url_windows" if is_windows else "url_linux"
     hash_key = "sha256_windows" if is_windows else "sha256_linux"
-    
+
     url = latest_info.get(url_key)
     expected_hash = latest_info.get(hash_key)
-    
+
     if not url:
         console.print("[red]No download URL found for your platform.[/red]")
         return
@@ -133,22 +141,26 @@ def perform_update():
             return
 
         if not verify_sha256(tmp_path, expected_hash):
-            console.print("[red]Integrity check failed! The downloaded file may be corrupted.[/red]")
+            console.print(
+                "[red]Integrity check failed! The downloaded file may be corrupted.[/red]"
+            )
             return
 
         # Path to current executable
         current_exe = os.path.abspath(sys.executable)
         # If we are running as a python script, sys.executable is the python interpreter.
         # PyInstaller sets sys.frozen = True and sys._MEIPASS.
-        if not getattr(sys, 'frozen', False):
-            console.print("[yellow]Note: Not running as a standalone binary. Update logic will only download the file.[/yellow]")
+        if not getattr(sys, "frozen", False):
+            console.print(
+                "[yellow]Note: Not running as a standalone binary. Update logic will only download the file.[/yellow]"
+            )
             console.print(f"New binary downloaded to: {tmp_path}")
             return
 
         if is_windows:
             # Windows self-replacement strategy
             # Move the current exe to a .old file and move the new one in
-            # This is tricky because the file is locked. 
+            # This is tricky because the file is locked.
             # We'll use a batch script to swap them after we exit.
             old_exe = current_exe + ".old"
             batch_content = f"""
@@ -163,9 +175,13 @@ del %0
             batch_path = os.path.join(tempfile.gettempdir(), "rta_update.bat")
             with open(batch_path, "w") as f:
                 f.write(batch_content)
-            
-            subprocess.Popen(["cmd.exe", "/c", batch_path], creationflags=subprocess.CREATE_NO_WINDOW)
-            console.print("[green]Update downloaded. Rta will restart shortly...[/green]")
+
+            subprocess.Popen(
+                ["cmd.exe", "/c", batch_path], creationflags=subprocess.CREATE_NO_WINDOW
+            )
+            console.print(
+                "[green]Update downloaded. Rta will restart shortly...[/green]"
+            )
             sys.exit(0)
         else:
             # Linux/POSIX self-replacement
@@ -180,5 +196,7 @@ del %0
         console.print(f"[red]Update failed: {e}[/red]")
     finally:
         if not is_windows and os.path.exists(tmp_path):
-            try: os.remove(tmp_path)
-            except: pass
+            try:
+                os.remove(tmp_path)
+            except:
+                pass

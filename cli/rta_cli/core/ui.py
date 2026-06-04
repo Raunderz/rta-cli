@@ -1,6 +1,5 @@
 from __future__ import annotations
 import time
-import sys
 import asyncio
 import random
 from typing import Optional, Dict
@@ -12,12 +11,17 @@ from rich.text import Text
 from rich.spinner import Spinner
 from rich.rule import Rule
 from .events import (
-    Event, ThinkingStartEvent, ThinkingDeltaEvent, ThinkingEndEvent,
-    TextStartEvent, TextDeltaEvent, TextEndEvent,
-    ToolStartEvent, ToolArgsDeltaEvent, ToolEndEvent,
-    ToolResultEvent, TurnEndEvent, UsageEvent, ErrorEvent
+    ThinkingStartEvent,
+    ThinkingDeltaEvent,
+    ThinkingEndEvent,
+    TextDeltaEvent,
+    ToolStartEvent,
+    ToolArgsDeltaEvent,
+    ToolResultEvent,
+    TurnEndEvent,
+    UsageEvent,
+    ErrorEvent,
 )
-from .types import UserMessage
 
 LOADING_MESSAGES = [
     "Navigating the codebase...",
@@ -44,17 +48,18 @@ LOADING_MESSAGES = [
     "Traversing the latent space...",
 ]
 
+
 class RtaTUI:
     def __init__(self):
         self.console = Console()
         self.live: Optional[Live] = None
         self.start_time = time.time()
-        
+
         # Current state
         self.thinking_content = ""
         self.is_thinking = False
         self.text_content = ""
-        self.active_tools: Dict[str, Dict] = {} # id -> {name, args, result}
+        self.active_tools: Dict[str, Dict] = {}  # id -> {name, args, result}
         self.loading = False
         self.total_in = 0
         self.total_out = 0
@@ -66,27 +71,25 @@ class RtaTUI:
         return Panel(
             Group(Spinner("dots", style="cyan"), Text(f" {msg}", style="cyan")),
             border_style="dim",
-            padding=(1, 2)
+            padding=(1, 2),
         )
 
     def _render_thinking(self) -> Panel:
         title = "[bold blue]Thinking[/bold blue]"
         if self.is_thinking:
-            title = Group(Spinner("dots", style="blue"), Text(" Thinking", style="bold blue"))
-        
+            title = Group(
+                Spinner("dots", style="blue"), Text(" Thinking", style="bold blue")
+            )
+
         return Panel(
             Text(self.thinking_content.strip(), style="italic dim"),
             title=title,
             border_style="blue",
-            padding=(0, 1)
+            padding=(0, 1),
         )
 
     def _render_response(self) -> Group:
-        return Group(
-            Rule(style="dim"),
-            Markdown(self.text_content),
-            Rule(style="dim")
-        )
+        return Group(Rule(style="dim"), Markdown(self.text_content), Rule(style="dim"))
 
     def _render_tool(self, tool_id: str) -> Panel:
         tool = self.active_tools[tool_id]
@@ -94,7 +97,7 @@ class RtaTUI:
         if tool.get("result"):
             res = tool["result"]
             status = "[green]Done[/green]" if res.success else "[red]Error[/red]"
-            content = res.ui_summary or res.result.split('\n')[0]
+            content = res.ui_summary or res.result.split("\n")[0]
             if not res.success:
                 content = f"[red]{res.result}[/red]"
         else:
@@ -104,7 +107,7 @@ class RtaTUI:
             Text(content, overflow="ellipsis"),
             title=f"[bold cyan]Tool: {tool['name']}[/bold cyan] {status}",
             border_style="cyan",
-            padding=(0, 1)
+            padding=(0, 1),
         )
 
     def _generate_display(self):
@@ -112,16 +115,16 @@ class RtaTUI:
             return self._render_loading()
 
         elements = []
-        
+
         if self.thinking_content:
             elements.append(self._render_thinking())
-        
+
         if self.text_content:
             elements.append(self._render_response())
-            
+
         for tid in self.active_tools:
             elements.append(self._render_tool(tid))
-            
+
         return Group(*elements)
 
     def track_input(self, text: str):
@@ -136,7 +139,12 @@ class RtaTUI:
         self.loading = True
 
         try:
-            with Live(self._generate_display(), console=self.console, refresh_per_second=10, transient=False) as live:
+            with Live(
+                self._generate_display(),
+                console=self.console,
+                refresh_per_second=10,
+                transient=False,
+            ) as live:
                 self.live = live
                 async for event in event_stream:
                     if self.loading and not isinstance(event, ErrorEvent):
@@ -152,7 +160,10 @@ class RtaTUI:
                         self.text_content += event.delta
                         self.char_out += len(event.delta)
                     elif isinstance(event, ToolStartEvent):
-                        self.active_tools[event.tool_call_id] = {"name": event.name, "args": ""}
+                        self.active_tools[event.tool_call_id] = {
+                            "name": event.name,
+                            "args": "",
+                        }
                     elif isinstance(event, ToolArgsDeltaEvent):
                         self.active_tools[event.tool_call_id]["args"] += event.delta
                     elif isinstance(event, ToolResultEvent):
@@ -164,15 +175,19 @@ class RtaTUI:
                             self.total_out += event.completion_tokens
                     elif isinstance(event, TurnEndEvent):
                         from rta_cli.notify import notify
+
                         notify("completion")
                     elif isinstance(event, ErrorEvent):
                         self.loading = False
-                        self.console.print(f"\n[bold red]Error: {event.message}[/bold red]")
+                        self.console.print(
+                            f"\n[bold red]Error: {event.message}[/bold red]"
+                        )
                         if event.details:
                             self.console.print(f"[dim]{event.details}[/dim]")
                         from rta_cli.notify import notify
+
                         notify("error")
-                    
+
                     if self.live:
                         self.live.update(self._generate_display())
         except asyncio.CancelledError:
@@ -189,4 +204,6 @@ class RtaTUI:
         mins, secs = divmod(int(duration), 60)
         in_tokens = self.total_in or self.char_in // 4
         out_tokens = self.total_out or self.char_out // 4
-        self.console.print(f"\n[dim]─ Session: {mins}m {secs}s | In: {in_tokens} | Out: {out_tokens} ─[/]\n")
+        self.console.print(
+            f"\n[dim]─ Session: {mins}m {secs}s | In: {in_tokens} | Out: {out_tokens} ─[/]\n"
+        )

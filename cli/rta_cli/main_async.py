@@ -1,15 +1,11 @@
 import asyncio
 import json
-import sys
-import time
 import os
-try:
-    import readline
-except ImportError:
-    pass
 from pathlib import Path
-from rich.console import Console
+
 from rta_cli.chat import ASCII_ART
+from rich.console import Console
+
 from .core.provider import AsyncRtaProvider
 from .core.tool_manager import ToolManager
 from .core.bash_tool import BashTool
@@ -18,19 +14,19 @@ from .core.file_tools import ListDirTool, GrepTool, GlobTool
 from .core.session import SessionManager
 from .core.context import ContextManager
 from .core.loop import Agent
-from .core.ui import RtaTUI
-from .core.events import UsageEvent
 from rta_cli.discovery import discover_project
+from .tui.app import RtaApp
 
 console = Console()
 
 global_provider = None
 
+
 async def handle_slash_command(user_input: str, provider=None) -> bool:
     global global_provider
     if provider:
         global_provider = provider
-    
+
     if not user_input.startswith("/"):
         return False
     parts = user_input[1:].split()
@@ -45,7 +41,9 @@ async def handle_slash_command(user_input: str, provider=None) -> bool:
         console.print("  /exit          - Exit the chat")
         console.print("  /thinkmode     - Toggle Ollama thinking mode (on/off)")
         console.print("  /models        - List and select local Ollama models")
-        console.print("\n[dim]You can also run any Rta CLI command here (e.g., /status, /whoami)[/dim]\n")
+        console.print(
+            "\n[dim]You can also run any Rta CLI command here (e.g., /status, /whoami)[/dim]\n"
+        )
         return True
 
     if cmd == "thinkmode":
@@ -54,7 +52,9 @@ async def handle_slash_command(user_input: str, provider=None) -> bool:
             status = "enabled" if global_provider.think else "disabled"
             console.print(f"[bold green]Ollama thinking mode {status}.[/bold green]")
         else:
-            console.print("[yellow]Thinking mode only supported for local Ollama.[/yellow]")
+            console.print(
+                "[yellow]Thinking mode only supported for local Ollama.[/yellow]"
+            )
         return True
 
     if cmd == "models":
@@ -65,20 +65,24 @@ async def handle_slash_command(user_input: str, provider=None) -> bool:
             else:
                 console.print("\n[bold]Available Ollama Models:[/bold]")
                 for i, m in enumerate(models):
-                    console.print(f"  {i+1}. {m}")
+                    console.print(f"  {i + 1}. {m}")
                 try:
-                    # In async context, console.input (rich) is blocking but usually OK for REPL.
-                    # For a truly async-safe input we'd need more, but this fixes the loop error.
-                    choice = console.input("\nSelect model number (or press Enter to cancel): ")
+                    choice = console.input(
+                        "\nSelect model number (or press Enter to cancel): "
+                    )
                     if choice.strip():
                         idx = int(choice) - 1
                         if 0 <= idx < len(models):
                             global_provider.model = models[idx]
-                            console.print(f"[bold green]Switched to model: {global_provider.model}[/bold green]")
+                            console.print(
+                                f"[bold green]Switched to model: {global_provider.model}[/bold green]"
+                            )
                 except (ValueError, IndexError):
                     console.print("[red]Invalid selection.[/red]")
         else:
-            console.print("[yellow]Model selection only supported for local Ollama.[/yellow]")
+            console.print(
+                "[yellow]Model selection only supported for local Ollama.[/yellow]"
+            )
         return True
 
     if cmd in ("clear", "cls"):
@@ -90,6 +94,8 @@ async def handle_slash_command(user_input: str, provider=None) -> bool:
 
     try:
         from rta_cli.commands import main as rta_main
+        import sys
+
         orig_argv = sys.argv
         sys.argv = ["rta", cmd] + args
         rta_main()
@@ -98,30 +104,32 @@ async def handle_slash_command(user_input: str, provider=None) -> bool:
         pass
     return True
 
+
 async def async_main(args=None):
     console = Console()
 
     if args and getattr(args, "debug", False):
         from rta_cli.debug import setup_debug_logging
+
         setup_debug_logging()
 
     console.print(f"[bold red]{ASCII_ART}[/bold red]")
-    console.print("[bold green]Rta CLI v0.5.0[/bold green]")
+    console.print("[bold green]Rta CLI v0.5.0 — Textual TUI[/bold green]")
 
     # 1. Setup Core Components
     if args and args.ollama:
         from .core.provider import OllamaProvider
+
         provider = OllamaProvider(model=args.ollama)
     else:
         provider = AsyncRtaProvider()
-    
-    # Use workspace from args if provided
+
     cwd = args.workspace if (args and args.workspace) else os.getcwd()
     if not os.path.isabs(cwd):
         cwd = os.path.abspath(cwd)
-    
+
     project_info = await asyncio.to_thread(discover_project, cwd)
-    
+
     tool_manager = ToolManager()
     tool_manager.register_tool(BashTool())
     tool_manager.register_tool(EditTool())
@@ -130,20 +138,42 @@ async def async_main(args=None):
     tool_manager.register_tool(GlobTool())
 
     from .core.lsp_tools import GetDiagnosticsTool, GoToDefinitionTool
+
     tool_manager.register_tool(GetDiagnosticsTool(cwd))
     tool_manager.register_tool(GoToDefinitionTool(cwd))
 
     from .core.legacy_tools import (
-        DiscoverProjectTool, GetFileContentsTool, GetFilesInfoTool,
-        WriteFileTool, DeleteFileTool, CreateDirTool, ApplyDiffTool,
-        EditFileAstTool, ListSkillsTool, SemanticSearchTool,
-        GetRepoSkeletonTool, QuestionTool,
-        GitStatusTool, GitDiffTool, GitLogTool, GitCommitTool,
-        GitCreatePrTool, GitBranchTool,
-        WebSearchTool, FetchUrlTool, ArxivSearchTool, SoSearchTool, SequentialThinkingTool,
-        GithubSearchTool, YoutubeTranscriptTool, DeepSearchTool,
-        MemorizeTool, RecallTool, ForgetTool,
+        DiscoverProjectTool,
+        GetFileContentsTool,
+        GetFilesInfoTool,
+        WriteFileTool,
+        DeleteFileTool,
+        CreateDirTool,
+        ApplyDiffTool,
+        EditFileAstTool,
+        ListSkillsTool,
+        SemanticSearchTool,
+        GetRepoSkeletonTool,
+        QuestionTool,
+        GitStatusTool,
+        GitDiffTool,
+        GitLogTool,
+        GitCommitTool,
+        GitCreatePrTool,
+        GitBranchTool,
+        WebSearchTool,
+        FetchUrlTool,
+        ArxivSearchTool,
+        SoSearchTool,
+        SequentialThinkingTool,
+        GithubSearchTool,
+        YoutubeTranscriptTool,
+        DeepSearchTool,
+        MemorizeTool,
+        RecallTool,
+        ForgetTool,
     )
+
     tool_manager.register_tool(DiscoverProjectTool(cwd))
     tool_manager.register_tool(GetFileContentsTool(cwd))
     tool_manager.register_tool(GetFilesInfoTool(cwd))
@@ -177,6 +207,7 @@ async def async_main(args=None):
     # Register MCP Tools
     from rta_cli.mcp import load_mcp_config, list_mcp_tools
     from .core.mcp_tool import MCPToolWrapper
+
     mcp_config = load_mcp_config()
     for server_name in mcp_config.get("mcpServers", {}):
         mcp_tools = list_mcp_tools(server_name)
@@ -185,7 +216,7 @@ async def async_main(args=None):
 
     session_dir = Path.home() / ".rta" / "sessions"
     session_manager = SessionManager(session_dir)
-    
+
     if args and args.list_sessions:
         sessions = session_manager.list_sessions()
         if not sessions:
@@ -196,14 +227,12 @@ async def async_main(args=None):
                 print(f"  {s['id']} - {s['timestamp']} ({s['turns']} turns)")
         return
 
-    current_session_id = args.resume if (args and args.resume) else session_manager.current_session_id
-
     if args and args.clear_context:
         session_manager.clear()
         console.print("[dim]Chat history cleared.[/dim]")
-    
+
     context_manager = ContextManager(provider)
-    
+
     system_prompt = (
         f"You are Rta, an expert developer CLI assistant. Working in: {cwd}\n"
         f"Project: {json.dumps(project_info)}\n"
@@ -215,70 +244,24 @@ async def async_main(args=None):
         "- Ask before destructive ops (deletes, force-push, mass rewrites) via the question tool\n"
         "- Responses stream in real-time — lead with the answer, then details\n"
     )
-    
+
     agent = Agent(
         provider=provider,
         system_prompt=system_prompt,
         tool_manager=tool_manager,
         session_manager=session_manager,
-        context_manager=context_manager
+        context_manager=context_manager,
     )
 
-    tui = RtaTUI()
+    model_name = getattr(provider, "model", "")
 
-    # 2. Main REPL Loop
-    if args and hasattr(args, "prompt") and args.prompt:
-        # Handle initial prompt if passed
-        user_input = args.prompt
-        tui.track_input(user_input)
-        cancel_event = asyncio.Event()
-        await tui.handle_events(agent.run_turn(
-            user_input, 
-            session_id=current_session_id, 
-            model=getattr(provider, "model", None),
-            cancel_event=cancel_event
-        ))
-        # After initial prompt, we might want to continue to REPL
-    
-    while True:
-        try:
-            user_input = console.input("\n[bold cyan]rta>[/bold cyan] ")
-            if not user_input.strip():
-                continue
+    app = RtaApp(agent=agent, cwd=cwd, model=model_name)
+    await app.run_async()
 
-            if user_input.startswith("/"):
-                if not await handle_slash_command(user_input, provider=provider):
-                    break
-                continue
-
-            tui.track_input(user_input)
-            cancel_event = asyncio.Event()
-            
-            try:
-                await tui.handle_events(agent.run_turn(
-                    user_input, 
-                    session_id=current_session_id, 
-                    model=getattr(provider, "model", None),
-                    cancel_event=cancel_event
-                ))
-            except asyncio.CancelledError:
-                console.print("\n[yellow]Interrupted.[/yellow]")
-            except KeyboardInterrupt:
-                cancel_event.set()
-                console.print("\n[yellow]Stopping...[/yellow]")
-                await asyncio.sleep(0.1)
-
-        except (KeyboardInterrupt, EOFError):
-            break
-        except Exception as e:
-            from rta_cli.debug import format_fatal_error, print_debug_hint
-            console.print(f"\n[bold red]Fatal Error:[/bold red] {str(e)}")
-            print_debug_hint(console)
-
-    tui.print_summary()
 
 def main(args=None):
     asyncio.run(async_main(args))
+
 
 if __name__ == "__main__":
     main()

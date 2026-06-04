@@ -2,6 +2,7 @@ import subprocess
 import os
 from rta_cli.safety import GitignoreFilter
 
+
 def grep_search(working_directory, pattern, path=".", timeout=30, allow_ignored=False):
     abs_working_dir = os.path.abspath(working_directory)
     abs_path = os.path.abspath(os.path.join(abs_working_dir, path))
@@ -21,12 +22,14 @@ def grep_search(working_directory, pattern, path=".", timeout=30, allow_ignored=
         # Add --exclude-dir for common ignored directories if not bypassing
         if not allow_ignored:
             for p in gf.patterns:
-                if p.endswith('/'):
+                if p.endswith("/"):
                     command.append(f"--exclude-dir={p[:-1]}")
                 else:
                     command.append(f"--exclude={p}")
 
-        output = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        output = subprocess.run(
+            command, capture_output=True, text=True, timeout=timeout
+        )
         if output.returncode == 0:
             return output.stdout
         elif output.returncode == 1:
@@ -38,6 +41,7 @@ def grep_search(working_directory, pattern, path=".", timeout=30, allow_ignored=
         return "Error: Grep search timed out."
     except Exception as e:
         return f"Error: {e}"
+
 
 schema_grep_search = {
     "name": "grep_search",

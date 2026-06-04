@@ -1,6 +1,6 @@
 """Persistent key-value memory with retrieval. Zero auto-context cost."""
+
 import json
-import os
 from pathlib import Path
 from typing import Any
 
@@ -63,7 +63,10 @@ schema_memorize = {
         "properties": {
             "key": {"type": "string", "description": "Unique key for this memory"},
             "value": {"type": "string", "description": "The content to remember"},
-            "tags": {"type": "string", "description": "Comma-separated tags for retrieval"},
+            "tags": {
+                "type": "string",
+                "description": "Comma-separated tags for retrieval",
+            },
         },
         "required": ["key", "value"],
     },
@@ -75,7 +78,10 @@ schema_recall = {
     "parameters": {
         "type": "object",
         "properties": {
-            "query": {"type": "string", "description": "Search term to find matching memories"},
+            "query": {
+                "type": "string",
+                "description": "Search term to find matching memories",
+            },
         },
         "required": ["query"],
     },

@@ -1,6 +1,7 @@
 import os
 from rta_cli.safety import GitignoreFilter
 
+
 def list_directory(working_directory, dir_path="", allow_ignored=False):
     abs_working_dir = os.path.abspath(working_directory)
     gf = GitignoreFilter(abs_working_dir)
@@ -17,7 +18,7 @@ def list_directory(working_directory, dir_path="", allow_ignored=False):
             entry_path = os.path.join(abs_dir_path, entry)
             if gf.is_ignored(entry_path, allow_ignored=allow_ignored):
                 continue
-                
+
             if os.path.isdir(entry_path):
                 result.append(f"{entry}/")
             else:
@@ -26,6 +27,7 @@ def list_directory(working_directory, dir_path="", allow_ignored=False):
         return "\n".join(result)
     except Exception as e:
         return f"Failed to list directory {dir_path}: {e}"
+
 
 schema_list_directory = {
     "name": "list_directory",
