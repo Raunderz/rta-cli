@@ -17,13 +17,16 @@ import platform
 # SERVER URL — single point of truth. Change this for dev/staging.
 # Can also be overridden by ~/.rta/config.json  {"server_url": "..."}
 # ──────────────────────────────────────────────────────────────────────────────
-SERVER_URL = "https://rta-tb0k.onrender.com"
+PRIMARY_URL = "https://schallten-a2xtbb49ws.hf.space"
+BACKUP_URL = "https://rta-tb0k.onrender.com"
+FAILOVER_TIMEOUT = 5  # seconds
 
 
 def get_server_url() -> str:
     """
-    Return the backend server URL.
-    Priority: ~/.rta/config.json > bundled config.json > SERVER_URL constant.
+    Return the backend server URL with failover.
+    Tries backup first (5s timeout), falls back to primary.
+    Priority: ~/.rta/config.json > bundled config.json > failover logic.
     """
     # 1. User override in ~/.rta/config.json
     user_cfg = os.path.join(_rta_dir(), "config.json")
@@ -31,8 +34,12 @@ def get_server_url() -> str:
         try:
             import json
             with open(user_cfg) as f:
-                url = json.load(f).get("server_url")
+                cfg = json.load(f)
+            url = cfg.get("server_url")
+            backup = cfg.get("backup_url")
             if url:
+                if backup:
+                    return _failover_check(url.rstrip("/"), backup.rstrip("/"))
                 return url.rstrip("/")
         except Exception:
             pass
@@ -46,14 +53,33 @@ def get_server_url() -> str:
         if os.path.exists(cfg_path):
             import json
             with open(cfg_path) as f:
-                url = json.load(f).get("server_url")
+                cfg = json.load(f)
+            url = cfg.get("server_url")
+            backup = cfg.get("backup_url")
             if url:
+                if backup:
+                    return _failover_check(url.rstrip("/"), backup.rstrip("/"))
                 return url.rstrip("/")
     except Exception:
         pass
 
-    # 3. Fallback constant
-    return SERVER_URL
+    # 3. Failover with defaults
+    return _failover_check(PRIMARY_URL, BACKUP_URL)
+
+
+def _failover_check(primary: str, backup: str) -> str:
+    """Try backup first with timeout, fall back to primary."""
+    import urllib.request
+    import urllib.error
+
+    for url in [backup, primary]:
+        try:
+            req = urllib.request.Request(f"{url}/health", method="GET")
+            urllib.request.urlopen(req, timeout=FAILOVER_TIMEOUT)
+            return url
+        except Exception:
+            continue
+    return primary
 
 
 # ──────────────────────────────────────────────────────────────────────────────
