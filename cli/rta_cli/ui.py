@@ -1,6 +1,7 @@
 import sys
 import re
 
+
 class Console:
     def print(self, *args, **kwargs):
         text = " ".join(map(str, args))
@@ -25,12 +26,12 @@ class Console:
             "dim": "2",
             "bold": "1",
         }
-        
+
         def replace_tag(match):
             tag = match.group(1)
             if tag.startswith("/"):
                 return "\033[0m"
-            
+
             parts = tag.split()
             codes = []
             for p in parts:
@@ -46,7 +47,7 @@ class Console:
     def status(self, message, spinner="dots"):
         import threading
         import time
-        
+
         class StatusContext:
             def __init__(self, console, message):
                 self.console = console
@@ -95,6 +96,7 @@ class Console:
 
         return StatusContext(self, message)
 
+
 def markdown(text):
     # Very basic Markdown to ANSI
     text = re.sub(r"\*\*(.*?)\*\*", r"\033[1m\1\033[0m", text)
@@ -103,5 +105,7 @@ def markdown(text):
     text = re.sub(r"```[a-z]*\n?(.*?)```", r"\033[36m\1\033[0m", text, flags=re.S)
     return text
 
+
 class Text(str):
-    def append(self, text, style=None): return self + text
+    def append(self, text, style=None):
+        return self + text

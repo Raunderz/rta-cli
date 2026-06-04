@@ -29,32 +29,34 @@ schema_question = {
 }
 
 
-def ask_question(working_directory, header=None, question=None, options=None, multiple=False):
+def ask_question(
+    working_directory, header=None, question=None, options=None, multiple=False
+):
     if options is None:
         options = []
-    
+
     output = []
     if header:
         output.append(f"\n{header}")
     output.append(question)
-    
+
     if options:
         for i, opt in enumerate(options, 1):
             output.append(f"  {i}. {opt}")
         output.append("Type the number of your choice")
     else:
         output.append("Type your answer:")
-    
+
     print("\n" + "\n".join(output) + "\n", file=sys.stdout)
-    
+
     try:
         answer = input("> ").strip()
     except (EOFError, KeyboardInterrupt):
         return "Cancelled"
-    
+
     if not answer:
         return "No answer provided"
-    
+
     if options:
         try:
             idx = int(answer) - 1
@@ -66,5 +68,5 @@ def ask_question(working_directory, header=None, question=None, options=None, mu
                 if opt.lower() == answer.lower():
                     return opt
             return f"Unknown choice: {answer}"
-    
+
     return answer

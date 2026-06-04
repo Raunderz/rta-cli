@@ -3,11 +3,13 @@ import re
 from typing import List, Dict, Optional
 from rta_cli.utils import _rta_dir
 
+
 def get_skills_dir() -> str:
     """Return the global skills directory."""
     d = os.path.join(_rta_dir(), "skills")
     os.makedirs(d, exist_ok=True)
     return d
+
 
 def list_available_skills() -> List[Dict[str, str]]:
     """
@@ -16,7 +18,7 @@ def list_available_skills() -> List[Dict[str, str]]:
     """
     skills_dir = get_skills_dir()
     skills = []
-    
+
     if not os.path.exists(skills_dir):
         return []
 
@@ -26,11 +28,14 @@ def list_available_skills() -> List[Dict[str, str]]:
             skill_md = os.path.join(item_path, "SKILL.md")
             if os.path.exists(skill_md):
                 description = _extract_description(skill_md)
-                skills.append({
-                    "name": item,
-                    "description": description or "No description provided."
-                })
+                skills.append(
+                    {
+                        "name": item,
+                        "description": description or "No description provided.",
+                    }
+                )
     return sorted(skills, key=lambda x: x["name"])
+
 
 def load_skill_content(name: str) -> Optional[str]:
     """Read the full content of a skill's SKILL.md."""
@@ -41,10 +46,12 @@ def load_skill_content(name: str) -> Optional[str]:
             return f.read()
     return None
 
+
 def has_hidden_content(content: str) -> bool:
     """Detect HTML comments or other hidden content in Markdown."""
     # Matches <!-- any content -->
     return bool(re.search(r"<!--[\s\S]*?-->", content))
+
 
 def _extract_description(path: str) -> Optional[str]:
     """

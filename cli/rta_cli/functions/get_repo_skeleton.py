@@ -1,5 +1,5 @@
-import os
 from rta_cli.index.manager import BM25Indexer
+
 
 def get_repo_skeleton(working_directory: str):
     """
@@ -13,6 +13,7 @@ def get_repo_skeleton(working_directory: str):
         return indexer.get_skeleton()
     except Exception as e:
         return f"Error getting repo skeleton: {e}"
+
 
 schema_get_repo_skeleton = {
     "name": "get_repo_skeleton",

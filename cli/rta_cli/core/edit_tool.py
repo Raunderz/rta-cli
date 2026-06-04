@@ -8,10 +8,12 @@ from pydantic import BaseModel, Field
 from .tool_base import BaseTool
 from .types import ToolResult
 
+
 class EditParams(BaseModel):
     path: str = Field(description="Relative path to the file to edit")
     old_string: str = Field(description="Exact text to find and replace")
     new_string: str = Field(description="New text to replace old_string with")
+
 
 class EditTool(BaseTool):
     name = "edit"
@@ -19,20 +21,27 @@ class EditTool(BaseTool):
     parameters = EditParams
     icon = "✏️"
 
-    async def execute(self, params: EditParams, cancel_event: Optional[asyncio.Event] = None) -> ToolResult:
+    async def execute(
+        self, params: EditParams, cancel_event: Optional[asyncio.Event] = None
+    ) -> ToolResult:
         try:
             if not os.path.isfile(params.path):
-                return ToolResult(success=False, result=f"Error: File '{params.path}' not found.")
+                return ToolResult(
+                    success=False, result=f"Error: File '{params.path}' not found."
+                )
 
-            async with aiofiles.open(params.path, mode='r') as f:
+            async with aiofiles.open(params.path, mode="r") as f:
                 old_content = await f.read()
 
             if params.old_string not in old_content:
-                return ToolResult(success=False, result=f"Error: 'old_string' not found in {params.path}.")
+                return ToolResult(
+                    success=False,
+                    result=f"Error: 'old_string' not found in {params.path}.",
+                )
 
             new_content = old_content.replace(params.old_string, params.new_string, 1)
 
-            async with aiofiles.open(params.path, mode='w') as f:
+            async with aiofiles.open(params.path, mode="w") as f:
                 await f.write(new_content)
 
             # Generate diff for UI
@@ -41,7 +50,7 @@ class EditTool(BaseTool):
             return ToolResult(
                 success=True,
                 result=f"Successfully edited {params.path}",
-                ui_details=diff
+                ui_details=diff,
             )
 
         except Exception as e:
@@ -49,10 +58,10 @@ class EditTool(BaseTool):
 
     def _generate_diff(self, path: str, old: str, new: str) -> str:
         diff = difflib.unified_diff(
-            old.splitlines(), 
-            new.splitlines(), 
-            fromfile=f"a/{path}", 
+            old.splitlines(),
+            new.splitlines(),
+            fromfile=f"a/{path}",
             tofile=f"b/{path}",
-            lineterm=""
+            lineterm="",
         )
         return "\n".join(diff)

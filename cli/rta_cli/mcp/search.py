@@ -22,12 +22,14 @@ def _search_ddgs(query: str, max_results: int = 5) -> list[dict]:
     try:
         with DDGS() as ddgs:
             for r in ddgs.text(query, max_results=max_results):
-                results.append({
-                    "title": r.get("title", ""),
-                    "url": r.get("href", ""),
-                    "snippet": r.get("body", ""),
-                    "engine": "duckduckgo",
-                })
+                results.append(
+                    {
+                        "title": r.get("title", ""),
+                        "url": r.get("href", ""),
+                        "snippet": r.get("body", ""),
+                        "engine": "duckduckgo",
+                    }
+                )
     except Exception:
         pass
     return results
@@ -42,12 +44,14 @@ def _search_searxng(query: str, max_results: int = 5) -> list[dict]:
             with urllib.request.urlopen(url, timeout=5) as resp:
                 data = json.loads(resp.read().decode())
                 for r in data.get("results", [])[:max_results]:
-                    results.append({
-                        "title": r.get("title", ""),
-                        "url": r.get("url", ""),
-                        "snippet": r.get("content", ""),
-                        "engine": "searxng",
-                    })
+                    results.append(
+                        {
+                            "title": r.get("title", ""),
+                            "url": r.get("url", ""),
+                            "snippet": r.get("content", ""),
+                            "engine": "searxng",
+                        }
+                    )
                 if results:
                     break
         except Exception:
@@ -58,24 +62,30 @@ def _search_searxng(query: str, max_results: int = 5) -> list[dict]:
 def _search_wikipedia(query: str, max_results: int = 5) -> list[dict]:
     results = []
     try:
-        params = urllib.parse.urlencode({
-            "action": "query",
-            "list": "search",
-            "srsearch": query,
-            "format": "json",
-            "srlimit": max_results,
-        })
+        params = urllib.parse.urlencode(
+            {
+                "action": "query",
+                "list": "search",
+                "srsearch": query,
+                "format": "json",
+                "srlimit": max_results,
+            }
+        )
         url = f"https://en.wikipedia.org/w/api.php?{params}"
         with urllib.request.urlopen(url, timeout=5) as resp:
             data = json.loads(resp.read().decode())
             for r in data.get("query", {}).get("search", []):
                 title = r.get("title", "")
-                results.append({
-                    "title": title,
-                    "url": f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}",
-                    "snippet": r.get("snippet", "").replace("<span class=\"searchmatch\">", "").replace("</span>", ""),
-                    "engine": "wikipedia",
-                })
+                results.append(
+                    {
+                        "title": title,
+                        "url": f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}",
+                        "snippet": r.get("snippet", "")
+                        .replace('<span class="searchmatch">', "")
+                        .replace("</span>", ""),
+                        "engine": "wikipedia",
+                    }
+                )
     except Exception:
         pass
     return results
@@ -162,7 +172,11 @@ def fetch_url(url: str) -> str:
         )
         with urllib.request.urlopen(req, timeout=15) as resp:
             content_type = resp.headers.get("Content-Type", "")
-            if "text" not in content_type and "html" not in content_type and "json" not in content_type:
+            if (
+                "text" not in content_type
+                and "html" not in content_type
+                and "json" not in content_type
+            ):
                 return f"Error: Unsupported content type: {content_type}"
             raw = resp.read(MAX_FETCH_SIZE)
             # Try UTF-8, fall back to latin-1
@@ -182,14 +196,23 @@ def fetch_url(url: str) -> str:
     # Remove HTML comments (<!-- ... -->) before any other processing
     cleaned = re.sub(r"<!--.*?-->", "", html, flags=re.DOTALL)
     # Remove script/style tags and their contents
-    cleaned = re.sub(r"<(script|style|nav|footer|header)[^>]*>.*?</\1>", "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+    cleaned = re.sub(
+        r"<(script|style|nav|footer|header)[^>]*>.*?</\1>",
+        "",
+        cleaned,
+        flags=re.DOTALL | re.IGNORECASE,
+    )
     # Remove all HTML tags
     cleaned = re.sub(r"<[^>]+>", " ", cleaned)
     # Decode HTML entities
     cleaned = cleaned.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">")
-    cleaned = cleaned.replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
+    cleaned = (
+        cleaned.replace("&quot;", '"').replace("&#39;", "'").replace("&nbsp;", " ")
+    )
     cleaned = re.sub(r"&#(\d+);", lambda m: chr(int(m.group(1))), cleaned)
-    cleaned = re.sub(r"&#[xX]([0-9a-fA-F]+);", lambda m: chr(int(m.group(1), 16)), cleaned)
+    cleaned = re.sub(
+        r"&#[xX]([0-9a-fA-F]+);", lambda m: chr(int(m.group(1), 16)), cleaned
+    )
     cleaned = re.sub(r"&[a-zA-Z]+;", " ", cleaned)
     # Collapse whitespace
     cleaned = re.sub(r"\s+", " ", cleaned).strip()
@@ -251,35 +274,44 @@ schema_web_search = {
 def arxiv_search(query: str, max_results: int = 5) -> str:
     """Search ArXiv for technical and scientific papers."""
     try:
-        params = urllib.parse.urlencode({
-            "search_query": f"all:{query}",
-            "start": 0,
-            "max_results": max_results,
-        })
+        params = urllib.parse.urlencode(
+            {
+                "search_query": f"all:{query}",
+                "start": 0,
+                "max_results": max_results,
+            }
+        )
         url = f"http://export.arxiv.org/api/query?{params}"
         with urllib.request.urlopen(url, timeout=10) as resp:
             data = resp.read().decode("utf-8")
-            
+
             entries = re.findall(r"<entry>(.*?)</entry>", data, re.DOTALL)
             results = []
             for entry in entries[:max_results]:
                 title_m = re.search(r"<title>(.*?)</title>", entry, re.DOTALL)
                 summary_m = re.search(r"<summary>(.*?)</summary>", entry, re.DOTALL)
                 id_m = re.search(r"<id>(.*?)</id>", entry, re.DOTALL)
-                
+
                 title = strip_html(title_m.group(1)).strip() if title_m else "No Title"
-                summary = strip_html(summary_m.group(1)).strip() if summary_m else "No Summary"
+                summary = (
+                    strip_html(summary_m.group(1)).strip()
+                    if summary_m
+                    else "No Summary"
+                )
                 link = id_m.group(1).strip() if id_m else ""
-                
-                results.append({
-                    "title": title,
-                    "url": link,
-                    "snippet": summary[:300] + ("..." if len(summary) > 300 else ""),
-                })
-            
+
+                results.append(
+                    {
+                        "title": title,
+                        "url": link,
+                        "snippet": summary[:300]
+                        + ("..." if len(summary) > 300 else ""),
+                    }
+                )
+
             if not results:
                 return "No ArXiv results found."
-                
+
             output = f"ArXiv results for: {query}\n\n"
             for i, r in enumerate(results, 1):
                 output += f"{i}. **{r['title']}**\n   {r['snippet']}\n   {r['url']}\n\n"
@@ -291,37 +323,48 @@ def arxiv_search(query: str, max_results: int = 5) -> str:
 def so_search(query: str, max_results: int = 5) -> str:
     """Search Stack Overflow for programming questions."""
     try:
-        params = urllib.parse.urlencode({
-            "order": "desc",
-            "sort": "relevance",
-            "q": query,
-            "site": "stackoverflow",
-        })
+        params = urllib.parse.urlencode(
+            {
+                "order": "desc",
+                "sort": "relevance",
+                "q": query,
+                "site": "stackoverflow",
+            }
+        )
         url = f"https://api.stackexchange.com/2.3/search/advanced?{params}"
-        req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip", "User-Agent": "Rta-CLI"})
+        req = urllib.request.Request(
+            url, headers={"Accept-Encoding": "gzip", "User-Agent": "Rta-CLI"}
+        )
         with urllib.request.urlopen(req, timeout=10) as resp:
             content = resp.read()
             if resp.info().get("Content-Encoding") == "gzip":
                 content = gzip.decompress(content)
-            
+
             data = json.loads(content.decode("utf-8"))
             results = []
             for item in data.get("items", [])[:max_results]:
-                title = item.get("title", "").replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
+                title = (
+                    item.get("title", "")
+                    .replace("&quot;", '"')
+                    .replace("&#39;", "'")
+                    .replace("&amp;", "&")
+                )
                 link = item.get("link", "")
                 tags = ", ".join(item.get("tags", []))
                 score = item.get("score", 0)
                 is_answered = " [Answered]" if item.get("is_answered") else ""
-                
-                results.append({
-                    "title": f"{title}{is_answered}",
-                    "url": link,
-                    "snippet": f"Tags: {tags}. Score: {score}. Views: {item.get('view_count', 0)}",
-                })
-            
+
+                results.append(
+                    {
+                        "title": f"{title}{is_answered}",
+                        "url": link,
+                        "snippet": f"Tags: {tags}. Score: {score}. Views: {item.get('view_count', 0)}",
+                    }
+                )
+
             if not results:
                 return "No Stack Overflow results found."
-                
+
             output = f"Stack Overflow results for: {query}\n\n"
             for i, r in enumerate(results, 1):
                 output += f"{i}. **{r['title']}**\n   {r['snippet']}\n   {r['url']}\n\n"
@@ -371,16 +414,28 @@ schema_so_search = {
 }
 
 
-def github_search(query: str, search_type: str = "repositories", max_results: int = 5) -> str:
+def github_search(
+    query: str, search_type: str = "repositories", max_results: int = 5
+) -> str:
     """Search GitHub for repositories, code, or issues."""
     valid_types = {"repositories", "code", "issues"}
     if search_type not in valid_types:
         return f"Error: search_type must be one of: {', '.join(sorted(valid_types))}"
     try:
-        params_v = {"q": query, "per_page": max_results, "sort": "stars" if search_type == "repositories" else None}
+        params_v = {
+            "q": query,
+            "per_page": max_results,
+            "sort": "stars" if search_type == "repositories" else None,
+        }
         params_s = urllib.parse.urlencode({k: v for k, v in params_v.items() if v})
         url = f"https://api.github.com/search/{search_type}?{params_s}"
-        req = urllib.request.Request(url, headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "Rta-CLI/0.5.0"})
+        req = urllib.request.Request(
+            url,
+            headers={
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "Rta-CLI/0.5.0",
+            },
+        )
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             items = data.get("items", [])[:max_results]
@@ -405,7 +460,9 @@ def github_search(query: str, search_type: str = "repositories", max_results: in
                     title = item.get("title", "")
                     state = item.get("state", "")
                     repo_url = item.get("repository_url", "")
-                    repo = repo_url.split("/repos/")[-1] if "/repos/" in repo_url else ""
+                    repo = (
+                        repo_url.split("/repos/")[-1] if "/repos/" in repo_url else ""
+                    )
                     comments = item.get("comments", 0)
                     url_link = item.get("html_url", "")
                     output += f"{i}. **{title}** ({state}, {comments} comments)\n   Repo: {repo}\n   {url_link}\n\n"
@@ -513,7 +570,33 @@ schema_youtube_transcript = {
 def _expand_queries(query: str, num_queries: int = 3) -> list[str]:
     """Generate sub-queries from a single query using simple heuristics."""
     queries = [query]
-    stop_words = {"the", "a", "an", "in", "of", "for", "on", "and", "to", "is", "what", "how", "why", "does", "do", "are", "with", "at", "by", "from", "or", "as", "be", "this", "that"}
+    stop_words = {
+        "the",
+        "a",
+        "an",
+        "in",
+        "of",
+        "for",
+        "on",
+        "and",
+        "to",
+        "is",
+        "what",
+        "how",
+        "why",
+        "does",
+        "do",
+        "are",
+        "with",
+        "at",
+        "by",
+        "from",
+        "or",
+        "as",
+        "be",
+        "this",
+        "that",
+    }
     words = query.split()
     content_words = [w for w in words if w.lower() not in stop_words]
     if len(words) > 2:
@@ -527,7 +610,11 @@ def _expand_queries(query: str, num_queries: int = 3) -> list[str]:
         second_half = " ".join(words[mid:])
         if first_half != query and first_half not in queries:
             queries.append(first_half)
-        if len(queries) < num_queries and second_half != query and second_half not in queries:
+        if (
+            len(queries) < num_queries
+            and second_half != query
+            and second_half not in queries
+        ):
             queries.append(second_half)
     seen = set()
     result = []
@@ -554,7 +641,9 @@ def deep_search(query: str, max_results: int = 8, num_queries: int = 3) -> str:
     all_results = all_results[:max_results]
     if not all_results:
         return f"No results found for: {query}"
-    output = f"Deep search results for: {query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
+    output = (
+        f"Deep search results for: {query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
+    )
     for i, r in enumerate(all_results, 1):
         output += f"{i}. **{r['title']}** ({r.get('engine', 'web')})\n   {r['snippet']}\n   {r['url']}\n\n"
     return output.strip()

@@ -1,5 +1,6 @@
 import os
 
+
 def write_file(working_directory, file_path, content, overwrite=True):
     abs_working_dir = os.path.abspath(working_directory)
     abs_file_path = os.path.abspath(os.path.join(working_directory, file_path))
@@ -16,13 +17,18 @@ def write_file(working_directory, file_path, content, overwrite=True):
     try:
         # Check if file exists and we are not allowed to overwrite
         if os.path.exists(abs_file_path) and not overwrite:
-            return f"Error: File {file_path} already exists and overwrite is set to False."
+            return (
+                f"Error: File {file_path} already exists and overwrite is set to False."
+            )
 
         with open(abs_file_path, "w") as f:
             f.write(content)
-        return f"Successfully wrote to {file_path} ( {len(content)} characters written )"
+        return (
+            f"Successfully wrote to {file_path} ( {len(content)} characters written )"
+        )
     except Exception as e:
         return f"Failed to write the file {file_path} : {e}"
+
 
 schema_write_file = {
     "name": "write_file",

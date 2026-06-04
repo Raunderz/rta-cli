@@ -19,13 +19,16 @@ _SOUND_FILES: dict[NotificationEvent, str] = {
     "error": "error.wav",
 }
 
+
 @cache
 def _platform() -> str:
     return platform.system().lower()
 
+
 @cache
 def _sound_path(event: NotificationEvent) -> Path:
     return Path(str(resources.files("rta_cli.sounds").joinpath(_SOUND_FILES[event])))
+
 
 @cache
 def _linux_player() -> str | None:
@@ -34,11 +37,14 @@ def _linux_player() -> str | None:
             return player
     return None
 
+
 def _run(command: list[str]) -> None:
     subprocess.Popen(command, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
+
 def _play_macos(sound_path: Path, volume: float) -> None:
     _run(["afplay", "-v", str(volume), str(sound_path)])
+
 
 def _play_linux(sound_path: Path, volume: float) -> None:
     player = _linux_player()
@@ -75,6 +81,7 @@ def _play_linux(sound_path: Path, volume: float) -> None:
                     sound,
                 ]
             )
+
 
 def notify(event: NotificationEvent, volume: float = DEFAULT_VOLUME) -> None:
     try:

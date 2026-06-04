@@ -1,5 +1,6 @@
 from rta_cli.skills import list_available_skills
 
+
 def list_skills(working_directory=None):
     """
     Returns a list of all globally installed skills with their descriptions.
@@ -7,11 +8,12 @@ def list_skills(working_directory=None):
     skills = list_available_skills()
     if not skills:
         return "No skills found in ~/.rta/skills/"
-    
+
     result = "Available Skills:\n"
     for s in skills:
         result += f"- {s['name']}: {s['description']}\n"
     return result
+
 
 schema_list_skills = {
     "name": "list_skills",

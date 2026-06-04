@@ -1,5 +1,6 @@
 import os
 
+
 def delete_file(working_directory, file_path, force=False):
     abs_working_dir = os.path.abspath(working_directory)
     abs_file_path = os.path.abspath(os.path.join(working_directory, file_path))
@@ -10,6 +11,7 @@ def delete_file(working_directory, file_path, force=False):
 
     if not force:
         from rta_cli.safety import confirm_destructive
+
         if not confirm_destructive("delete_file", file_path):
             return "Cancelled: delete_file was not confirmed"
 
@@ -18,6 +20,7 @@ def delete_file(working_directory, file_path, force=False):
         return f"Successfully deleted {file_path}"
     except Exception as e:
         return f"Failed to delete {file_path}: {e}"
+
 
 schema_delete_file = {
     "name": "delete_file",

@@ -52,7 +52,11 @@ schema_git_log = {
     "parameters": {
         "type": "object",
         "properties": {
-            "n": {"type": "integer", "description": "Number of commits to show", "default": 10},
+            "n": {
+                "type": "integer",
+                "description": "Number of commits to show",
+                "default": 10,
+            },
         },
     },
 }
@@ -64,7 +68,11 @@ schema_git_commit = {
         "type": "object",
         "properties": {
             "message": {"type": "string", "description": "Commit message"},
-            "auto_add": {"type": "boolean", "description": "Run git add -A before commit", "default": True},
+            "auto_add": {
+                "type": "boolean",
+                "description": "Run git add -A before commit",
+                "default": True,
+            },
         },
         "required": ["message"],
     },
@@ -78,7 +86,11 @@ schema_git_create_pr = {
         "properties": {
             "title": {"type": "string", "description": "PR title"},
             "body": {"type": "string", "description": "PR description"},
-            "base": {"type": "string", "description": "Target branch", "default": "main"},
+            "base": {
+                "type": "string",
+                "description": "Target branch",
+                "default": "main",
+            },
         },
         "required": ["title"],
     },
@@ -156,12 +168,16 @@ def git_commit(working_directory, message=None, auto_add=True, force=False):
         return "Error: Commit message is required"
     if not os.path.isdir(os.path.join(working_directory, ".git")):
         return "Error: Not a git repository"
-    
+
     if auto_add and not force:
-        staged = _run_git(working_directory, "diff", "--cached", "--name-only", check=False)
+        staged = _run_git(
+            working_directory, "diff", "--cached", "--name-only", check=False
+        )
         unstaged = _run_git(working_directory, "diff", "--name-only", check=False)
-        untracked = _run_git(working_directory, "ls-files", "--others", "--exclude-standard", check=False)
-        
+        untracked = _run_git(
+            working_directory, "ls-files", "--others", "--exclude-standard", check=False
+        )
+
         all_files = []
         if staged:
             all_files.extend(staged.split("\n"))
@@ -170,14 +186,14 @@ def git_commit(working_directory, message=None, auto_add=True, force=False):
         if untracked:
             all_files.extend(untracked.split("\n"))
         all_files = [f for f in set(all_files) if f]
-        
+
         secret_files = _scan_for_secrets(working_directory, all_files)
         if secret_files:
             return f"Warning: Potential secrets detected in: {', '.join(secret_files)}\nUse --force to commit anyway."
-    
+
     if auto_add:
         _run_git(working_directory, "add", "-A", check=False)
-    
+
     return _run_git(working_directory, "commit", "-m", message)
 
 
@@ -186,14 +202,14 @@ def git_create_pr(working_directory, title=None, body="", base="main"):
         return "Error: PR title is required"
     if not os.path.isdir(os.path.join(working_directory, ".git")):
         return "Error: Not a git repository"
-    
+
     result = subprocess.run(
         ["gh", "pr", "create", "-t", title, "-b", body or title, "-B", base],
         cwd=working_directory,
         capture_output=True,
         text=True,
     )
-    
+
     if result.returncode != 0:
         return f"Error creating PR: {result.stderr.strip()}"
     return result.stdout.strip()
@@ -202,21 +218,21 @@ def git_create_pr(working_directory, title=None, body="", base="main"):
 def git_branch(working_directory, list=False, create=None, delete=None):
     if not os.path.isdir(os.path.join(working_directory, ".git")):
         return "Error: Not a git repository"
-    
+
     if create:
         _run_git(working_directory, "checkout", "-b", create)
         return f"Created and switched to branch: {create}"
-    
+
     if delete:
         result = _run_git(working_directory, "branch", "-d", delete, check=False)
         if "error" in result.lower():
             return result
         return f"Deleted branch: {delete}"
-    
+
     if list:
         current = _run_git(working_directory, "branch", "--show-current")
         branches = _run_git(working_directory, "branch", "-a")
         output = [f"Current: {current}", "", branches]
         return "\n".join(output)
-    
+
     return _run_git(working_directory, "branch", "--show-current")

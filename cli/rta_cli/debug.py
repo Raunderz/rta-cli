@@ -1,7 +1,6 @@
 """Debug logging and refined traceback utilities."""
+
 import logging
-import os
-import sys
 import traceback
 from pathlib import Path
 
@@ -17,10 +16,12 @@ def setup_debug_logging():
 
     file_handler = logging.FileHandler(DEBUG_LOG_PATH, mode="w")
     file_handler.setLevel(logging.DEBUG)
-    file_handler.setFormatter(logging.Formatter(
-        "%(asctime)s [%(name)s] %(levelname)s: %(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S"
-    ))
+    file_handler.setFormatter(
+        logging.Formatter(
+            "%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
+    )
 
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)

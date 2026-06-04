@@ -1,5 +1,6 @@
 import sys
 import os
+
 sys.path.append(os.path.abspath("cli"))
 
 from rta_cli.functions.semantic_search import semantic_search

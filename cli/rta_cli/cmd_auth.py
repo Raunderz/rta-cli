@@ -8,13 +8,14 @@ from rta_cli.auth import do_login, do_logout, do_whoami, do_status
 def auth(args):
     """Legacy dispatcher — prefer 'rta login/logout/whoami/status'."""
     import sys
+
     if not args:
         print("Usage: rta login | logout | whoami | status", file=sys.stderr)
         sys.exit(1)
 
     subcmd = args[0]
     dispatch = {
-        "login":  do_login,
+        "login": do_login,
         "logout": do_logout,
         "whoami": do_whoami,
         "status": do_status,

@@ -1,19 +1,32 @@
 import json
 import httpx
 import asyncio
-import time
-from typing import AsyncIterator, List, Optional, Union
-from .types import Message, TextContent, AssistantMessage, ToolCall, FunctionCall, Usage
+from typing import AsyncIterator, List, Optional
+from .types import Message, AssistantMessage
 from .events import (
-    Event, ThinkingStartEvent, ThinkingDeltaEvent, ThinkingEndEvent,
-    TextStartEvent, TextDeltaEvent, TextEndEvent,
-    ToolStartEvent, ToolArgsDeltaEvent, ToolEndEvent,
-    UsageEvent, ErrorEvent
+    Event,
+    ThinkingStartEvent,
+    ThinkingDeltaEvent,
+    ThinkingEndEvent,
+    TextStartEvent,
+    TextDeltaEvent,
+    TextEndEvent,
+    ToolStartEvent,
+    ToolArgsDeltaEvent,
+    ToolEndEvent,
+    UsageEvent,
+    ErrorEvent,
 )
 from rta_cli.utils import load_credential, get_device_id, get_server_url
 
+
 class OllamaProvider:
-    def __init__(self, model: str = "deepseek-r1", base_url: str = "http://localhost:11434", think: bool = False):
+    def __init__(
+        self,
+        model: str = "deepseek-r1",
+        base_url: str = "http://localhost:11434",
+        think: bool = False,
+    ):
         self.model = model
         self.base_url = base_url
         self.think = think
@@ -31,29 +44,30 @@ class OllamaProvider:
         return []
 
     async def stream(
-        self, 
-        messages: List[Message], 
+        self,
+        messages: List[Message],
         system_prompt: Optional[str] = None,
-        tools: Optional[List[dict]] = None
+        tools: Optional[List[dict]] = None,
     ) -> AsyncIterator[Event]:
         # ... (logic remains same, but use self.think)
         ollama_messages = []
         if system_prompt:
             ollama_messages.append({"role": "system", "content": system_prompt})
-        
+
         for m in messages:
             msg_dict = m.model_dump()
-            if msg_dict.get("content") is None: msg_dict["content"] = ""
+            if msg_dict.get("content") is None:
+                msg_dict["content"] = ""
             ollama_messages.append(msg_dict)
 
         payload = {
             "model": self.model,
             "messages": ollama_messages,
             "stream": True,
-            "think": self.think, # Explicitly pass think mode
+            "think": self.think,  # Explicitly pass think mode
             "options": {
                 "num_ctx": 32000,
-            }
+            },
         }
         if tools:
             payload["tools"] = tools
@@ -61,13 +75,14 @@ class OllamaProvider:
         try:
             async with httpx.AsyncClient(timeout=120.0) as client:
                 async with client.stream(
-                    "POST", 
-                    f"{self.base_url}/api/chat", 
-                    json=payload
+                    "POST", f"{self.base_url}/api/chat", json=payload
                 ) as response:
                     if response.status_code != 200:
                         error_text = await response.aread()
-                        yield ErrorEvent(message=f"Ollama Error {response.status_code}", details=error_text.decode())
+                        yield ErrorEvent(
+                            message=f"Ollama Error {response.status_code}",
+                            details=error_text.decode(),
+                        )
                         return
 
                     thinking_started = False
@@ -78,10 +93,12 @@ class OllamaProvider:
                     emitted_tool_ids = set()
 
                     async for line in response.aiter_lines():
-                        if not line: continue
+                        if not line:
+                            continue
                         try:
                             chunk = json.loads(line)
-                        except json.JSONDecodeError: continue
+                        except json.JSONDecodeError:
+                            continue
 
                         if chunk.get("done"):
                             # ... usage logic ...
@@ -89,12 +106,13 @@ class OllamaProvider:
                                 yield UsageEvent(
                                     prompt_tokens=chunk.get("prompt_eval_count", 0),
                                     completion_tokens=chunk.get("eval_count", 0),
-                                    total_tokens=chunk.get("prompt_eval_count", 0) + chunk.get("eval_count", 0)
+                                    total_tokens=chunk.get("prompt_eval_count", 0)
+                                    + chunk.get("eval_count", 0),
                                 )
                             break
 
                         msg = chunk.get("message", {})
-                        
+
                         # Handle Thinking/Reasoning
                         thought = msg.get("thinking") or msg.get("reasoning_content")
                         if thought:
@@ -103,7 +121,7 @@ class OllamaProvider:
                                 thinking_started = True
                             yield ThinkingDeltaEvent(delta=thought)
                             current_thinking += thought
-                        
+
                         # Handle Content
                         content = msg.get("content", "")
                         if content:
@@ -121,20 +139,26 @@ class OllamaProvider:
                         if tool_calls:
                             # Ollama sometimes repeats tool_calls in chunks, or appends them
                             for i, tc in enumerate(tool_calls):
-                                # Small models hallucinate tool calls. 
+                                # Small models hallucinate tool calls.
                                 # Verification: check if tool name exists in registered tools
                                 fn = tc.get("function", {})
                                 name = fn.get("name", "")
-                                if tools and not any(t["function"]["name"] == name for t in tools):
+                                if tools and not any(
+                                    t["function"]["name"] == name for t in tools
+                                ):
                                     # Hallucination or invalid tool
                                     continue
 
-                                tc_id = f"ollama_{i}" # Stable ID for this turn
+                                tc_id = f"ollama_{i}"  # Stable ID for this turn
                                 if tc_id not in emitted_tool_ids:
                                     args = json.dumps(fn.get("arguments", {}))
                                     yield ToolStartEvent(tool_call_id=tc_id, name=name)
-                                    yield ToolArgsDeltaEvent(tool_call_id=tc_id, delta=args)
-                                    yield ToolEndEvent(tool_call_id=tc_id, name=name, arguments=args)
+                                    yield ToolArgsDeltaEvent(
+                                        tool_call_id=tc_id, delta=args
+                                    )
+                                    yield ToolEndEvent(
+                                        tool_call_id=tc_id, name=name, arguments=args
+                                    )
                                     emitted_tool_ids.add(tc_id)
 
                     if thinking_started:
@@ -144,7 +168,11 @@ class OllamaProvider:
 
         except Exception as e:
             from rta_cli.debug import format_provider_error
-            yield ErrorEvent(message="Ollama Connection Error", details=format_provider_error(e))
+
+            yield ErrorEvent(
+                message="Ollama Connection Error", details=format_provider_error(e)
+            )
+
 
 class AsyncRtaProvider:
     def __init__(self, api_key: Optional[str] = None):
@@ -153,10 +181,10 @@ class AsyncRtaProvider:
         self.device_id = get_device_id()
 
     async def stream(
-        self, 
-        messages: List[Message], 
+        self,
+        messages: List[Message],
         system_prompt: Optional[str] = None,
-        tools: Optional[List[dict]] = None
+        tools: Optional[List[dict]] = None,
     ) -> AsyncIterator[Event]:
         headers = {
             "X-API-KEY": self.api_key,
@@ -166,10 +194,15 @@ class AsyncRtaProvider:
             "User-Agent": "rta-cli/1.0",
         }
 
-        from .types import AssistantMessage
+
         clean_messages = [
-            m for m in messages
-            if not (isinstance(m, AssistantMessage) and m.content is None and m.tool_calls is None)
+            m
+            for m in messages
+            if not (
+                isinstance(m, AssistantMessage)
+                and m.content is None
+                and m.tool_calls is None
+            )
         ]
 
         payload = {
@@ -185,14 +218,14 @@ class AsyncRtaProvider:
         try:
             async with httpx.AsyncClient(timeout=60.0) as client:
                 async with client.stream(
-                    "POST", 
-                    f"{self.server_url}/v1/chat", 
-                    json=payload, 
-                    headers=headers
+                    "POST", f"{self.server_url}/v1/chat", json=payload, headers=headers
                 ) as response:
                     if response.status_code != 200:
                         error_text = await response.aread()
-                        yield ErrorEvent(message=f"API Error {response.status_code}", details=error_text.decode())
+                        yield ErrorEvent(
+                            message=f"API Error {response.status_code}",
+                            details=error_text.decode(),
+                        )
                         return
 
                     # State for reconstructing the response
@@ -245,8 +278,12 @@ class AsyncRtaProvider:
                                 if tc_id:
                                     yield ToolStartEvent(tool_call_id=tc_id, name=name)
                                     if args:
-                                        yield ToolArgsDeltaEvent(tool_call_id=tc_id, delta=args)
-                                    yield ToolEndEvent(tool_call_id=tc_id, name=name, arguments=args)
+                                        yield ToolArgsDeltaEvent(
+                                            tool_call_id=tc_id, delta=args
+                                        )
+                                    yield ToolEndEvent(
+                                        tool_call_id=tc_id, name=name, arguments=args
+                                    )
 
                         elif event_type == "error":
                             yield ErrorEvent(message=content or "Unknown error")
@@ -272,4 +309,7 @@ class AsyncRtaProvider:
             raise
         except Exception as e:
             from rta_cli.debug import format_provider_error
-            yield ErrorEvent(message="Connection Error", details=format_provider_error(e))
+
+            yield ErrorEvent(
+                message="Connection Error", details=format_provider_error(e)
+            )

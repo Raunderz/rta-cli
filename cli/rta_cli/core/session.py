@@ -2,7 +2,14 @@ import json
 import time
 from pathlib import Path
 from typing import List, Optional
-from .types import Message, UserMessage, AssistantMessage, ToolResultMessage, SystemMessage
+from .types import (
+    Message,
+    UserMessage,
+    AssistantMessage,
+    ToolResultMessage,
+    SystemMessage,
+)
+
 
 class SessionManager:
     def __init__(self, session_dir: Path):
@@ -18,12 +25,16 @@ class SessionManager:
         for p in self.session_dir.glob("*.jsonl"):
             try:
                 # Basic metadata from file stats or first line
-                sessions.append({
-                    "id": p.stem,
-                    "timestamp": time.ctime(p.stat().st_mtime),
-                    "turns": sum(1 for line in open(p) if "message" in line) // 2 # Rough estimate
-                })
-            except: continue
+                sessions.append(
+                    {
+                        "id": p.stem,
+                        "timestamp": time.ctime(p.stat().st_mtime),
+                        "turns": sum(1 for line in open(p) if "message" in line)
+                        // 2,  # Rough estimate
+                    }
+                )
+            except:
+                continue
         return sorted(sessions, key=lambda x: x["timestamp"], reverse=True)
 
     def load_messages(self, session_id: Optional[str] = None) -> List[Message]:
@@ -31,7 +42,7 @@ class SessionManager:
         path = self._get_path(sid)
         if not path.exists():
             return []
-        
+
         self.current_session_id = sid
         messages = []
         with open(path, "r") as f:
@@ -51,7 +62,8 @@ class SessionManager:
                             messages.append(ToolResultMessage.model_validate(msg_data))
                         elif role == "system":
                             messages.append(SystemMessage.model_validate(msg_data))
-                except: continue
+                except:
+                    continue
         return messages
 
     def append_message(self, message: Message):
@@ -59,18 +71,14 @@ class SessionManager:
         entry = {
             "type": "message",
             "timestamp": time.time(),
-            "message": message.model_dump()
+            "message": message.model_dump(),
         }
         with open(path, "a") as f:
             f.write(json.dumps(entry) + "\n")
 
     def append_compaction(self, summary: str):
         path = self._get_path(self.current_session_id)
-        entry = {
-            "type": "compaction",
-            "timestamp": time.time(),
-            "summary": summary
-        }
+        entry = {"type": "compaction", "timestamp": time.time(), "summary": summary}
         with open(path, "a") as f:
             f.write(json.dumps(entry) + "\n")
 

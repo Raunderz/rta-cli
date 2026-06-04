@@ -2,9 +2,10 @@ import subprocess
 import os
 from rta_cli.discovery import discover_project, get_test_command, get_lint_command
 
+
 def run_command(working_directory, command, timeout=120, force=False):
     abs_working_dir = os.path.abspath(working_directory)
-    
+
     cmd_lower = command.lower().strip()
     if cmd_lower in ("run tests", "test"):
         info = discover_project(abs_working_dir)
@@ -21,6 +22,7 @@ def run_command(working_directory, command, timeout=120, force=False):
 
     try:
         from rta_cli.safety import confirm_destructive, is_dangerous_command
+
         if is_dangerous_command(command) and not force:
             if not confirm_destructive("run_dangerous", command):
                 return "Cancelled: dangerous command was not confirmed"
@@ -28,7 +30,14 @@ def run_command(working_directory, command, timeout=120, force=False):
         pass
 
     try:
-        output = subprocess.run(command, shell=True, cwd=abs_working_dir, timeout=timeout, capture_output=True, text=True)
+        output = subprocess.run(
+            command,
+            shell=True,
+            cwd=abs_working_dir,
+            timeout=timeout,
+            capture_output=True,
+            text=True,
+        )
 
         final_string = (
             f"STDOUT : {output.stdout}\n"
@@ -38,13 +47,14 @@ def run_command(working_directory, command, timeout=120, force=False):
 
         if not output.stdout and not output.stderr:
             final_string += "Process exited with no output\n"
-        
+
         return final_string
 
     except subprocess.TimeoutExpired:
         return f"Error: Command timed out after {timeout} seconds."
     except Exception as e:
         return f"Error executing command : {e}"
+
 
 schema_run_command = {
     "name": "run_command",

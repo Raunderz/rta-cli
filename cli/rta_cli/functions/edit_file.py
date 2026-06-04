@@ -1,5 +1,5 @@
 import os
-import re
+
 
 def edit_file(working_directory, file_path, old_string, new_string):
     abs_working_dir = os.path.abspath(working_directory)
@@ -24,6 +24,7 @@ def edit_file(working_directory, file_path, old_string, new_string):
         return f"Successfully edited {file_path}"
     except Exception as e:
         return f"Failed to edit {file_path}: {e}"
+
 
 schema_edit_file = {
     "name": "edit_file",

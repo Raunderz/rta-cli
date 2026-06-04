@@ -5,6 +5,7 @@ import time
 import os
 from typing import Optional, Dict, Any, List
 
+
 class LSPClient:
     def __init__(self, command: List[str], root_uri: str):
         self.command = command
@@ -16,7 +17,9 @@ class LSPClient:
         self._running = False
 
     def is_alive(self) -> bool:
-        return self._running and self.process is not None and self.process.poll() is None
+        return (
+            self._running and self.process is not None and self.process.poll() is None
+        )
 
     def start(self) -> bool:
         try:
@@ -26,18 +29,21 @@ class LSPClient:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=False,
-                bufsize=0
+                bufsize=0,
             )
             self._running = True
             self._responses.clear()
             threading.Thread(target=self._read_loop, daemon=True).start()
-            
+
             # Initialize
-            res = self.send_request("initialize", {
-                "processId": os.getpid(),
-                "rootUri": self.root_uri,
-                "capabilities": {}
-            })
+            res = self.send_request(
+                "initialize",
+                {
+                    "processId": os.getpid(),
+                    "rootUri": self.root_uri,
+                    "capabilities": {},
+                },
+            )
             if res:
                 self.send_notification("initialized", {})
                 return True
@@ -71,11 +77,15 @@ class LSPClient:
         except Exception:
             self._running = False
 
-    def send_request(self, method: str, params: Dict[str, Any], timeout: int = 5) -> Optional[Any]:
+    def send_request(
+        self, method: str, params: Dict[str, Any], timeout: int = 5
+    ) -> Optional[Any]:
         curr_id = self.request_id
         self.request_id += 1
-        self._send({"jsonrpc": "2.0", "id": curr_id, "method": method, "params": params})
-        
+        self._send(
+            {"jsonrpc": "2.0", "id": curr_id, "method": method, "params": params}
+        )
+
         start_time = time.time()
         while time.time() - start_time < timeout:
             if curr_id in self._responses:
@@ -93,13 +103,18 @@ class LSPClient:
                 if not line.startswith("Content-Length:"):
                     continue
                 length = int(line.split(":")[1].strip())
-                self.process.stdout.readline() # \r\n
+                self.process.stdout.readline()  # \r\n
                 body = self.process.stdout.read(length).decode("utf-8")
                 data = json.loads(body)
-                
+
                 if "id" in data:
-                    self._responses[data["id"]] = data.get("result") or data.get("error")
-                elif "method" in data and data["method"] == "textDocument/publishDiagnostics":
+                    self._responses[data["id"]] = data.get("result") or data.get(
+                        "error"
+                    )
+                elif (
+                    "method" in data
+                    and data["method"] == "textDocument/publishDiagnostics"
+                ):
                     self._diagnostics.append(data["params"])
             except Exception:
                 break

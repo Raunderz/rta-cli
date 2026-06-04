@@ -1,6 +1,4 @@
 import json
-import os
-import subprocess
 from pathlib import Path
 from typing import Any
 
@@ -103,7 +101,11 @@ def detect_test_framework(workspace: str, language: str | None) -> str | None:
 
     if language in ("javascript", "typescript"):
         if find_project_file(workspace, ["vitest.config.*", "jest.config.*"]):
-            return "vitest" if find_project_file(workspace, ["vitest.config.*"]) else "jest"
+            return (
+                "vitest"
+                if find_project_file(workspace, ["vitest.config.*"])
+                else "jest"
+            )
         return "vitest"
 
     if language == "rust":
@@ -306,6 +308,7 @@ def get_cached_info(workspace: str) -> dict[str, Any] | None:
     try:
         stat = cache_file.stat()
         import time
+
         age = time.time() - stat.st_mtime
         if age > CACHE_TTL_SECONDS:
             return None
@@ -379,7 +382,10 @@ def get_lint_command(project_info: dict[str, Any]) -> str | None:
     if language == "python" and project_info.get("typechecker") == "mypy":
         return "mypy ."
 
-    if language in ("javascript", "typescript") and project_info.get("typechecker") == "tsc":
+    if (
+        language in ("javascript", "typescript")
+        and project_info.get("typechecker") == "tsc"
+    ):
         return "npx tsc --noEmit"
 
     return None
