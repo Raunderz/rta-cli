@@ -10,7 +10,7 @@ from .core.provider import AsyncRtaProvider
 from .core.tool_manager import ToolManager
 from .core.bash_tool import BashTool
 from .core.edit_tool import EditTool
-from .core.file_tools import ListDirTool, GrepTool, GlobTool
+from .core.file_tools import ListDirTool, GrepTool, FindTool, ReadTool
 from .core.session import SessionManager
 from .core.context import ContextManager
 from .core.loop import Agent
@@ -135,7 +135,8 @@ async def async_main(args=None):
     tool_manager.register_tool(EditTool())
     tool_manager.register_tool(ListDirTool())
     tool_manager.register_tool(GrepTool())
-    tool_manager.register_tool(GlobTool())
+    tool_manager.register_tool(FindTool())
+    tool_manager.register_tool(ReadTool())
 
     from .core.lsp_tools import GetDiagnosticsTool, GoToDefinitionTool
 
@@ -238,7 +239,7 @@ async def async_main(args=None):
         f"Project: {json.dumps(project_info)}\n"
         "Rules:\n"
         "- Run shell commands via bash tool, not Python subprocess\n"
-        "- Read files with get_file_contents before editing\n"
+        "- Read files with the read tool before editing\n"
         "- Verify edits by reading the file back\n"
         "- Use parallel tool execution for independent reads\n"
         "- Ask before destructive ops (deletes, force-push, mass rewrites) via the question tool\n"
