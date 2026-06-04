@@ -4,7 +4,6 @@ import asyncio
 from typing import ClassVar
 
 from textual.app import App, ComposeResult
-from textual.containers import Vertical
 from textual.widgets import Input
 
 from ..core.events import (
@@ -54,28 +53,106 @@ class RtaApp(App):
         self._model = model
         self._agent_busy = False
         self._cancel_event: asyncio.Event | None = None
-        self._current_turn = 0
         self._pending_approval: ToolApprovalEvent | None = None
 
     def compose(self) -> ComposeResult:
-        with Vertical():
-            yield ChatLog(id="chat-log")
-            yield Input(placeholder="Type a message...", id="input-box")
-            yield InfoBar(cwd=self._cwd, model=self._model, id="info-bar")
+        yield ChatLog(id="chat-log")
+        yield Input(placeholder="Type a message...", id="input-box")
+        yield InfoBar(cwd=self._cwd, model=self._model, id="info-bar")
 
     def on_mount(self) -> None:
         self.title = f"RTA — {self._cwd}"
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        if self._agent_busy:
-            return
         prompt = event.value.strip()
         if not prompt:
             return
+
         self.query_one("#input-box", Input).value = ""
+
+        if prompt.startswith("/") and self._handle_command(prompt):
+            return
+
+        if self._agent_busy:
+            return
+
         self.query_one("#input-box", Input).disabled = True
         self._agent_busy = True
         asyncio.create_task(self._run_turn(prompt))
+
+    def _handle_command(self, text: str) -> bool:
+        parts = text[1:].split(maxsplit=1)
+        cmd = parts[0] if parts else ""
+        args = parts[1] if len(parts) > 1 else ""
+
+        chat_log = self.query_one("#chat-log", ChatLog)
+
+        if cmd in ("exit", "quit", "q"):
+            self.exit()
+            return True
+
+        if cmd == "help":
+            self._show_help(chat_log)
+            return True
+
+        if cmd == "clear":
+            self._clear_conversation(chat_log)
+            return True
+
+        if cmd == "theme":
+            self._handle_theme_command(args, chat_log)
+            return True
+
+        if cmd == "model":
+            chat_log.add_user_message(f"[System] Current model: {self._model}")
+            chat_log.scroll_to_bottom()
+            return True
+
+        return False
+
+    def _show_help(self, chat_log: ChatLog) -> None:
+        help_text = (
+            "Commands:\n"
+            "  /help     Show this help\n"
+            "  /clear    Clear conversation\n"
+            "  /theme    List or switch themes\n"
+            "  /model    Show current model\n"
+            "  /exit     Exit the app\n"
+            "\n"
+            "Keybindings:\n"
+            "  Ctrl+C    Interrupt/Exit\n"
+            "  Ctrl+Q    Quit\n"
+            "  Escape    Interrupt\n"
+            "  y/n       Approve/Deny tool"
+        )
+        chat_log.add_user_message(f"[System]\n{help_text}")
+        chat_log.scroll_to_bottom()
+
+    def _clear_conversation(self, chat_log: ChatLog) -> None:
+        chat_log.clear()
+        self._agent.messages = []
+        chat_log.add_user_message("[System] Conversation cleared")
+        chat_log.scroll_to_bottom()
+
+    def _handle_theme_command(self, args: str, chat_log: ChatLog) -> None:
+        from .themes import get_current_theme_id, get_theme_options, set_theme
+
+        if args:
+            try:
+                set_theme(args)
+                type(self).CSS = get_styles()
+                self.refresh_css()
+                chat_log.add_user_message(f"[System] Theme: {args}")
+            except ValueError:
+                chat_log.add_user_message(f"[System] Unknown theme: {args}")
+        else:
+            lines = ["Themes:"]
+            for tid, label in get_theme_options():
+                marker = "●" if tid == get_current_theme_id() else " "
+                lines.append(f"  {marker} {tid} - {label}")
+            lines.append("\nUsage: /theme <id>")
+            chat_log.add_user_message("\n".join(lines))
+        chat_log.scroll_to_bottom()
 
     async def _run_turn(self, prompt: str) -> None:
         chat_log = self.query_one("#chat-log", ChatLog)
@@ -86,9 +163,6 @@ class RtaApp(App):
         self._cancel_event = asyncio.Event()
         self._pending_approval = None
 
-        total_in = 0
-        total_out = 0
-
         try:
             async for event in self._agent.run_turn(
                 prompt, cancel_event=self._cancel_event
@@ -96,9 +170,7 @@ class RtaApp(App):
                 self._handle_event(event, chat_log, info_bar)
 
                 if isinstance(event, UsageEvent):
-                    total_in = event.prompt_tokens
-                    total_out = event.completion_tokens
-                    info_bar.update_tokens(total_in, total_out)
+                    info_bar.update_tokens(event.prompt_tokens, event.completion_tokens)
                 elif isinstance(event, TurnEndEvent):
                     if event.usage:
                         info_bar.update_tokens(

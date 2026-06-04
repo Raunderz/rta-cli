@@ -27,27 +27,20 @@ def get_styles() -> str:
 
     return f"""
 Screen {{
-    background: {colors.bg};
+    layout: grid;
+    grid-size: 1;
+    grid-rows: 1fr auto auto;
+    background: transparent;
     color: {colors.fg};
 }}
 
 #chat-log {{
-    height: 1fr;
-    background: {colors.bg};
-    color: {colors.fg};
+    height: 100%;
+    padding: 0 0 1 0;
     scrollbar-size: 0 0;
-    padding: 0;
-}}
-
-.thinking-block {{
-    padding: 0 1;
-    margin: 0;
-    color: {colors.dim};
-}}
-
-.content-block {{
-    padding: 0 1;
-    margin: 0;
+    align-vertical: bottom;
+    background: transparent;
+    color: {colors.fg};
 }}
 
 .user-block {{
@@ -56,22 +49,35 @@ Screen {{
     background: {colors.editor};
 }}
 
-.tool-block {{
+.thinking-block {{
+    padding: 0 1 0 1;
+    margin: 0;
+    color: {colors.dim};
+    text-style: italic;
+}}
+
+.content-block {{
     padding: 0 1;
     margin: 0;
 }}
 
+.tool-block {{
+    padding: 0 1;
+    margin: 0;
+    color: {colors.dim};
+}}
+
 #input-box {{
-    dock: bottom;
-    margin: 0 1 1 1;
     background: {colors.editor};
-    color: {colors.fg};
+    border-top: solid {colors.editor};
+    border-bottom: solid {colors.editor};
+    border-title-color: {colors.dim};
+    border-subtitle-color: {colors.dim};
 }}
 
 .info-bar {{
-    dock: bottom;
     height: 1;
-    background: {colors.panel};
     color: {colors.dim};
+    background: {colors.panel};
 }}
 """
