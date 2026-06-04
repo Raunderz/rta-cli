@@ -11,6 +11,8 @@ class BaseTool(ABC):
     description: str
     parameters: Type[BaseModel]
     icon: str = "🔧"
+    mutating: bool = True
+    prompt_guidelines: tuple[str, ...] = ()
 
     @abstractmethod
     async def execute(
@@ -30,3 +32,7 @@ class BaseTool(ABC):
     def format_call(self, params: Any) -> str:
         """Optional: Format the tool call for UI display."""
         return f"{self.name}({params})"
+
+    def format_preview(self, params: Any) -> str | None:
+        """Optional: Format a preview of what the tool will do (for approval UI)."""
+        return None

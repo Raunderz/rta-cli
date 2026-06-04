@@ -14,6 +14,7 @@ from ..core.events import (
     ThinkingDeltaEvent,
     ThinkingEndEvent,
     ThinkingStartEvent,
+    ToolApprovalEvent,
     ToolArgsDeltaEvent,
     ToolEndEvent,
     ToolResultEvent,
@@ -23,6 +24,7 @@ from ..core.events import (
     WarningEvent,
 )
 from ..core.loop import Agent
+from ..core.permissions import ApprovalResponse
 from .chat import ChatLog
 from .widgets import InfoBar
 
@@ -74,6 +76,8 @@ class RtaApp(App):
     BINDINGS: ClassVar[list] = [
         ("ctrl+c", "handle_ctrl_c", "Clear/Exit"),
         ("escape", "interrupt", "Interrupt"),
+        ("y", "approve_tool", "Approve"),
+        ("n", "deny_tool", "Deny"),
     ]
 
     def __init__(
@@ -90,6 +94,7 @@ class RtaApp(App):
         self._running = False
         self._cancel_event: asyncio.Event | None = None
         self._current_turn = 0
+        self._pending_approval: ToolApprovalEvent | None = None
 
     def compose(self) -> ComposeResult:
         with Vertical():
@@ -118,6 +123,7 @@ class RtaApp(App):
         chat_log.add_user_message(prompt)
 
         self._cancel_event = asyncio.Event()
+        self._pending_approval = None
 
         total_in = 0
         total_out = 0
@@ -144,6 +150,7 @@ class RtaApp(App):
         finally:
             self._running = False
             self._cancel_event = None
+            self._pending_approval = None
             self.query_one("#input-box", Input).disabled = False
             self.query_one("#input-box", Input).focus()
             chat_log.scroll_to_bottom()
@@ -170,6 +177,12 @@ class RtaApp(App):
 
         elif isinstance(event, ToolStartEvent):
             chat_log.start_tool(event.tool_call_id, event.name)
+
+        elif isinstance(event, ToolApprovalEvent):
+            self._pending_approval = event
+            tool = chat_log.get_tool(event.tool_call_id)
+            if tool:
+                tool.show_approval(event.display)
 
         elif isinstance(event, ToolArgsDeltaEvent):
             tool = chat_log.get_tool(event.tool_call_id)
@@ -201,6 +214,20 @@ class RtaApp(App):
     def action_interrupt(self) -> None:
         if self._running and self._cancel_event:
             self._cancel_event.set()
+
+    def action_approve_tool(self) -> None:
+        if self._pending_approval:
+            future = self._pending_approval.get_future()
+            if future and not future.done():
+                future.set_result(ApprovalResponse.APPROVE)
+            self._pending_approval = None
+
+    def action_deny_tool(self) -> None:
+        if self._pending_approval:
+            future = self._pending_approval.get_future()
+            if future and not future.done():
+                future.set_result(ApprovalResponse.DENY)
+            self._pending_approval = None
 
 
 def _warning_block(text: str):
