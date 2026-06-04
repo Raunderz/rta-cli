@@ -194,7 +194,6 @@ class AsyncRtaProvider:
             "User-Agent": "rta-cli/1.0",
         }
 
-
         clean_messages = [
             m
             for m in messages
