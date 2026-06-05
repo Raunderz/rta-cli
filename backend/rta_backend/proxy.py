@@ -128,8 +128,8 @@ def get_routing_sequence(
             {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-30b-a3b:free"},
             {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
-            {"provider": "cerebras", "model": "llama3.1-70b"},
             {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
+            {"provider": "cerebras", "model": "llama3.1-70b"},
         ]
 
     # Normalized model name for other cases
@@ -145,9 +145,9 @@ def get_routing_sequence(
         return [
             {"provider": "gemini", "model": base_gemini},
             {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
-            {"provider": "cerebras", "model": "llama3.1-70b"},
             {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "cerebras", "model": "llama3.1-70b"},
         ]
 
     # For any other specific provider hint
@@ -158,9 +158,9 @@ def get_routing_sequence(
                 "model": pick_model_for_provider(working_model, provider_hint),
             },
             {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
-            {"provider": "cerebras", "model": "llama3.1-70b"},
             {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
+            {"provider": "cerebras", "model": "llama3.1-70b"},
         ]
 
     # Default fallback for other models (e.g. gpt-oss-20b explicitly requested)
@@ -173,12 +173,12 @@ def get_routing_sequence(
         {"provider": "gemini", "model": "gemini-2.5-flash"},
         {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
         {
-            "provider": "cerebras",
-            "model": "gpt-oss-120b",
-        },
-        {
             "provider": "sambanova",
             "model": pick_model_for_provider(working_model, "sambanova"),
+        },
+        {
+            "provider": "cerebras",
+            "model": "gpt-oss-120b",
         },
     ]
 
