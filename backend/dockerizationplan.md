@@ -153,13 +153,18 @@ The HF Space repo lives at `~/Documents/github_work/hf_spaces/A2XTbB49wS`. Whene
 ```bash
 # From project root
 rsync -av --delete \
+  --exclude='__pycache__' \
   backend/Dockerfile \
   backend/.dockerignore \
   backend/.env.example \
   backend/pyproject.toml \
   backend/uv.lock \
-  backend/rta_backend/ \
   ~/Documents/github_work/hf_spaces/A2XTbB49wS/
+
+rsync -av --delete \
+  --exclude='__pycache__' \
+  backend/rta_backend/ \
+  ~/Documents/github_work/hf_spaces/A2XTbB49wS/rta_backend/
 
 # Commit and push
 cd ~/Documents/github_work/hf_spaces/A2XTbB49wS
