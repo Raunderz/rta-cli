@@ -88,10 +88,11 @@ class RtaProvider(BaseProvider):
             ):
                 if response.status_code != 200:
                     error_text = await response.aread()
-                    yield StreamError(
-                        error=f"API Error {response.status_code}: {error_text.decode()}"
+                    raise httpx.HTTPStatusError(
+                        f"API Error {response.status_code}: {error_text.decode()}",
+                        request=response.request,
+                        response=response,
                     )
-                    return
 
                 async for line in response.aiter_lines():
                     if not line.startswith("data: "):
@@ -137,6 +138,12 @@ class RtaProvider(BaseProvider):
 
             yield StreamDone(stop_reason=StopReason.STOP)
 
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code >= 500:
+                raise
+            yield StreamError(error=str(e))
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout):
+            raise
         except Exception as e:
             yield StreamError(error=f"Connection Error: {e!s}")
 
@@ -217,4 +224,12 @@ class RtaProvider(BaseProvider):
         ]
 
     def should_retry_for_error(self, error: Exception) -> bool:
-        return False
+        retryable = (
+            httpx.ConnectError,
+            httpx.ConnectTimeout,
+            httpx.ReadTimeout,
+            httpx.WriteTimeout,
+        )
+        return isinstance(error, retryable) or (
+            isinstance(error, httpx.HTTPStatusError) and error.response.status_code >= 500
+        )
