@@ -1,24 +1,33 @@
 import asyncio
 from typing import Any
+
 from pydantic import BaseModel, Field
 
 from ..core.types import ToolResult
-from .base import BaseTool
 from ..session import current_session_id
+from .base import BaseTool
 
 # Global store indexed by session_id
 _thinking_state: dict[str, dict[str, Any]] = {}
 
+
 class ThinkingParams(BaseModel):
     thought: str = Field(..., description="Your current thought or reasoning step")
-    thought_number: int = Field(..., description="Current thought number (starts at 1, increments)")
+    thought_number: int = Field(
+        ..., description="Current thought number (starts at 1, increments)"
+    )
     total_thoughts: int = Field(..., description="Estimated total thoughts needed")
     next_thought_needed: bool = Field(..., description="Whether another thought step follows")
     is_revision: bool = Field(False, description="Whether this revises a previous thought")
     revises_thought: int | None = Field(None, description="Which thought number to revise")
-    branch_from_thought: int | None = Field(None, description="Branch a new line of reasoning from this thought")
+    branch_from_thought: int | None = Field(
+        None, description="Branch a new line of reasoning from this thought"
+    )
     branch_id: str | None = Field(None, description="Unique ID for this reasoning branch")
-    needs_more_thoughts: bool = Field(True, description="Whether more thoughts are still needed to reach a conclusion")
+    needs_more_thoughts: bool = Field(
+        True, description="Whether more thoughts are still needed to reach a conclusion"
+    )
+
 
 class SequentialThinkingTool(BaseTool[ThinkingParams]):
     name = "sequential_thinking"
@@ -27,19 +36,21 @@ class SequentialThinkingTool(BaseTool[ThinkingParams]):
     mutating = False
     tool_icon = "💭"
 
-    async def execute(self, params: ThinkingParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: ThinkingParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         session_id = current_session_id.get() or "default"
-        
+
         if session_id not in _thinking_state:
             _thinking_state[session_id] = {
                 "thoughts": [],
                 "branches": {},
-                "current_branch": "main"
+                "current_branch": "main",
             }
-        
+
         state = _thinking_state[session_id]
         branch = state["current_branch"]
-        
+
         if params.branch_from_thought is not None and params.branch_id:
             if params.branch_id not in state["branches"]:
                 state["branches"][params.branch_id] = []
@@ -88,13 +99,12 @@ class SequentialThinkingTool(BaseTool[ThinkingParams]):
         if not params.next_thought_needed or not params.needs_more_thoughts:
             result_text += "\n\n**Thought chain complete.**"
             # Cleanup state for this session
-            if session_id in _thinking_state:
-                del _thinking_state[session_id]
+            _thinking_state.pop(session_id, None)
 
         return ToolResult(
             success=True,
             result=result_text,
-            ui_summary=f"Thought {params.thought_number}/{params.total_thoughts}"
+            ui_summary=f"Thought {params.thought_number}/{params.total_thoughts}",
         )
 
     def format_call(self, params: ThinkingParams) -> str:

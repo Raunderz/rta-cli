@@ -1,4 +1,4 @@
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 from kon.ui.blocks import LaunchWarning
 
 
@@ -13,8 +13,8 @@ class _StubInputBox:
         pass
 
 
-def _make_app() -> Kon:
-    return Kon(cwd=".")
+def _make_app() -> Rta:
+    return Rta(cwd=".")
 
 
 def test_flush_launch_warnings_sends_to_chat(fake_chat) -> None:
@@ -31,7 +31,7 @@ def test_flush_launch_warnings_sends_to_chat(fake_chat) -> None:
 
 
 def test_on_mount_continue_recent_error_shows_launch_warning(fake_chat, monkeypatch) -> None:
-    app = Kon(cwd=".", continue_recent=True)
+    app = Rta(cwd=".", continue_recent=True)
     input_box = _StubInputBox()
 
     def _query_one(selector, cls=None):

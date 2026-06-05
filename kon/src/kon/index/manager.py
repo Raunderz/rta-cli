@@ -1,17 +1,20 @@
-import os
+import hashlib
 import json
 import math
-import hashlib
+import os
 import re
-from typing import List, Dict, Any
+from typing import Any
+
 
 def _rta_dir() -> str:
     import platform
+
     if platform.system() == "Windows":
         base = os.environ.get("USERPROFILE") or os.path.expanduser("~")
     else:
         base = os.path.expanduser("~")
     return os.path.join(base, ".rta")
+
 
 class BM25Indexer:
     """Pure Python BM25 Indexer for Lean RAG."""
@@ -37,7 +40,7 @@ class BM25Indexer:
     def _load_index(self):
         if os.path.exists(self.index_file):
             try:
-                with open(self.index_file, "r") as f:
+                with open(self.index_file) as f:
                     data = json.load(f)
                     self.corpus = data.get("corpus", [])
                     self.df = data.get("df", {})
@@ -50,10 +53,10 @@ class BM25Indexer:
         with open(self.index_file, "w") as f:
             json.dump({"corpus": self.corpus, "df": self.df, "avgdl": self.avgdl}, f)
 
-    def _tokenize(self, text: str) -> List[str]:
+    def _tokenize(self, text: str) -> list[str]:
         return re.findall(r"\w+", text.lower())
 
-    def chunk_file(self, file_path: str, content: str) -> List[Dict[str, Any]]:
+    def chunk_file(self, file_path: str, content: str) -> list[dict[str, Any]]:
         lines = content.splitlines()
         chunks = []
         chunk_size = 50
@@ -65,13 +68,15 @@ class BM25Indexer:
                 break
 
             text = "\n".join(chunk_lines)
-            chunks.append({
-                "text": text,
-                "tokens": self._tokenize(text),
-                "file_path": file_path,
-                "start_line": i + 1,
-                "end_line": i + len(chunk_lines),
-            })
+            chunks.append(
+                {
+                    "text": text,
+                    "tokens": self._tokenize(text),
+                    "file_path": file_path,
+                    "start_line": i + 1,
+                    "end_line": i + len(chunk_lines),
+                }
+            )
             if i + chunk_size >= len(lines):
                 break
         return chunks
@@ -82,16 +87,23 @@ class BM25Indexer:
         changed = False
 
         for root, dirs, files in os.walk(self.workspace_path):
-            dirs[:] = [d for d in dirs if not d.startswith(".") and d not in ("node_modules", "dist", "build", "venv", ".venv")]
+            dirs[:] = [
+                d
+                for d in dirs
+                if not d.startswith(".")
+                and d not in ("node_modules", "dist", "build", "venv", ".venv")
+            ]
             for file in files:
-                if file.startswith(".") or file.endswith((".pyc", ".png", ".jpg", ".zip", ".bin", ".exe", ".lock")):
+                if file.startswith(".") or file.endswith(
+                    (".pyc", ".png", ".jpg", ".zip", ".bin", ".exe", ".lock")
+                ):
                     continue
 
                 rel_path = os.path.relpath(os.path.join(root, file), self.workspace_path)
                 abs_path = os.path.join(root, file)
 
                 try:
-                    with open(abs_path, "r", encoding="utf-8", errors="ignore") as f:
+                    with open(abs_path, encoding="utf-8", errors="ignore") as f:
                         content = f.read()
 
                     file_hash = hashlib.md5(content.encode()).hexdigest()
@@ -122,7 +134,7 @@ class BM25Indexer:
                     self.df[token] = self.df.get(token, 0) + 1
 
             self.avgdl = total_len / self.doc_count if self.doc_count > 0 else 0
-            
+
             # Save actual state (clean up tokens before saving to disk)
             save_corpus = []
             for c in self.corpus:
@@ -133,7 +145,7 @@ class BM25Indexer:
 
             with open(self.index_file, "w") as f:
                 json.dump({"corpus": save_corpus, "df": self.df, "avgdl": self.avgdl}, f)
-            
+
             self._generate_skeleton()
 
     def _generate_skeleton(self):
@@ -149,11 +161,26 @@ class BM25Indexer:
             files_to_chunks[path].append(doc)
 
         for file_path, chunks in files_to_chunks.items():
-            if not file_path.endswith((".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".cs", ".c", ".cpp", ".h", ".hpp")):
+            if not file_path.endswith(
+                (
+                    ".py",
+                    ".js",
+                    ".ts",
+                    ".jsx",
+                    ".tsx",
+                    ".go",
+                    ".rs",
+                    ".cs",
+                    ".c",
+                    ".cpp",
+                    ".h",
+                    ".hpp",
+                )
+            ):
                 continue
 
             skeleton.append(f"## {file_path}")
-            
+
             patterns = [
                 r"^\s*(class\s+\w+)",
                 r"^\s*(def\s+\w+\s*\(.*?\))",
@@ -173,7 +200,7 @@ class BM25Indexer:
                         if match:
                             sig = match.group(1).strip()
                             file_sigs.add(f"- `{sig}`")
-            
+
             skeleton.extend(sorted(list(file_sigs)))
 
         with open(self.skeleton_file, "w") as f:
@@ -181,11 +208,11 @@ class BM25Indexer:
 
     def get_skeleton(self) -> str:
         if os.path.exists(self.skeleton_file):
-            with open(self.skeleton_file, "r") as f:
+            with open(self.skeleton_file) as f:
                 return f.read()
         return "Skeleton not generated yet. Indexing might be needed."
 
-    def search(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+    def search(self, query: str, limit: int = 5) -> list[dict[str, Any]]:
         query_tokens = self._tokenize(query)
         scores = []
 

@@ -1,7 +1,7 @@
 from collections import deque
 from typing import Any
 
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 
 
 class FakeQueueDisplay:
@@ -37,7 +37,7 @@ class FakeInputBox:
         self.focused = True
 
 
-class FakeKon:
+class FakeRta:
     def __init__(self) -> None:
         self._pending_queue: deque[tuple[str, str]] = deque()
         self._steer_queue: deque[tuple[str, str]] = deque()
@@ -54,28 +54,28 @@ class FakeKon:
         raise AssertionError(f"Unexpected selector: {selector}")
 
     def _queue_items(self) -> list[tuple[bool, int, str, str]]:
-        return Kon._queue_items(self)  # type: ignore[arg-type]
+        return Rta._queue_items(self)  # type: ignore[arg-type]
 
     def _selected_queue_flat_index(self) -> int | None:
-        return Kon._selected_queue_flat_index(self)  # type: ignore[arg-type]
+        return Rta._selected_queue_flat_index(self)  # type: ignore[arg-type]
 
     def _set_queue_selection_by_flat_index(self, flat_index: int | None) -> None:
-        Kon._set_queue_selection_by_flat_index(self, flat_index)  # type: ignore[arg-type]
+        Rta._set_queue_selection_by_flat_index(self, flat_index)  # type: ignore[arg-type]
 
     def _update_queue_display(self) -> None:
-        Kon._update_queue_display(self)  # type: ignore[arg-type]
+        Rta._update_queue_display(self)  # type: ignore[arg-type]
 
     def start_queue_edit(self) -> bool:
-        return Kon.start_queue_edit(self)  # type: ignore[arg-type]
+        return Rta.start_queue_edit(self)  # type: ignore[arg-type]
 
     def finish_queue_edit(self, display_text: str, query_text: str) -> bool:
-        return Kon.finish_queue_edit(self, display_text, query_text)  # type: ignore[arg-type]
+        return Rta.finish_queue_edit(self, display_text, query_text)  # type: ignore[arg-type]
 
     def cancel_queue_edit(self) -> bool:
-        return Kon.cancel_queue_edit(self)  # type: ignore[arg-type]
+        return Rta.cancel_queue_edit(self)  # type: ignore[arg-type]
 
     def delete_selected_queue_item(self) -> bool:
-        return Kon.delete_selected_queue_item(self)  # type: ignore[arg-type]
+        return Rta.delete_selected_queue_item(self)  # type: ignore[arg-type]
 
 
 def _queue(*items: str) -> deque[tuple[str, str]]:
@@ -83,7 +83,7 @@ def _queue(*items: str) -> deque[tuple[str, str]]:
 
 
 def test_editing_last_queue_item_keeps_visible_editing_placeholder() -> None:
-    app = FakeKon()
+    app = FakeRta()
     app._pending_queue = _queue("one", "two", "three")
     app._queue_selection = (False, 2)
 
@@ -102,7 +102,7 @@ def test_editing_last_queue_item_keeps_visible_editing_placeholder() -> None:
 
 
 def test_finish_queue_edit_restores_updated_item_at_original_position() -> None:
-    app = FakeKon()
+    app = FakeRta()
     app._pending_queue = _queue("one", "two", "three")
     app._queue_selection = (False, 2)
     app.start_queue_edit()
@@ -121,7 +121,7 @@ def test_finish_queue_edit_restores_updated_item_at_original_position() -> None:
 
 
 def test_cancel_queue_edit_restores_original_item_and_clears_editor() -> None:
-    app = FakeKon()
+    app = FakeRta()
     app._pending_queue = _queue("one", "two", "three")
     app._queue_selection = (False, 1)
     app.start_queue_edit()
@@ -140,7 +140,7 @@ def test_cancel_queue_edit_restores_original_item_and_clears_editor() -> None:
 
 
 def test_ctrl_d_delete_removes_selected_queue_item() -> None:
-    app = FakeKon()
+    app = FakeRta()
     app._pending_queue = _queue("one", "two", "three")
     app._queue_selection = (False, 1)
 

@@ -1,6 +1,6 @@
 from textual.binding import Binding
 
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 
 
 def _binding_key_and_action(binding) -> tuple[str, str]:
@@ -11,7 +11,7 @@ def _binding_key_and_action(binding) -> tuple[str, str]:
 
 
 def test_thinking_and_permission_mode_keybindings():
-    bindings = dict(_binding_key_and_action(binding) for binding in Kon.BINDINGS)
+    bindings = dict(_binding_key_and_action(binding) for binding in Rta.BINDINGS)
 
     assert bindings["ctrl+t"] == "cycle_thinking_level"
     assert bindings["ctrl+o"] == "toggle_tool_output"

@@ -1,16 +1,16 @@
 import asyncio
 import os
-import time
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
-from ..core.types import ToolResult
-from .base import BaseTool
-from ..lsp.manager import LSPManager, path_to_uri, uri_to_path
 from ..context.project import discover_project
+from ..core.types import ToolResult
+from ..lsp.manager import LSPManager, path_to_uri, uri_to_path
+from .base import BaseTool
 
 # Global manager instance
-_lsp_manager: Optional[LSPManager] = None
+_lsp_manager: LSPManager | None = None
+
 
 def _get_manager(workspace: str) -> LSPManager:
     global _lsp_manager
@@ -21,13 +21,16 @@ def _get_manager(workspace: str) -> LSPManager:
         _lsp_manager = LSPManager(workspace_abs)
     return _lsp_manager
 
+
 class GetDiagnosticsParams(BaseModel):
     file_path: str = Field(..., description="Path to the file to check for errors and warnings")
+
 
 class GoToDefinitionParams(BaseModel):
     file_path: str = Field(..., description="Path to the file containing the symbol")
     line: int = Field(..., description="1-based line number of the symbol")
     character: int = Field(..., description="0-based character offset within the line")
+
 
 class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
     name = "get_diagnostics"
@@ -36,7 +39,9 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
     mutating = False
     tool_icon = "⚠️"
 
-    async def execute(self, params: GetDiagnosticsParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: GetDiagnosticsParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         cwd = os.getcwd()
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
         if not os.path.exists(abs_path):
@@ -54,17 +59,13 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
 
         uri = path_to_uri(abs_path)
         try:
-            with open(abs_path, "r") as f:
+            with open(abs_path) as f:
                 content = f.read()
 
-            client.send_notification("textDocument/didOpen", {
-                "textDocument": {
-                    "uri": uri,
-                    "languageId": lang,
-                    "version": 1,
-                    "text": content,
-                }
-            })
+            client.send_notification(
+                "textDocument/didOpen",
+                {"textDocument": {"uri": uri, "languageId": lang, "version": 1, "text": content}},
+            )
 
             # Wait for diagnostics
             await asyncio.sleep(1)
@@ -85,10 +86,11 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
             return ToolResult(
                 success=True,
                 result=res_text,
-                ui_summary=f"Found {len(output)} issues" if output else "No issues found"
+                ui_summary=f"Found {len(output)} issues" if output else "No issues found",
             )
         except Exception as e:
             return ToolResult(success=False, result=f"LSP Error: {e}")
+
 
 class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
     name = "go_to_definition"
@@ -97,10 +99,12 @@ class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
     mutating = False
     tool_icon = "📍"
 
-    async def execute(self, params: GoToDefinitionParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: GoToDefinitionParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         cwd = os.getcwd()
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
-        
+
         info = discover_project(cwd)
         lang = info.language
         if not lang:
@@ -113,16 +117,20 @@ class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
 
         uri = path_to_uri(abs_path)
         try:
-            result = client.send_request("textDocument/definition", {
-                "textDocument": {"uri": uri},
-                "position": {"line": params.line - 1, "character": params.character},
-            })
+            result = client.send_request(
+                "textDocument/definition",
+                {
+                    "textDocument": {"uri": uri},
+                    "position": {"line": params.line - 1, "character": params.character},
+                },
+            )
 
             if not result:
                 return ToolResult(success=True, result="Definition not found.")
 
             if isinstance(result, list):
-                if not result: return ToolResult(success=True, result="Definition not found.")
+                if not result:
+                    return ToolResult(success=True, result="Definition not found.")
                 result = result[0]
 
             target_uri = result["uri"]
@@ -133,7 +141,7 @@ class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
             return ToolResult(
                 success=True,
                 result=f"Definition found in {rel_target} at line {target_line}",
-                ui_summary=f"Found in {rel_target}:{target_line}"
+                ui_summary=f"Found in {rel_target}:{target_line}",
             )
         except Exception as e:
             return ToolResult(success=False, result=f"LSP Error: {e}")

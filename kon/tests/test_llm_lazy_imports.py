@@ -38,6 +38,8 @@ _PROVIDER_CASES = [
     (ApiType.ANTHROPIC_COPILOT, "CopilotAnthropicProvider"),
     (ApiType.AZURE_AI_FOUNDRY, "AzureAIFoundryProvider"),
     (ApiType.OPENAI_COMPLETIONS, "OpenAICompletionsProvider"),
+    (ApiType.RTA, "RtaProvider"),
+    (ApiType.OLLAMA, "OllamaProvider"),
 ]
 
 

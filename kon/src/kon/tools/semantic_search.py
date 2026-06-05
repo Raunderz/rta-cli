@@ -1,14 +1,19 @@
 import asyncio
 import os
+
 from pydantic import BaseModel, Field
 
 from ..core.types import ToolResult
-from .base import BaseTool
 from ..index.manager import BM25Indexer
+from .base import BaseTool
+
 
 class SemanticSearchParams(BaseModel):
-    query: str = Field(..., description="The natural language query (e.g., 'how is authentication handled?')")
+    query: str = Field(
+        ..., description="The natural language query (e.g., 'how is authentication handled?')"
+    )
     limit: int = Field(5, description="Number of results to return (default 5)")
+
 
 class SemanticSearchTool(BaseTool[SemanticSearchParams]):
     name = "semantic_search"
@@ -17,7 +22,9 @@ class SemanticSearchTool(BaseTool[SemanticSearchParams]):
     mutating = False
     tool_icon = "🔎"
 
-    async def execute(self, params: SemanticSearchParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: SemanticSearchParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         cwd = os.getcwd()
         try:
             indexer = BM25Indexer(cwd)
@@ -38,9 +45,7 @@ class SemanticSearchTool(BaseTool[SemanticSearchParams]):
 
             res_text = "\n".join(formatted)
             return ToolResult(
-                success=True,
-                result=res_text,
-                ui_summary=f"Found {len(results)} relevant snippets"
+                success=True, result=res_text, ui_summary=f"Found {len(results)} relevant snippets"
             )
         except Exception as e:
             return ToolResult(success=False, result=f"Error during semantic search: {e}")

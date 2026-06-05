@@ -1,8 +1,8 @@
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 
 
-def _make_app() -> Kon:
-    return Kon(cwd=".")
+def _make_app() -> Rta:
+    return Rta(cwd=".")
 
 
 def test_show_pending_update_notice_shows_once_when_idle(fake_chat) -> None:

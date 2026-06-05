@@ -100,6 +100,11 @@ class LLMConfig(BaseModel):
     tls: TLSConfig = TLSConfig()
 
 
+class RtaConfig(BaseModel):
+    server_url: str = "https://schallten-a2xtbb49ws.hf.space"
+    backup_url: str = "https://rta-tb0k.onrender.com"
+
+
 class CompactionConfig(BaseModel):
     on_overflow: OnOverflowMode = "continue"
     buffer_tokens: int = 20000
@@ -132,6 +137,7 @@ class ConfigSchema(BaseModel):
     tools: ToolsConfig = ToolsConfig()
     permissions: PermissionsConfig
     notifications: NotificationsConfig = NotificationsConfig()
+    rta: RtaConfig = RtaConfig()
 
 
 # =================================================================================================
@@ -716,8 +722,5 @@ def set_notifications_enabled(enabled: bool) -> Config:
 
 def reset_config() -> None:
     """Reset config to uninitialized state (next get_config() will reload from file)."""
-    _config_var.set(None)
-    _config_warnings.clear()
-config to uninitialized state (next get_config() will reload from file)."""
     _config_var.set(None)
     _config_warnings.clear()

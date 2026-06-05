@@ -1,7 +1,6 @@
+import logging
 import os
 import shutil
-import logging
-from typing import Optional, Dict
 from pathlib import Path
 
 from .client import LSPClient
@@ -13,11 +12,11 @@ class LSPManager:
     def __init__(self, workspace_path: str):
         self.workspace_path = os.path.abspath(workspace_path)
         self.root_uri = Path(self.workspace_path).as_uri()
-        self.clients: Dict[str, LSPClient] = {}
-        self._restart_counts: Dict[str, int] = {}
+        self.clients: dict[str, LSPClient] = {}
+        self._restart_counts: dict[str, int] = {}
         self._max_restarts = 3
 
-    def get_client(self, language: str) -> Optional[LSPClient]:
+    def get_client(self, language: str) -> LSPClient | None:
         if language in self.clients:
             client = self.clients[language]
             if client.is_alive():
@@ -37,12 +36,10 @@ class LSPManager:
             return client
         return None
 
-    def _restart_client(self, language: str) -> Optional[LSPClient]:
+    def _restart_client(self, language: str) -> LSPClient | None:
         count = self._restart_counts.get(language, 0)
         if count >= self._max_restarts:
-            log.error(
-                "LSP server for '%s' crashed %d times, giving up.", language, count
-            )
+            log.error("LSP server for '%s' crashed %d times, giving up.", language, count)
             return None
 
         self._restart_counts[language] = count + 1
@@ -54,7 +51,7 @@ class LSPManager:
                 return client
         return None
 
-    def _get_server_command(self, language: str) -> Optional[list]:
+    def _get_server_command(self, language: str) -> list | None:
         servers = {
             "python": [
                 ["pyright-langserver", "--stdio"],

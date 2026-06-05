@@ -1,23 +1,26 @@
+import atexit
 import json
 import logging
 import os
 import subprocess
-import urllib.request
-import atexit
 from pathlib import Path
 from typing import Any
 
 log = logging.getLogger("kon.mcp")
 
+
 def _rta_dir() -> str:
     import platform
+
     if platform.system() == "Windows":
         base = os.environ.get("USERPROFILE") or os.path.expanduser("~")
     else:
         base = os.path.expanduser("~")
     return os.path.join(base, ".rta")
 
+
 MCP_CONFIG_PATH = Path(_rta_dir()) / "mcp_config.json"
+
 
 def load_mcp_config() -> dict[str, Any]:
     if not MCP_CONFIG_PATH.exists():
@@ -27,8 +30,8 @@ def load_mcp_config() -> dict[str, Any]:
                     "command": "npx",
                     "args": ["-y", "@modelcontextprotocol/server-duckduckgo"],
                     "env": {},
-                },
-            },
+                }
+            }
         }
         save_mcp_config(template)
         return template
@@ -39,12 +42,15 @@ def load_mcp_config() -> dict[str, Any]:
         except json.JSONDecodeError:
             return {}
 
+
 def save_mcp_config(config: dict[str, Any]) -> None:
     MCP_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
     with open(MCP_CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)
 
+
 _PROCESS_CACHE: dict[str, subprocess.Popen] = {}
+
 
 def cleanup_mcp_servers():
     for server_name, proc in _PROCESS_CACHE.items():
@@ -58,7 +64,9 @@ def cleanup_mcp_servers():
                 pass
     _PROCESS_CACHE.clear()
 
+
 atexit.register(cleanup_mcp_servers)
+
 
 def _get_cached_process(server_name: str, sc: dict) -> subprocess.Popen | None:
     if server_name in _PROCESS_CACHE:
@@ -86,6 +94,7 @@ def _get_cached_process(server_name: str, sc: dict) -> subprocess.Popen | None:
         log.error("Failed to start MCP server '%s': %s", server_name, e)
         return None
 
+
 def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = True) -> Any:
     proc = _get_cached_process(server_name, sc)
     if not proc:
@@ -98,8 +107,7 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = Tr
         while True:
             line = proc.stdout.readline()
             if not line:
-                if server_name in _PROCESS_CACHE:
-                    del _PROCESS_CACHE[server_name]
+                _PROCESS_CACHE.pop(server_name, None)
                 if _retry:
                     return _send_rpc_stdio(server_name, sc, request, _retry=False)
                 break
@@ -110,16 +118,17 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = Tr
             except json.JSONDecodeError:
                 continue
     except Exception as e:
-        if server_name in _PROCESS_CACHE:
-            del _PROCESS_CACHE[server_name]
+        _PROCESS_CACHE.pop(server_name, None)
         if _retry:
             return _send_rpc_stdio(server_name, sc, request, _retry=False)
         return {"error": f"RPC Error: {e}"}
     return None
 
+
 def _send_rpc_http(sc: dict, request: dict) -> Any:
     try:
         import httpx
+
         with httpx.Client() as client:
             resp = client.post(
                 sc["url"], json=request, headers=sc.get("headers", {}), timeout=30.0
@@ -128,6 +137,7 @@ def _send_rpc_http(sc: dict, request: dict) -> Any:
             return resp.json().get("result") or resp.json().get("error")
     except Exception as e:
         return {"error": f"HTTP RPC Error: {e}"}
+
 
 def list_mcp_tools(server_name: str) -> list[dict[str, Any]]:
     config = load_mcp_config()
@@ -140,8 +150,10 @@ def list_mcp_tools(server_name: str) -> list[dict[str, Any]]:
         res = _send_rpc_stdio(server_name, sc, request)
     elif "url" in sc:
         res = _send_rpc_http(sc, request)
-    else: return []
+    else:
+        return []
     return res.get("tools", []) if isinstance(res, dict) else []
+
 
 def call_mcp_tool(server_name: str, tool_name: str, arguments: dict[str, Any]) -> Any:
     config = load_mcp_config()

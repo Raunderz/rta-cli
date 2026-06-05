@@ -148,97 +148,98 @@ class Agent:
         try:
             self._run_usage = Usage()
 
-        if images:
-            user_content: list[TextContent | ImageContent] = [TextContent(text=query), *images]
-            user_message = UserMessage(content=user_content)
-        else:
-            user_message = UserMessage(content=query)
+            if images:
+                user_content: list[TextContent | ImageContent] = [TextContent(text=query), *images]
+                user_message = UserMessage(content=user_content)
+            else:
+                user_message = UserMessage(content=query)
 
-        self.session.append_message(user_message)
+            self.session.append_message(user_message)
 
-        yield AgentStartEvent()
+            yield AgentStartEvent()
 
-        turn = 0
-        stop_reason = StopReason.STOP
-        was_interrupted = False
+            turn = 0
+            stop_reason = StopReason.STOP
+            was_interrupted = False
 
-        system_prompt = self._system_prompt
+            system_prompt = self._system_prompt
 
-        try:
-            max_turns = kon_config.agent.max_turns
-            while turn < max_turns:
-                if cancel_event and cancel_event.is_set():
-                    was_interrupted = True
-                    stop_reason = StopReason.INTERRUPTED
-                    yield InterruptedEvent(message="Interrupted by user")
-                    break
-
-                if steer_event and steer_event.is_set():
-                    stop_reason = StopReason.STEER
-                    break
-
-                turn += 1
-                yield TurnStartEvent(turn=turn)
-
-                messages = self.session.messages
-                tool_results: list[ToolResultMessage] = []
-                async for event in run_single_turn(
-                    provider=self.provider,
-                    messages=messages,
-                    tools=self.tools,
-                    system_prompt=system_prompt,
-                    turn=turn,
-                    cancel_event=cancel_event,
-                ):
-                    yield event
-
-                    if isinstance(event, TurnEndEvent):
-                        if event.assistant_message:
-                            self._add_usage(event.assistant_message.usage)
-                            self.session.append_message(event.assistant_message)
-                        tool_results = event.tool_results
-                        stop_reason = event.stop_reason
-                        for result in tool_results:
-                            self.session.append_message(result)
-                    elif isinstance(event, InterruptedEvent):
+            try:
+                max_turns = kon_config.agent.max_turns
+                while turn < max_turns:
+                    if cancel_event and cancel_event.is_set():
                         was_interrupted = True
-
-                if was_interrupted or stop_reason == StopReason.INTERRUPTED:
-                    stop_reason = StopReason.INTERRUPTED
-                    break
-
-                if steer_event and steer_event.is_set():
-                    stop_reason = StopReason.STEER
-                    break
-
-                # Check for context overflow after each turn.
-                # We iterate events instead of awaiting a single compaction result so
-                # CompactionStartEvent can be forwarded immediately and the UI can
-                # render a "compacting" state while summary generation is running.
-                did_compact = False
-                async for compaction_event in self._check_compaction(
-                    stop_reason, system_prompt, cancel_event
-                ):
-                    yield compaction_event
-                    if isinstance(compaction_event, CompactionEndEvent):
-                        did_compact = True
-                if did_compact:
-                    if kon_config.compaction.on_overflow == "pause":
+                        stop_reason = StopReason.INTERRUPTED
+                        yield InterruptedEvent(message="Interrupted by user")
                         break
-                    # Continue mode: synthetic user message was injected, continue loop
-                    continue
 
-                if stop_reason != StopReason.TOOL_USE:
-                    break
+                    if steer_event and steer_event.is_set():
+                        stop_reason = StopReason.STEER
+                        break
 
-            if turn >= max_turns and not was_interrupted and stop_reason == StopReason.TOOL_USE:
-                stop_reason = StopReason.LENGTH
+                    turn += 1
+                    yield TurnStartEvent(turn=turn)
 
-        except Exception as e:  # intentionally broad — top-level boundary; crash = broken TUI
-            yield ErrorEvent(error=str(e))
-            stop_reason = StopReason.ERROR
+                    messages = self.session.messages
+                    tool_results: list[ToolResultMessage] = []
+                    async for event in run_single_turn(
+                        provider=self.provider,
+                        messages=messages,
+                        tools=self.tools,
+                        system_prompt=system_prompt,
+                        turn=turn,
+                        cancel_event=cancel_event,
+                    ):
+                        yield event
 
-        yield AgentEndEvent(stop_reason=stop_reason, total_turns=turn, total_usage=self._run_usage)
+                        if isinstance(event, TurnEndEvent):
+                            if event.assistant_message:
+                                self._add_usage(event.assistant_message.usage)
+                                self.session.append_message(event.assistant_message)
+                            tool_results = event.tool_results
+                            stop_reason = event.stop_reason
+                            for result in tool_results:
+                                self.session.append_message(result)
+                        elif isinstance(event, InterruptedEvent):
+                            was_interrupted = True
+
+                    if was_interrupted or stop_reason == StopReason.INTERRUPTED:
+                        stop_reason = StopReason.INTERRUPTED
+                        break
+
+                    if steer_event and steer_event.is_set():
+                        stop_reason = StopReason.STEER
+                        break
+
+                    did_compact = False
+                    async for compaction_event in self._check_compaction(
+                        stop_reason, system_prompt, cancel_event
+                    ):
+                        yield compaction_event
+                        if isinstance(compaction_event, CompactionEndEvent):
+                            did_compact = True
+                    if did_compact:
+                        if kon_config.compaction.on_overflow == "pause":
+                            break
+                        continue
+
+                    if stop_reason != StopReason.TOOL_USE:
+                        break
+
+                if (
+                    turn >= max_turns
+                    and not was_interrupted
+                    and stop_reason == StopReason.TOOL_USE
+                ):
+                    stop_reason = StopReason.LENGTH
+
+            except Exception as e:
+                yield ErrorEvent(error=str(e))
+                stop_reason = StopReason.ERROR
+
+            yield AgentEndEvent(
+                stop_reason=stop_reason, total_turns=turn, total_usage=self._run_usage
+            )
         finally:
             current_session_id.reset(token)
 

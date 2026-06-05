@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+import os
+import time as _time
 from collections.abc import Callable, Mapping, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Literal, TypeVar, cast
 
+from kon import auth as kon_auth
 from kon import (
-    auth as kon_auth,
     config,
     set_colored_tool_badge,
     set_git_context,
@@ -887,7 +889,6 @@ class CommandsMixin:
 
     async def _rta_whoami_flow(self) -> None:
         import httpx
-        from kon import auth as kon_auth
 
         chat = self.query_one("#chat-log", ChatLog)
         api_key = kon_auth.load_credential("rta_api_key")
@@ -905,7 +906,7 @@ class CommandsMixin:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
-                    f"{kon_config.rta.server_url}/v1/auth/me", headers=headers
+                    f"{config.get_config().rta.server_url}/v1/auth/me", headers=headers
                 )
 
             if resp.status_code == 200:
@@ -921,9 +922,9 @@ class CommandsMixin:
             chat.add_info_message(f"RTA Connection error: {e}", error=True)
 
     async def _rta_status_flow(self) -> None:
-        import httpx
         import time as _time
-        from kon import auth as kon_auth
+
+        import httpx
 
         chat = self.query_one("#chat-log", ChatLog)
         api_key = kon_auth.load_credential("rta_api_key")
@@ -942,13 +943,17 @@ class CommandsMixin:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
-                    f"{kon_config.rta.server_url}/v1/usage", headers=headers
+                    f"{config.get_config().rta.server_url}/v1/usage", headers=headers
                 )
             ping_ms = round((_time.monotonic() - ping_start) * 1000)
 
             if resp.status_code == 200:
                 d = resp.json()
-                server = kon_config.rta.server_url.replace("https://", "").replace("http://", "")
+                server = (
+                    config.get_config()
+                    .rta.server_url.replace("https://", "")
+                    .replace("http://", "")
+                )
                 chat.add_info_message(
                     f"[bold]Server:[/bold]       {server}\n"
                     f"[bold]Ping:[/bold]         {ping_ms}ms\n"
@@ -964,8 +969,9 @@ class CommandsMixin:
 
     def _handle_init_command(self, args: str) -> None:
         import json
+
         chat = self.query_one("#chat-log", ChatLog)
-        
+
         project_name = args.strip()
         if not project_name:
             chat.add_info_message("Usage: /init <project_name>", error=True)
@@ -977,21 +983,13 @@ class CommandsMixin:
 
         try:
             os.makedirs(project_name, exist_ok=True)
-            project_info = {
-                "name": project_name,
-                "version": "0.1.0",
-                "created_at": _time.time() if "_time" in locals() else 0, # Fixed below
-            }
-            # Actually use time.time()
-            import time
-            project_info["created_at"] = time.time()
+            project_info = {"name": project_name, "version": "0.1.0", "created_at": _time.time()}
 
             with open(os.path.join(project_name, ".rta_project.json"), "w") as f:
                 json.dump(project_info, f, indent=2)
 
             chat.add_info_message(
-                f"Successfully initialized project '{project_name}'\n"
-                f"Run: cd {project_name} && kon"
+                f"Successfully initialized project '{project_name}'\nRun: cd {project_name} && kon"
             )
         except Exception as e:
             chat.add_info_message(f"Initialization failed: {e}", error=True)
@@ -1085,54 +1083,6 @@ class CommandsMixin:
             return
 
         chat.show_spinner_status("Compacting...")
-        self.run_worker(self._do_compact(), exclusive=False)
-
-    async def _do_compact(self) -> None:
-        chat = self.query_one("#chat-log", ChatLog)
-
-        if self._runtime.provider is None or self._runtime.session is None:
-            chat.add_info_message("Agent not initialized", error=True)
-            return
-
-        try:
-            result = await self._runtime.compact_now()
-            chat.add_compaction_message(result.tokens_before)
-        except Exception as e:
-            chat.show_status("Compaction failed")
-            chat.add_info_message(f"Compaction failed: {e}", error=True)
-
-    def _format_session_label(self, message: str) -> str:
-        return " ".join(message.split())
-
-    def _format_session_age(self, modified: datetime) -> str:
-        now = datetime.now(UTC)
-        delta = max(0, int((now - modified).total_seconds()))
-        minutes = delta // 60
-        hours = delta // 3600
-        days = delta // 86400
-        weeks = days // 7
-
-        if minutes < 60:
-            value, unit = minutes, "m"
-        elif hours < 24:
-            value, unit = hours, "h"
-        elif days < 7:
-            value, unit = days, "d"
-        elif weeks < 52:
-            value, unit = weeks, "w"
-        else:
-            value, unit = weeks // 52, "y"
-
-        return f"{value:>2}{unit}"
-  elif days < 7:
-            value, unit = days, "d"
-        elif weeks < 52:
-            value, unit = weeks, "w"
-        else:
-            value, unit = weeks // 52, "y"
-
-        return f"{value:>2}{unit}"
-_status("Compacting...")
         self.run_worker(self._do_compact(), exclusive=False)
 
     async def _do_compact(self) -> None:
