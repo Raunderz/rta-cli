@@ -1,6 +1,7 @@
 import asyncio
 import os
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from ..core.types import ToolResult
@@ -12,11 +13,15 @@ try:
 except ImportError:
     cst = None
 
+
 class RefactorParams(BaseModel):
     file_path: str = Field(..., description="Path to the Python file")
-    action: Literal["rename_function", "rename_class"] = Field(..., description="The refactoring action to perform")
+    action: Literal["rename_function", "rename_class"] = Field(
+        ..., description="The refactoring action to perform"
+    )
     old_name: str = Field(..., description="Current name of the entity")
     new_name: str = Field(..., description="New name for the entity")
+
 
 class RefactorPythonTool(BaseTool[RefactorParams]):
     name = "refactor_python"
@@ -25,9 +30,13 @@ class RefactorPythonTool(BaseTool[RefactorParams]):
     mutating = True
     tool_icon = "🏗️"
 
-    async def execute(self, params: RefactorParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: RefactorParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         if cst is None:
-            return ToolResult(success=False, result="Error: libcst not installed. AST refactoring unavailable.")
+            return ToolResult(
+                success=False, result="Error: libcst not installed. AST refactoring unavailable."
+            )
 
         cwd = os.getcwd()
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
@@ -35,13 +44,14 @@ class RefactorPythonTool(BaseTool[RefactorParams]):
             return ToolResult(success=False, result=f"File {params.file_path} not found.")
 
         try:
-            with open(abs_path, "r", encoding="utf-8") as f:
+            with open(abs_path, encoding="utf-8") as f:
                 code = f.read()
 
             module = cst.parse_module(code)
             new_code = code
 
             if params.action == "rename_function":
+
                 class RenameTransformer(cst.CSTTransformer):
                     def leave_FunctionDef(self, original_node, updated_node):
                         if original_node.name.value == params.old_name:
@@ -57,6 +67,7 @@ class RefactorPythonTool(BaseTool[RefactorParams]):
                 new_code = new_module.code
 
             elif params.action == "rename_class":
+
                 class RenameClassTransformer(cst.CSTTransformer):
                     def leave_ClassDef(self, original_node, updated_node):
                         if original_node.name.value == params.old_name:
@@ -80,7 +91,7 @@ class RefactorPythonTool(BaseTool[RefactorParams]):
             return ToolResult(
                 success=True,
                 result=f"Successfully applied {params.action} to {params.file_path}",
-                ui_summary=f"Refactored {params.old_name} -> {params.new_name}"
+                ui_summary=f"Refactored {params.old_name} -> {params.new_name}",
             )
         except Exception as e:
             return ToolResult(success=False, result=f"Refactoring Error: {e}")

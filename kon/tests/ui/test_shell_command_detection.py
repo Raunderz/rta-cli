@@ -3,7 +3,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from kon.tools.bash import BashTool
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 
 
 def test_handle_shell_command_execution():
@@ -19,7 +19,7 @@ def test_handle_shell_command_execution():
     app.run_worker = Mock()
 
     # Test single ! command
-    Kon._handle_shell_command(app, "!ls -la", "!ls -la")
+    Rta._handle_shell_command(app, "!ls -la", "!ls -la")
 
     # Verify chat message was added
     mock_chat.add_user_message.assert_called_once_with("!ls -la")
@@ -49,7 +49,7 @@ def test_handle_shell_command_history_mode():
     app.run_worker = Mock()
 
     # Test double !! command
-    Kon._handle_shell_command(app, "!!git status", "!!git status")
+    Rta._handle_shell_command(app, "!!git status", "!!git status")
 
     # Verify chat message was added
     mock_chat.add_user_message.assert_called_once_with("!!git status")
@@ -74,7 +74,7 @@ def test_handle_shell_command_when_running():
     app.run_worker = Mock()
 
     # Call the handler
-    Kon._handle_shell_command(app, "!ls -la", "!ls -la")
+    Rta._handle_shell_command(app, "!ls -la", "!ls -la")
 
     # Verify no chat message was added (should return early)
     mock_chat.add_user_message.assert_not_called()
@@ -111,7 +111,7 @@ async def test_execute_shell_command_basic():
         BashTool, "execute", new_callable=AsyncMock, return_value=mock_result
     ) as execute:
         # Call the method
-        await Kon._execute_shell_command(app, "ls -la", False)
+        await Rta._execute_shell_command(app, "ls -la", False)
 
     # Verify status was set to running and then idle
     mock_status.set_status.assert_any_call("running")
@@ -164,7 +164,7 @@ async def test_execute_shell_command_with_llm():
         BashTool, "execute", new_callable=AsyncMock, return_value=mock_result
     ) as execute:
         # Call the method with send_to_llm=True
-        await Kon._execute_shell_command(app, "git status", True)
+        await Rta._execute_shell_command(app, "git status", True)
 
     # Verify _run_agent was called with the correct prompt
     app._run_agent.assert_called_once()
@@ -208,7 +208,7 @@ async def test_execute_shell_command_interruption_resets_state_and_skips_llm():
         return mock_result
 
     with patch.object(BashTool, "execute", new_callable=AsyncMock, side_effect=mock_execute):
-        await Kon._execute_shell_command(app, "sleep 10", True)
+        await Rta._execute_shell_command(app, "sleep 10", True)
 
     app._run_agent.assert_not_called()
     assert app._is_running is False

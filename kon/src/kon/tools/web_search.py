@@ -64,8 +64,12 @@ class WebSearchTool(BaseTool):
 
 class DeepSearchParams(BaseModel):
     query: str = Field(..., description="The research query or topic to explore")
-    max_results: int = Field(8, description="Maximum results to return after deduplication (default: 8)")
-    num_queries: int = Field(3, description="Number of sub-queries to generate (default: 3, max: 5)")
+    max_results: int = Field(
+        8, description="Maximum results to return after deduplication (default: 8)"
+    )
+    num_queries: int = Field(
+        3, description="Number of sub-queries to generate (default: 3, max: 5)"
+    )
 
 
 class DeepSearchTool(BaseTool[DeepSearchParams]):
@@ -75,7 +79,9 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
     mutating = False
     tool_icon = "🔎"
 
-    async def execute(self, params: DeepSearchParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: DeepSearchParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         sub_queries = self._expand_queries(params.query, params.num_queries)
         seen_urls = set()
         all_results = []
@@ -84,7 +90,7 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
         for sq in sub_queries:
             if cancel_event and cancel_event.is_set():
                 break
-                
+
             def _search() -> list[dict]:
                 return list(DDGS().text(sq, max_results=params.max_results))
 
@@ -99,25 +105,50 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
             except Exception:
                 continue
 
-        all_results = all_results[:params.max_results]
+        all_results = all_results[: params.max_results]
         if not all_results:
             return ToolResult(success=True, result=f"No results found for: {params.query}")
 
-        output = f"Deep search results for: {params.query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
+        output = (
+            f"Deep search results for: {params.query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
+        )
         for i, r in enumerate(all_results, 1):
             output += f"{i}. **{r.get('title', '(no title)')}**\n   {r.get('body', '')}\n   {r.get('href', '')}\n\n"
-        
+
         return ToolResult(
             success=True,
             result=output.strip(),
-            ui_summary=f"({len(all_results)} results from {len(sub_queries)} queries)"
+            ui_summary=f"({len(all_results)} results from {len(sub_queries)} queries)",
         )
 
     def _expand_queries(self, query: str, num_queries: int = 3) -> list[str]:
         queries = [query]
         stop_words = {
-            "the", "a", "an", "in", "of", "for", "on", "and", "to", "is", "what", "how", "why",
-            "does", "do", "are", "with", "at", "by", "from", "or", "as", "be", "this", "that",
+            "the",
+            "a",
+            "an",
+            "in",
+            "of",
+            "for",
+            "on",
+            "and",
+            "to",
+            "is",
+            "what",
+            "how",
+            "why",
+            "does",
+            "do",
+            "are",
+            "with",
+            "at",
+            "by",
+            "from",
+            "or",
+            "as",
+            "be",
+            "this",
+            "that",
         }
         words = query.split()
         content_words = [w for w in words if w.lower() not in stop_words]
@@ -126,7 +157,7 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
             queries.append(" ".join(words[:-1]))
         if content_words and len(content_words) > 1 and len(queries) < num_queries:
             queries.append(" ".join(content_words))
-        
+
         seen = set()
         result = []
         for q in queries:

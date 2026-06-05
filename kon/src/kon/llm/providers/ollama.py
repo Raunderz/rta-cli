@@ -1,28 +1,31 @@
 import json
+from collections.abc import AsyncIterator
+from typing import Any
+
 import httpx
-from typing import AsyncIterator, List, Optional, Any
 
 from ...core.types import (
+    AssistantMessage,
+    ImageContent,
     Message,
-    StreamPart,
-    TextPart,
-    ThinkPart,
-    ToolCallStart,
-    ToolCallDelta,
+    StopReason,
     StreamDone,
     StreamError,
-    ToolDefinition,
-    UserMessage,
-    AssistantMessage,
-    ToolResultMessage,
+    StreamPart,
     TextContent,
+    TextPart,
     ThinkingContent,
-    ImageContent,
+    ThinkPart,
     ToolCall,
-    StopReason,
+    ToolCallDelta,
+    ToolCallStart,
+    ToolDefinition,
+    ToolResultMessage,
     Usage,
+    UserMessage,
 )
 from ..base import BaseProvider, LLMStream, ProviderConfig
+
 
 class OllamaProvider(BaseProvider):
     name = "ollama"
@@ -42,15 +45,13 @@ class OllamaProvider(BaseProvider):
         max_tokens: int | None = None,
     ) -> LLMStream:
         ollama_messages = self._convert_messages(messages, system_prompt)
-        
+
         payload = {
             "model": self.model,
             "messages": ollama_messages,
             "stream": True,
             "think": self.config.thinking_level != "none",
-            "options": {
-                "num_ctx": 32000,
-            },
+            "options": {"num_ctx": 32000},
         }
         if temperature is not None:
             payload["options"]["temperature"] = temperature
@@ -68,64 +69,68 @@ class OllamaProvider(BaseProvider):
         self, payload: dict[str, Any], llm_stream: LLMStream
     ) -> AsyncIterator[StreamPart]:
         try:
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                async with client.stream(
-                    "POST", f"{self.base_url}/api/chat", json=payload
-                ) as response:
-                    if response.status_code != 200:
-                        error_text = await response.aread()
-                        yield StreamError(error=f"Ollama Error {response.status_code}: {error_text.decode()}")
-                        return
+            async with (
+                httpx.AsyncClient(timeout=120.0) as client,
+                client.stream("POST", f"{self.base_url}/api/chat", json=payload) as response,
+            ):
+                if response.status_code != 200:
+                    error_text = await response.aread()
+                    yield StreamError(
+                        error=f"Ollama Error {response.status_code}: {error_text.decode()}"
+                    )
+                    return
 
-                    emitted_tool_ids = set()
+                emitted_tool_ids = set()
 
-                    async for line in response.aiter_lines():
-                        if not line:
-                            continue
-                        try:
-                            chunk = json.loads(line)
-                        except json.JSONDecodeError:
-                            continue
+                async for line in response.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        chunk = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
 
-                        if chunk.get("done"):
-                            if "prompt_eval_count" in chunk:
-                                llm_stream._usage = Usage(
-                                    input_tokens=chunk.get("prompt_eval_count", 0),
-                                    output_tokens=chunk.get("eval_count", 0),
-                                )
-                            break
+                    if chunk.get("done"):
+                        if "prompt_eval_count" in chunk:
+                            llm_stream._usage = Usage(
+                                input_tokens=chunk.get("prompt_eval_count", 0),
+                                output_tokens=chunk.get("eval_count", 0),
+                            )
+                        break
 
-                        msg = chunk.get("message", {})
+                    msg = chunk.get("message", {})
 
-                        # Handle Thinking/Reasoning
-                        thought = msg.get("thinking") or msg.get("reasoning_content")
-                        if thought:
-                            yield ThinkPart(think=thought)
+                    # Handle Thinking/Reasoning
+                    thought = msg.get("thinking") or msg.get("reasoning_content")
+                    if thought:
+                        yield ThinkPart(think=thought)
 
-                        # Handle Content
-                        content = msg.get("content", "")
-                        if content:
-                            yield TextPart(text=content)
+                    # Handle Content
+                    content = msg.get("content", "")
+                    if content:
+                        yield TextPart(text=content)
 
-                        # Handle Tool Calls
-                        tool_calls = msg.get("tool_calls")
-                        if tool_calls:
-                            for i, tc in enumerate(tool_calls):
-                                tc_id = f"ollama_{i}"
-                                fn = tc.get("function", {})
-                                name = fn.get("name", "")
-                                if tc_id not in emitted_tool_ids:
-                                    args = json.dumps(fn.get("arguments", {}))
-                                    yield ToolCallStart(id=tc_id, name=name, index=i)
-                                    yield ToolCallDelta(index=i, arguments_delta=args)
-                                    emitted_tool_ids.add(tc_id)
+                    # Handle Tool Calls
+                    tool_calls = msg.get("tool_calls")
+                    if tool_calls:
+                        for i, tc in enumerate(tool_calls):
+                            tc_id = f"ollama_{i}"
+                            fn = tc.get("function", {})
+                            name = fn.get("name", "")
+                            if tc_id not in emitted_tool_ids:
+                                args = json.dumps(fn.get("arguments", {}))
+                                yield ToolCallStart(id=tc_id, name=name, index=i)
+                                yield ToolCallDelta(index=i, arguments_delta=args)
+                                emitted_tool_ids.add(tc_id)
 
             yield StreamDone(stop_reason=StopReason.STOP)
 
         except Exception as e:
-            yield StreamError(error=f"Ollama Connection Error: {str(e)}")
+            yield StreamError(error=f"Ollama Connection Error: {e!s}")
 
-    def _convert_messages(self, messages: list[Message], system_prompt: str | None) -> list[dict[str, Any]]:
+    def _convert_messages(
+        self, messages: list[Message], system_prompt: str | None
+    ) -> list[dict[str, Any]]:
         result = []
         if system_prompt:
             result.append({"role": "system", "content": system_prompt})
@@ -155,21 +160,25 @@ class OllamaProvider(BaseProvider):
                         # Usually it's just text.
                         content_parts.append(item.thinking)
                     elif isinstance(item, ToolCall):
-                        tool_calls.append({
-                            "type": "function",
-                            "function": {"name": item.name, "arguments": item.arguments}
-                        })
-                
-                res_msg = {"role": "assistant", "content": "".join(content_parts) if content_parts else None}
+                        tool_calls.append(
+                            {
+                                "type": "function",
+                                "function": {"name": item.name, "arguments": item.arguments},
+                            }
+                        )
+
+                res_msg = {
+                    "role": "assistant",
+                    "content": "".join(content_parts) if content_parts else None,
+                }
                 if tool_calls:
                     res_msg["tool_calls"] = tool_calls
                 result.append(res_msg)
             elif isinstance(msg, ToolResultMessage):
                 text_parts = [item.text for item in msg.content if isinstance(item, TextContent)]
-                result.append({
-                    "role": "tool",
-                    "content": "\n".join(text_parts) if text_parts else ""
-                })
+                result.append(
+                    {"role": "tool", "content": "\n".join(text_parts) if text_parts else ""}
+                )
         return result
 
     def _convert_tools(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:

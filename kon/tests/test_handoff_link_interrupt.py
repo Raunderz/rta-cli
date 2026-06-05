@@ -2,7 +2,7 @@ import inspect
 from types import SimpleNamespace
 from typing import cast
 
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 from kon.ui.blocks import HandoffLinkBlock
 
 
@@ -28,7 +28,7 @@ def _fake_link_event(target_session_id: str) -> tuple[HandoffLinkBlock.LinkSelec
     return cast(HandoffLinkBlock.LinkSelected, event), event
 
 
-class _TestKon(Kon):
+class _TestRta(Rta):
     def __init__(self) -> None:
         super().__init__(cwd="/tmp")
         self._chat = _FakeChat()
@@ -45,7 +45,7 @@ class _TestKon(Kon):
 
 
 def test_handoff_link_interrupts_before_switch_when_running() -> None:
-    app = _TestKon()
+    app = _TestRta()
     app._is_running = True
     app._cancel_event = None
     event, fake_event = _fake_link_event("session-123")
@@ -60,7 +60,7 @@ def test_handoff_link_interrupts_before_switch_when_running() -> None:
 
 
 def test_handoff_link_switches_immediately_when_idle() -> None:
-    app = _TestKon()
+    app = _TestRta()
     event, fake_event = _fake_link_event("session-456")
 
     app.on_handoff_link_selected(event)

@@ -1,5 +1,5 @@
 from kon.permissions import ApprovalResponse
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 
 
 class FakeKeyEvent:
@@ -39,7 +39,7 @@ class FakeFuture:
         return self._result
 
 
-class FakeKon:
+class FakeRta:
     def __init__(self, future: FakeFuture) -> None:
         self._approval_future = future
         self._approval_selection = ApprovalResponse.APPROVE
@@ -57,10 +57,10 @@ class FakeKon:
 
 def test_approval_left_right_toggles_selection_without_submitting() -> None:
     future = FakeFuture()
-    app = FakeKon(future)
+    app = FakeRta(future)
 
     left = FakeKeyEvent("left")
-    Kon.on_key(app, left)  # type: ignore[arg-type]
+    Rta.on_key(app, left)  # type: ignore[arg-type]
 
     assert app._approval_selection == ApprovalResponse.DENY
     assert not future.done()
@@ -70,7 +70,7 @@ def test_approval_left_right_toggles_selection_without_submitting() -> None:
     assert app.cleared is False
 
     right = FakeKeyEvent("right")
-    Kon.on_key(app, right)  # type: ignore[arg-type]
+    Rta.on_key(app, right)  # type: ignore[arg-type]
 
     assert app._approval_selection == ApprovalResponse.APPROVE
     assert not future.done()
@@ -79,11 +79,11 @@ def test_approval_left_right_toggles_selection_without_submitting() -> None:
 
 def test_approval_enter_submits_current_selection() -> None:
     future = FakeFuture()
-    app = FakeKon(future)
+    app = FakeRta(future)
     app._approval_selection = ApprovalResponse.DENY
 
     event = FakeKeyEvent("enter")
-    Kon.on_key(app, event)  # type: ignore[arg-type]
+    Rta.on_key(app, event)  # type: ignore[arg-type]
 
     assert future.result() == ApprovalResponse.DENY
     assert event.prevented is True

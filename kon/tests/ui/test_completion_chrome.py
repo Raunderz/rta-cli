@@ -7,7 +7,7 @@ import pytest
 
 from kon.runtime import ConversationRuntime
 from kon.session import SessionInfo
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 from kon.ui.autocomplete import (
     FilePathProvider,
     PullRequestProvider,
@@ -133,7 +133,7 @@ class FakeInputBox:
         pass
 
 
-class FakeKon:
+class FakeRta:
     def __init__(
         self, selected_item: ListItem | None = None, *, completion_visible: bool | None = None
     ) -> None:
@@ -183,8 +183,8 @@ class FakeKon:
     def _select_theme(self, theme_id: str) -> None:
         self.selected_themes.append(theme_id)
 
-    def _kon(self) -> Kon:
-        return cast(Kon, self)
+    def _kon(self) -> Rta:
+        return cast(Rta, self)
 
     def call_after_refresh(self, callback: Callable[[], None]) -> None:
         callback()
@@ -193,16 +193,16 @@ class FakeKon:
         callback(*args)
 
     def _is_chat_at_bottom(self) -> bool:
-        return Kon._is_chat_at_bottom(self._kon())
+        return Rta._is_chat_at_bottom(self._kon())
 
     def _restore_chat_scroll_if_needed(self, was_at_bottom: bool) -> None:
-        Kon._restore_chat_scroll_if_needed(self._kon(), was_at_bottom)
+        Rta._restore_chat_scroll_if_needed(self._kon(), was_at_bottom)
 
     def _restore_chat_scroll_after_refresh(self, was_at_bottom: bool) -> None:
-        Kon._restore_chat_scroll_after_refresh(self._kon(), was_at_bottom)
+        Rta._restore_chat_scroll_after_refresh(self._kon(), was_at_bottom)
 
     def _set_bottom_info_displaced(self, displaced: bool) -> None:
-        Kon._set_bottom_info_displaced(self._kon(), displaced)
+        Rta._set_bottom_info_displaced(self._kon(), displaced)
 
     def _show_completion_list(
         self,
@@ -211,21 +211,21 @@ class FakeKon:
         searchable: bool = False,
         max_label_width: int | None = None,
     ) -> None:
-        Kon._show_completion_list(
+        Rta._show_completion_list(
             self._kon(), items, searchable=searchable, max_label_width=max_label_width
         )
 
     def _hide_completion_list(self, *, restore_info_bar: bool = True) -> None:
-        Kon._hide_completion_list(self._kon(), restore_info_bar=restore_info_bar)
+        Rta._hide_completion_list(self._kon(), restore_info_bar=restore_info_bar)
 
     def on_completion_update(self, event: InputBox.CompletionUpdate) -> None:
-        Kon.on_completion_update(self._kon(), event)
+        Rta.on_completion_update(self._kon(), event)
 
     def on_completion_hide(self, event: InputBox.CompletionHide) -> None:
-        Kon.on_completion_hide(self._kon(), event)
+        Rta.on_completion_hide(self._kon(), event)
 
     def on_completion_select(self, event: InputBox.CompletionSelect) -> None:
-        Kon.on_completion_select(self._kon(), event)
+        Rta.on_completion_select(self._kon(), event)
 
     def _show_selection_picker(
         self,
@@ -235,7 +235,7 @@ class FakeKon:
         searchable: bool = True,
         max_label_width: int | None = None,
     ) -> None:
-        Kon._show_selection_picker(
+        Rta._show_selection_picker(
             self._kon(),
             items,
             selection_mode,
@@ -244,19 +244,19 @@ class FakeKon:
         )
 
     def _handle_settings_select(self, item_value: str):
-        return Kon._handle_settings_select(self._kon(), item_value)
+        return Rta._handle_settings_select(self._kon(), item_value)
 
     def _build_settings_items(self) -> list[ListItem[str]]:
-        return Kon._build_settings_items(self._kon())
+        return Rta._build_settings_items(self._kon())
 
     def _show_settings_picker(self, selected_value: str | None = None) -> None:
-        Kon._show_settings_picker(self._kon(), selected_value=selected_value)
+        Rta._show_settings_picker(self._kon(), selected_value=selected_value)
 
     def _build_resume_items(self) -> list[ListItem]:
         return self.resume_items
 
     def _delete_selected_resume_session(self) -> None:
-        Kon._delete_selected_resume_session(self._kon())
+        Rta._delete_selected_resume_session(self._kon())
 
     def notify(
         self, message: str, *, title: str = "", timeout: int = 0, severity: str = "information"
@@ -264,10 +264,10 @@ class FakeKon:
         self.notifications.append((message, title, timeout, severity))
 
     def _handle_themes_command(self, args: str) -> None:
-        Kon._handle_themes_command(self._kon(), args)
+        Rta._handle_themes_command(self._kon(), args)
 
     def _handle_thinking_command(self, args: str) -> None:
-        Kon._handle_thinking_command(self._kon(), args)
+        Rta._handle_thinking_command(self._kon(), args)
 
 
 def _make_session_item(path, session_id: str = "session") -> ListItem:
@@ -284,7 +284,7 @@ def _make_session_item(path, session_id: str = "session") -> ListItem:
 
 
 def test_completion_list_is_configured_for_ten_rows() -> None:
-    app = Kon(cwd=".")
+    app = Rta(cwd=".")
     floating_list = next(
         widget
         for widget in app.compose()
@@ -295,7 +295,7 @@ def test_completion_list_is_configured_for_ten_rows() -> None:
 
 
 def test_show_completion_list_displaces_info_bar() -> None:
-    app = FakeKon()
+    app = FakeRta()
     items = [ListItem(value="one", label="one")]
 
     app._show_completion_list(items, searchable=True, max_label_width=40)
@@ -307,7 +307,7 @@ def test_show_completion_list_displaces_info_bar() -> None:
 
 
 def test_show_selection_picker_displaces_info_bar_and_restores_scroll() -> None:
-    app = FakeKon()
+    app = FakeRta()
     item = ListItem(value="one", label="one")
 
     app._show_selection_picker([item], SelectionMode.PERMISSIONS)
@@ -320,7 +320,7 @@ def test_show_selection_picker_displaces_info_bar_and_restores_scroll() -> None:
 
 
 def test_completion_update_displaces_info_bar_for_visible_list() -> None:
-    app = FakeKon(completion_visible=True)
+    app = FakeRta(completion_visible=True)
     items = [ListItem(value="one", label="one")]
 
     app.on_completion_update(InputBox.CompletionUpdate(items))
@@ -336,7 +336,7 @@ def test_completion_update_displaces_info_bar_for_visible_list() -> None:
 def test_hide_completion_list_controls_info_bar_restore(
     restore_info_bar: bool, expected_hidden_class: bool
 ) -> None:
-    app = FakeKon()
+    app = FakeRta()
     app.info_bar.classes.add("-completion-hidden")
 
     app._hide_completion_list(restore_info_bar=restore_info_bar)
@@ -348,7 +348,7 @@ def test_hide_completion_list_controls_info_bar_restore(
 @pytest.mark.parametrize("case", ["no-item", "tab", "slash", "file"])
 def test_completion_select_terminal_paths_restore_info_bar(case: str) -> None:
     item = None if case == "no-item" else ListItem(value="value", label="value")
-    app = FakeKon(selected_item=item, completion_visible=True)
+    app = FakeRta(selected_item=item, completion_visible=True)
     app.info_bar.classes.add("-completion-hidden")
 
     if case == "tab":
@@ -380,7 +380,7 @@ def test_completion_select_terminal_paths_restore_info_bar(case: str) -> None:
 
 
 def test_completion_select_final_selection_mode_restores_info_bar() -> None:
-    app = FakeKon(selected_item=ListItem(value="auto", label="auto"))
+    app = FakeRta(selected_item=ListItem(value="auto", label="auto"))
     app.info_bar.classes.add("-completion-hidden")
     app._selection_mode = SelectionMode.PERMISSIONS
 
@@ -397,7 +397,7 @@ def test_completion_select_final_selection_mode_restores_info_bar() -> None:
 
 
 def test_completion_select_settings_themes_keeps_info_bar_displaced() -> None:
-    app = FakeKon(selected_item=ListItem(value="themes", label="themes"))
+    app = FakeRta(selected_item=ListItem(value="themes", label="themes"))
     app.info_bar.classes.add("-completion-hidden")
     app._selection_mode = SelectionMode.SETTINGS
 
@@ -412,7 +412,7 @@ def test_completion_select_settings_themes_keeps_info_bar_displaced() -> None:
 
 
 def test_completion_select_settings_thinking_without_provider_restores_info_bar() -> None:
-    app = FakeKon(selected_item=ListItem(value="thinking", label="thinking"))
+    app = FakeRta(selected_item=ListItem(value="thinking", label="thinking"))
     app.info_bar.classes.add("-completion-hidden")
     app._selection_mode = SelectionMode.SETTINGS
 
@@ -427,7 +427,7 @@ def test_completion_select_settings_thinking_without_provider_restores_info_bar(
 
 
 def test_completion_hide_from_settings_subpicker_reopens_settings_and_restores_scroll() -> None:
-    app = FakeKon(completion_visible=True)
+    app = FakeRta(completion_visible=True)
     app.info_bar.classes.add("-completion-hidden")
     app._selection_mode = SelectionMode.THEME
     app._settings_active = True
@@ -444,7 +444,7 @@ def test_completion_hide_from_settings_subpicker_reopens_settings_and_restores_s
 def test_resume_delete_no_remaining_sessions_hides_picker_and_restores_scroll(tmp_path) -> None:
     session_path = tmp_path / "deleted.jsonl"
     session_path.write_text("{}\n")
-    app = FakeKon(selected_item=_make_session_item(session_path))
+    app = FakeRta(selected_item=_make_session_item(session_path))
     app.info_bar.classes.add("-completion-hidden")
     app._selection_mode = SelectionMode.SESSION
 
@@ -468,7 +468,7 @@ def test_resume_delete_remaining_sessions_updates_picker_and_restores_scroll(tmp
     deleted_path.write_text("{}\n")
     remaining_path.write_text("{}\n")
     remaining_item = _make_session_item(remaining_path, "remaining")
-    app = FakeKon(selected_item=_make_session_item(deleted_path, "deleted"))
+    app = FakeRta(selected_item=_make_session_item(deleted_path, "deleted"))
     app._selection_mode = SelectionMode.SESSION
     app.resume_items = [remaining_item]
 
@@ -482,7 +482,7 @@ def test_resume_delete_remaining_sessions_updates_picker_and_restores_scroll(tmp
 
 
 def test_completion_select_settings_subpicker_reopens_settings_and_restores_scroll() -> None:
-    app = FakeKon(selected_item=ListItem(value="textual-dark", label="textual-dark"))
+    app = FakeRta(selected_item=ListItem(value="textual-dark", label="textual-dark"))
     app.info_bar.classes.add("-completion-hidden")
     app._selection_mode = SelectionMode.THEME
     app._settings_active = True

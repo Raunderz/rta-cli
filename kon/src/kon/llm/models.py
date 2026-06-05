@@ -176,10 +176,3 @@ def get_models_by_provider(provider: str) -> list[Model]:
 def get_max_tokens(model_id: str) -> int:
     model = MODELS.get(model_id)
     return model.max_tokens if model else DEFAULT_MAX_TOKENS
-r) -> list[Model]:
-    return [m for m in MODELS.values() if m.provider == provider]
-
-
-def get_max_tokens(model_id: str) -> int:
-    model = MODELS.get(model_id)
-    return model.max_tokens if model else DEFAULT_MAX_TOKENS

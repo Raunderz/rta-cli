@@ -1,11 +1,11 @@
 from kon import get_config
 from kon.core.types import StopReason
 from kon.events import AgentEndEvent, ToolApprovalEvent, TurnStartEvent
-from kon.ui.app import Kon
+from kon.ui.app import Rta
 
 
-def _make_app() -> Kon:
-    return Kon(cwd=".")
+def _make_app() -> Rta:
+    return Rta(cwd=".")
 
 
 def test_should_notify_for_event_respects_config() -> None:

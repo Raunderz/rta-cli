@@ -3,15 +3,23 @@ import json
 import urllib.parse
 import urllib.request
 from typing import Literal
+
 from pydantic import BaseModel, Field
 
 from ..core.types import ToolResult
 from .base import BaseTool
 
+
 class GitHubSearchParams(BaseModel):
-    query: str = Field(..., description="The search query (e.g., 'machine learning rust', 'user:torvalds repo:linux')")
-    search_type: Literal["repositories", "code", "issues"] = Field("repositories", description="What to search: 'repositories', 'code', or 'issues'")
+    query: str = Field(
+        ...,
+        description="The search query (e.g., 'machine learning rust', 'user:torvalds repo:linux')",
+    )
+    search_type: Literal["repositories", "code", "issues"] = Field(
+        "repositories", description="What to search: 'repositories', 'code', or 'issues'"
+    )
     max_results: int = Field(5, description="Maximum results to return (default: 5)")
+
 
 class GitHubSearchTool(BaseTool[GitHubSearchParams]):
     name = "github_search"
@@ -20,7 +28,9 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
     mutating = False
     tool_icon = "🐙"
 
-    async def execute(self, params: GitHubSearchParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(
+        self, params: GitHubSearchParams, cancel_event: asyncio.Event | None = None
+    ) -> ToolResult:
         try:
             params_v = {
                 "q": params.query,
@@ -29,8 +39,9 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
             }
             query_encoded = urllib.parse.urlencode({k: v for k, v in params_v.items() if v})
             url = f"https://api.github.com/search/{params.search_type}?{query_encoded}"
-            
+
             loop = asyncio.get_event_loop()
+
             def _fetch():
                 req = urllib.request.Request(
                     url,
@@ -41,13 +52,15 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
                 )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     return json.loads(resp.read().decode("utf-8"))
-            
+
             data = await loop.run_in_executor(None, _fetch)
 
-            items = data.get("items", [])[:params.max_results]
+            items = data.get("items", [])[: params.max_results]
             if not items:
-                return ToolResult(success=True, result=f"No GitHub {params.search_type} results found.")
-            
+                return ToolResult(
+                    success=True, result=f"No GitHub {params.search_type} results found."
+                )
+
             output = f"GitHub {params.search_type.capitalize()} results for: {params.query}\n\n"
             for i, item in enumerate(items, 1):
                 if params.search_type == "repositories":
@@ -71,15 +84,17 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
                     comments = item.get("comments", 0)
                     url_link = item.get("html_url", "")
                     output += f"{i}. **{title}** ({state}, {comments} comments)\n   Repo: {repo}\n   {url_link}\n\n"
-            
+
             return ToolResult(
                 success=True,
                 result=output.strip(),
-                ui_summary=f"Found {len(items)} {params.search_type}"
+                ui_summary=f"Found {len(items)} {params.search_type}",
             )
         except urllib.error.HTTPError as e:
             if e.code == 403:
-                return ToolResult(success=False, result="GitHub API rate limit exceeded. Try again later.")
+                return ToolResult(
+                    success=False, result="GitHub API rate limit exceeded. Try again later."
+                )
             return ToolResult(success=False, result=f"Error searching GitHub: HTTP {e.code}")
         except Exception as e:
             return ToolResult(success=False, result=f"Error searching GitHub: {e}")

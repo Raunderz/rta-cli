@@ -8,6 +8,82 @@ export const BlogPage = ({ params }) => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
+      slug: "forking-kon-a-new-cli-foundation",
+      title: "Forking Kon: Why We Replaced the CLI with a Better Engine",
+      date: "June 5, 2026",
+      readTime: "5 min read",
+      excerpt: "After six major releases of the original Rta CLI, we're replacing the entire engine with a forked and enhanced version of the open-source kon project. Here's why.",
+      tags: ["CLI", "Architecture", "Technical Debt", "Kon"],
+      commit: "main",
+      body: `
+# Forking Kon: Why We Replaced the CLI with a Better Engine
+
+Six versions. Dozens of tools. A full-featured AI coding agent with web search, LSP integration, MCP plugins, semantic codebase indexing, AST refactoring, and session management.
+
+And yet, we knew we had to scrap the engine.
+
+## The Problem
+
+The original \`cli/\` codebase had accumulated significant technical debt. After several iterations (v0.1 through v0.5), two parallel architectures coexisted — a legacy synchronous loop (\`agent.py\`, \`chat.py\`) and a modern async core (\`core/\`, \`tui/\`). A 963-line bridge layer (\`legacy_tools.py\`) connected them, but it was a house of cards.
+
+The numbers tell the story:
+
+- **1 test file** versus **38** in the replacement
+- **963 lines of bridge code** connecting two architectures that should never have coexisted
+- **Bare \`except:\` clauses** everywhere, silently swallowing errors
+- **Broken code paths** — one file overwrote the provider instance with a string
+- **Naming collisions** — two \`tool_manager.py\` files with different purposes
+- **Dual-mode duplication** — legacy and modern code paths for every feature
+
+We could have refactored. But refactoring a house of cards while living in it isn't wise.
+
+## The Fork
+
+[Kon](https://github.com/0xku/kon) is an open-source AI coding agent with a clean, modular, well-tested architecture. Instead of continuing to pile fixes into our own codebase, we forked it and made it the new foundation for Rta's CLI.
+
+Every feature from the original CLI was ported over:
+
+| Feature | Status |
+|---------|--------|
+| Rta backend provider (SSE streaming) | Ported |
+| Auth system (API key login/logout/whoami) | Ported |
+| Memory (memorize/recall/forget) | Ported |
+| Sequential thinking with branching | Ported |
+| Web search (multi-engine) | Ported |
+| ArXiv, Stack Overflow, GitHub search | Ported |
+| YouTube transcript fetch | Ported |
+| LSP diagnostics + go-to-definition | Ported |
+| Semantic codebase search | Ported |
+| Project skeleton generation | Ported |
+| AST-aware Python refactoring (libcst) | Ported |
+| MCP server bridge (stdio + HTTP-SSE) | Ported |
+| Ollama local model support | Ported |
+| Project auto-detection | Ported |
+| Slash commands (/init, /whoami, /status) | Ported |
+
+## What Changed
+
+The user experience is nearly identical — the same \`rta\` command, the same TUI, the same tools. But underneath:
+
+- **651 tests pass** (up from effectively 0)
+- **No legacy bridge code** — everything is native kon architecture
+- **Session-scoped thinking state** — no more global mutable stores
+- **Clean provider abstraction** — the Rta backend provider fits into kon's provider registry alongside OpenAI, Anthropic, and Ollama
+- **Config stored in \`~/.rta/\`** — consistent with the rest of the ecosystem
+- **Rebranded system prompt** — references "Rta" instead of "Kon"
+
+## The Cost
+
+Porting wasn't free. The codebase had corruption from the original fork — duplicated method bodies, syntax errors, missing imports, and test expectations that still referenced the old \`~/.config/kon/\` path. Fixing these took significant effort, but the result is a clean, consistent, fully-tested foundation.
+
+## What's Next
+
+With the foundation solid, we can focus on what matters: making the agent faster, smarter, and more useful. The kon fork gives us a platform that's actually maintainable — something the original \`cli/\` hadn't been for months.
+
+**v0.6.0 is out.** Run \`rta\` to try it.
+      `
+    },
+    {
       slug: "rta-cli-domain-exploration",
       title: "Domain Exploration: Web Research Comes to Rta CLI",
       date: "May 31, 2026",

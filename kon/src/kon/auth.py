@@ -1,9 +1,8 @@
+import base64
 import os
 import platform
-import base64
 import uuid
-import json
-from typing import Optional
+
 
 def _rta_dir() -> str:
     if platform.system() == "Windows":
@@ -12,11 +11,14 @@ def _rta_dir() -> str:
         base = os.path.expanduser("~")
     return os.path.join(base, ".rta")
 
+
 def _credentials_file() -> str:
     return os.path.join(_rta_dir(), "credentials")
 
+
 def _device_id_file() -> str:
     return os.path.join(_rta_dir(), ".device_id")
+
 
 def _ensure_rta_dir() -> None:
     d = _rta_dir()
@@ -27,6 +29,7 @@ def _ensure_rta_dir() -> None:
         except OSError:
             pass
 
+
 def _set_file_perms(path: str) -> None:
     if platform.system() != "Windows":
         try:
@@ -34,8 +37,10 @@ def _set_file_perms(path: str) -> None:
         except OSError:
             pass
 
+
 def _encode(value: str) -> str:
     return base64.b64encode(value.encode()).decode()
+
 
 def _decode(value: str) -> str:
     try:
@@ -43,12 +48,13 @@ def _decode(value: str) -> str:
     except Exception:
         return value
 
+
 def save_credential(key_name: str, value: str) -> None:
     _ensure_rta_dir()
     creds = _credentials_file()
     entries: dict[str, str] = {}
     if os.path.exists(creds):
-        with open(creds, "r", encoding="utf-8") as f:
+        with open(creds, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if "=" in line:
@@ -60,12 +66,13 @@ def save_credential(key_name: str, value: str) -> None:
             f.write(f"{k}={v}\n")
     _set_file_perms(creds)
 
-def load_credential(key_name: str) -> Optional[str]:
+
+def load_credential(key_name: str) -> str | None:
     creds = _credentials_file()
     if not os.path.exists(creds):
         return None
     try:
-        with open(creds, "r", encoding="utf-8") as f:
+        with open(creds, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if "=" in line:
@@ -76,12 +83,13 @@ def load_credential(key_name: str) -> Optional[str]:
         pass
     return None
 
+
 def delete_credential(key_name: str) -> None:
     creds = _credentials_file()
     if not os.path.exists(creds):
         return
     entries: dict[str, str] = {}
-    with open(creds, "r", encoding="utf-8") as f:
+    with open(creds, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if "=" in line:
@@ -93,12 +101,13 @@ def delete_credential(key_name: str) -> None:
             f.write(f"{k}={v}\n")
     _set_file_perms(creds)
 
+
 def get_device_id() -> str:
     _ensure_rta_dir()
     did_file = _device_id_file()
     if os.path.exists(did_file):
         try:
-            with open(did_file, "r", encoding="utf-8") as f:
+            with open(did_file, encoding="utf-8") as f:
                 did = f.read().strip()
             if did:
                 return did

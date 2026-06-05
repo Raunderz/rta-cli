@@ -1483,7 +1483,7 @@ def _print_exit_message(
 
 
 def run_tui(args: argparse.Namespace, *, extra_tools: list[str] | None) -> None:
-    app = Kon(
+    app = Rta(
         model=args.model,
         provider=args.provider,
         api_key=args.api_key,
