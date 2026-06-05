@@ -130,10 +130,10 @@ These exist in `cli/` but are superseded by kon's implementation:
 - [x] Rebrand CLI to `rta`, storage to `~/.rta`
 
 ### Phase 7: Cleanup
-- [ ] Delete `cli/` directory entirely
-- [ ] Update root `README.md` to point to `kon/` as the CLI component
-- [ ] Update `pyproject.toml` at root if needed
-- [ ] Remove old `.spec` files and `rta_cli.egg-info/`
+- [x] Delete `cli/` directory entirely
+- [x] Update root `README.md` to point to `kon/` as the CLI component
+- [x] Update `pyproject.toml` at root if needed (root has no pyproject.toml; kon/pyproject.toml is the active one)
+- [x] Remove old `.spec` files and `rta_cli.egg-info/`
 
 ## Testing Strategy
 

@@ -142,8 +142,5 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-nn/nn
-nn/network.py
-nn/main.cpp
 .rta_project.json
 rta-desktop/data/data

@@ -1,6 +1,6 @@
 # Rta
 
-**Notice:** The CLI component is being migrated from the original `cli/` directory to a forked `kon/` implementation. This shift provides a cleaner, well‑tested foundation and resolves accumulated technical debt. See `kon/plan.md` for details.
+**Notice:** The CLI component has been migrated from `cli/` to `kon/` — a cleaner, well‑tested foundation. See `kon/plan.md` for details.
 
 Rta is an AI-assisted development ecosystem spanning a Python CLI, a FastAPI backend, a Go container execution service, a Lite XL-based desktop IDE, a React Native mobile app, a Preact marketing website, a VS Code extension, and a PR review bot.
 
@@ -10,7 +10,7 @@ It is designed as a practical alternative to complex development setups — prov
 
 ```
 User
-  ├── CLI (Python)              cli/              — AI coding agent in terminal
+  ├── CLI (Python)              kon/              — AI coding agent in terminal
   ├── Desktop IDE (Lite XL)     rta-desktop/      — Native AI-powered IDE
   ├── Mobile App (Expo/RN)      app/              — IDE on your phone
   ├── Website (Preact)          website/          — Dashboard, docs, pricing
@@ -37,9 +37,9 @@ User
 
 ## Components
 
-### CLI (`cli/`)
+### CLI (`kon/`)
 
-The most mature component — a full-featured AI coding agent with 30+ native tool schemas (file ops, git, search, LSP, MCP), interactive chat, session management, auto-update, semantic search, and standalone binary distribution. Routes all AI calls through the Rta backend middleware.
+A full-featured AI coding agent with 30+ native tool schemas (file ops, git, search, LSP, MCP), interactive chat, session management, auto-update, semantic search, and standalone binary distribution. Routes all AI calls through the Rta backend middleware. Built on a forked and enhanced [`kon`](https://github.com/0xku/kon) foundation.
 
 ### Backend (`backend/`)
 
@@ -75,7 +75,7 @@ Active long-term project. The CLI and backend are the most mature components, wi
 
 ## Plan
 
-1. **CLI** — Built and actively maintained (v0.5.0). Primary interface and testing ground for AI agent capabilities.
+1. **CLI** — Built and actively maintained (v0.6.0). Primary interface and testing ground for AI agent capabilities.
 2. **Backend** — Fully functional middleware layer handling auth, AI proxying, rate limiting, and telemetry (v0.1.0).
 3. **Desktop IDE** — Lite XL fork with Odin agent integration in progress.
 4. **Mobile App** — Expo/React Native client, under active development.
