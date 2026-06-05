@@ -118,7 +118,7 @@ def get_routing_sequence(
     """Determine the exact sequence of (provider, model) to try."""
     # User's specific high-speed chain for default "auto" case
     if provider_hint == "auto" and (
-        requested_model == "auto" or requested_model == "gpt-oss-120b"
+        requested_model in ("auto", "rta-auto", "gpt-oss-120b")
     ):
         return [
             {"provider": "groq", "model": "openai/gpt-oss-120b"},
