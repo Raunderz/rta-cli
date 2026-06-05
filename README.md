@@ -1,5 +1,7 @@
 # Rta
 
+**Notice:** The CLI component is being migrated from the original `cli/` directory to a forked `kon/` implementation. This shift provides a cleaner, well‑tested foundation and resolves accumulated technical debt. See `kon/plan.md` for details.
+
 Rta is an AI-assisted development ecosystem spanning a Python CLI, a FastAPI backend, a Go container execution service, a Lite XL-based desktop IDE, a React Native mobile app, a Preact marketing website, a VS Code extension, and a PR review bot.
 
 It is designed as a practical alternative to complex development setups — providing a "ready-to-use" environment for AI-assisted coding, quick edits, Git operations, code review, and lightweight development tasks across devices.

@@ -1,0 +1,92 @@
+[meta]
+config_version = 6
+
+[llm]
+default_provider = "openai-codex" # "zhipu", "github-copilot", "openai-codex"
+default_model = "gpt-5.5"
+# Optional API base URL override for the selected provider or local/self-hosted endpoint.
+# Leave empty to use the provider's default URL.
+default_base_url = ""
+default_thinking_level = "low"
+# Abort a tool call if it stays idle for this long during a turn.
+# Helps prevent stalled tool executions from hanging the agent loop.
+tool_call_idle_timeout_seconds = 180
+# HTTP request timeout for LLM API calls (in seconds).
+# Local models (e.g. llama.cpp) may need a higher value for long compaction requests.
+request_timeout_seconds = 600
+
+[llm.auth]
+# Auth policy for OpenAI-compatible and Anthropic-compatible endpoints.
+# "auto" injects a placeholder key for local/self-hosted endpoints when no key is set.
+# "required" keeps strict API key requirements.
+# "none" always injects a placeholder key for that protocol family.
+openai_compat = "auto" # "auto", "required", or "none"
+anthropic_compat = "auto" # "auto", "required", or "none"
+
+[llm.tls]
+# Skip TLS verification for LLM HTTP requests. Enables self-signed certs
+# on local providers.
+insecure_skip_verify = false
+
+[llm.system_prompt]
+git_context = true
+content = """You are an expert coding assistant called Rta. You help users by reading, searching, executing commands, editing code, and writing new files.
+
+# General
+
+- Be concise in your responses
+- Show file paths clearly when working with files
+- When summarizing your actions, output plain text directly DO NOT use cat or bash to display
+- Rta session logs are JSONL files in ~/.rta/sessions; If the user references recent sessions or a particular session, look there
+- If the user mentions adding a new skill, use ~/.rta/skills for user skills and .rta/skills for project skills"""
+
+[compaction]
+# What kon should do after compacting history on context overflow.
+# "continue" keeps going with a synthetic continue prompt; "pause" stops after compaction.
+on_overflow = "continue" # "continue" or "pause"
+# Safety margin reserved before the model context window is treated as full.
+# Larger values make kon compact earlier.
+buffer_tokens = 20000
+
+[agent]
+# Maximum assistant/tool loop turns kon may use for a single user request.
+# Prevents runaway loops when the agent keeps calling tools or continuing.
+max_turns = 500
+default_context_window = 200000
+
+[tools]
+# Additional opt-in built-in tools to expose beyond the default tool set.
+extra = ["web_search", "web_fetch"]
+
+[ui]
+theme = "gruvbox-dark"
+# When true, finalized thinking blocks are collapsed to a single line summary.
+# Set to false to always show the full thinking content.
+collapse_thinking = true
+# Show the list of keyboard shortcuts in the welcome section on launch.
+# Set to false to hide the shortcuts panel.
+show_welcome_shortcuts = true
+
+[permissions]
+# Approval behavior for mutating tools.
+# "prompt" asks before edits/writes and other mutating actions.
+# "auto" allows tool calls without approval prompts.
+mode = "prompt" # "prompt" or "auto"
+
+[notifications]
+# Play audio when kon finishes a task, hits an error, or waits for tool approval.
+# Disabled by default.
+enabled = false
+# Audio playback volume from 0.0 (muted) to 1.0 (full volume).
+volume = 0.5
+
+[rta]
+server_url = "https://schallten-a2xtbb49ws.hf.space"
+backup_url = "https://rta-tb0k.onrender.com"
+
+# Example: DeepSeek provider
+# export DEEPSEEK_API_KEY="sk-your-api-key"
+#
+# Then set in [llm]:
+# default_provider = "deepseek"
+# default_model = "deepseek-v4-flash"

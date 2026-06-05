@@ -1,0 +1,424 @@
+from collections.abc import AsyncIterator
+from typing import Any, cast
+
+from anthropic import APIStatusError, AsyncAnthropic, RateLimitError
+from anthropic.types import (
+    ContentBlockDeltaEvent,
+    ContentBlockStartEvent,
+    ContentBlockStopEvent,
+    ImageBlockParam,
+    MessageDeltaEvent,
+    MessageParam,
+    MessageStartEvent,
+    MessageStopEvent,
+    TextBlockParam,
+    ThinkingBlock,
+    ThinkingConfigEnabledParam,
+    ToolParam,
+    ToolResultBlockParam,
+    ToolUseBlock,
+)
+
+from ...core.types import (
+    AssistantMessage,
+    ImageContent,
+    Message,
+    StopReason,
+    StreamDone,
+    StreamError,
+    StreamPart,
+    TextContent,
+    TextPart,
+    ThinkingContent,
+    ThinkPart,
+    ToolCall,
+    ToolCallDelta,
+    ToolCallStart,
+    ToolDefinition,
+    ToolResultMessage,
+    Usage,
+    UserMessage,
+)
+from ..base import BaseProvider, LLMStream, ProviderConfig, make_http_client, resolve_api_key
+from .anthropic_capabilities import lookup_capabilities, supports_adaptive_thinking
+from .sanitize import sanitize_surrogates
+
+# Re-export for callers/tests that imported these names from this module.
+__all__ = ["AnthropicProvider", "lookup_capabilities", "supports_adaptive_thinking"]
+
+# Minimum tokens to keep available for the actual response when sizing
+# `max_tokens` against the thinking budget.
+_MIN_OUTPUT_TOKENS = 1024
+
+# Beta header for interleaved thinking on non-adaptive Claude 4 thinking models.
+_INTERLEAVED_THINKING_BETA = "interleaved-thinking-2025-05-14"
+
+
+def _adjust_max_tokens_for_thinking(
+    caller_max_tokens: int | None, thinking_budget: int
+) -> tuple[int, int]:
+    """Return (max_tokens, adjusted_budget).
+
+    Inspired by pi-mono's `adjustMaxTokensForThinking`: the thinking budget
+    is added on top of the caller's desired output cap so thinking tokens
+    don't starve the actual response. We also guarantee at least
+    `_MIN_OUTPUT_TOKENS` of headroom above the thinking budget.
+    """
+    base = caller_max_tokens if caller_max_tokens is not None else _MIN_OUTPUT_TOKENS
+    max_tokens = max(base + thinking_budget, thinking_budget + _MIN_OUTPUT_TOKENS)
+    return max_tokens, thinking_budget
+
+
+class AnthropicProvider(BaseProvider):
+    name = "anthropic"
+    thinking_levels: list[str] = ["none", "minimal", "low", "medium", "high", "xhigh"]  # noqa: RUF012
+
+    def __init__(self, config: ProviderConfig):
+        super().__init__(config)
+
+        api_key = resolve_api_key(
+            config.api_key,
+            env_vars=("ANTHROPIC_API_KEY",),
+            base_url=config.base_url,
+            auth_mode=config.anthropic_compat_auth_mode,
+        )
+        if not api_key:
+            raise ValueError(
+                f"No API key found for {self.name}. "
+                "Set ANTHROPIC_API_KEY environment variable or pass api_key in config, "
+                'or configure llm.auth.anthropic_compat = "auto"/"none" for local endpoints.'
+            )
+
+        self._client = AsyncAnthropic(
+            api_key=api_key, base_url=config.base_url, http_client=make_http_client()
+        )
+
+    async def _stream_impl(
+        self,
+        messages: list[Message],
+        *,
+        system_prompt: str | None = None,
+        tools: list[ToolDefinition] | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> LLMStream:
+        anthropic_messages = self._convert_messages(messages)
+        anthropic_tools = self._convert_tools(tools) if tools else None
+
+        max_tok = max_tokens if max_tokens is not None else self.config.max_tokens
+
+        create_kwargs: dict[str, Any] = {
+            "model": self.config.model,
+            "messages": anthropic_messages,
+            "max_tokens": max_tok,
+        }
+
+        if system_prompt:
+            # Use text block with cache_control for prompt caching
+            create_kwargs["system"] = [
+                {
+                    "type": "text",
+                    "text": sanitize_surrogates(system_prompt),
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ]
+
+        # Add temperature if specified and not using thinking
+        temp = temperature if temperature is not None else self.config.temperature
+        thinking_level = self.config.thinking_level
+        caps = lookup_capabilities(self.config.model)
+        thinking_budget = caps.thinking_budgets.get(thinking_level, 0)
+        thinking_enabled = thinking_level != "none" and (
+            thinking_budget > 0 or caps.adaptive_thinking
+        )
+
+        if thinking_enabled:
+            if caps.adaptive_thinking:
+                # Adaptive thinking: model decides how much to think; we steer with effort.
+                create_kwargs["thinking"] = {"type": "adaptive", "display": "summarized"}
+                effort = caps.effort_map.get(thinking_level, "high")
+                create_kwargs["output_config"] = {"effort": effort}
+            else:
+                # Budget-based thinking for older models. Couple max_tokens with budget
+                # so the response isn't starved.
+                adjusted_max, adjusted_budget = _adjust_max_tokens_for_thinking(
+                    max_tok, thinking_budget
+                )
+                create_kwargs["max_tokens"] = adjusted_max
+                create_kwargs["thinking"] = ThinkingConfigEnabledParam(
+                    type="enabled", budget_tokens=adjusted_budget
+                )
+                if caps.supports_interleaved_thinking_beta:
+                    create_kwargs["extra_headers"] = {
+                        **create_kwargs.get("extra_headers", {}),
+                        "anthropic-beta": _INTERLEAVED_THINKING_BETA,
+                    }
+            # Don't set temperature when thinking is enabled (defaults to 1)
+        else:
+            # Explicitly disable thinking on models that default to thinking-on.
+            if caps.adaptive_thinking:
+                create_kwargs["thinking"] = {"type": "disabled"}
+            if temp is not None:
+                create_kwargs["temperature"] = temp
+
+        if anthropic_tools:
+            create_kwargs["tools"] = anthropic_tools
+
+        response = await self._client.messages.stream(**create_kwargs).__aenter__()
+
+        llm_stream = LLMStream()
+        llm_stream.set_iterator(self._process_stream(response, llm_stream))
+        return llm_stream
+
+    async def _process_stream(
+        self, response: Any, llm_stream: LLMStream
+    ) -> AsyncIterator[StreamPart]:
+        stop_reason: StopReason = StopReason.STOP
+        current_tool_index: int = -1
+        tool_use_blocks: dict[int, dict[str, Any]] = {}  # index -> {id, name, input}
+
+        try:
+            async for event in response:
+                if isinstance(event, MessageStartEvent):
+                    if event.message.id:
+                        llm_stream._id = event.message.id
+                    if event.message.usage:
+                        cache_read = (
+                            getattr(event.message.usage, "cache_read_input_tokens", 0) or 0
+                        )
+                        cache_write = (
+                            getattr(event.message.usage, "cache_creation_input_tokens", 0) or 0
+                        )
+                        llm_stream._usage = Usage(
+                            input_tokens=event.message.usage.input_tokens,
+                            output_tokens=event.message.usage.output_tokens,
+                            cache_read_tokens=cache_read,
+                            cache_write_tokens=cache_write,
+                        )
+
+                elif isinstance(event, ContentBlockStartEvent):
+                    block = event.content_block
+                    if isinstance(block, ToolUseBlock):
+                        current_tool_index += 1
+                        tool_use_blocks[event.index] = {
+                            "id": block.id,
+                            "name": block.name,
+                            "input": block.input,
+                        }
+                        yield ToolCallStart(
+                            id=block.id,
+                            name=block.name,
+                            index=current_tool_index,
+                            arguments=block.input,
+                        )
+                    elif isinstance(block, ThinkingBlock):
+                        # Thinking block start - content comes in deltas
+                        pass
+
+                elif isinstance(event, ContentBlockDeltaEvent):
+                    delta = event.delta
+                    delta_type = delta.type
+
+                    if delta_type == "text_delta":
+                        yield TextPart(text=delta.text)  # type: ignore[attr-defined]
+                    elif delta_type == "thinking_delta":
+                        yield ThinkPart(think=delta.thinking)  # type: ignore[attr-defined]
+                    elif delta_type == "signature_delta":
+                        # Signature comes after thinking content - emit as ThinkPart
+                        yield ThinkPart(think="", signature=delta.signature)  # type: ignore[attr-defined]
+                    elif delta_type == "input_json_delta":
+                        # Find the tool index for this content block
+                        tool_info = tool_use_blocks.get(event.index)
+                        if tool_info:
+                            # Find the logical tool index
+                            logical_index = list(tool_use_blocks.keys()).index(event.index)
+                            yield ToolCallDelta(
+                                index=logical_index,
+                                arguments_delta=delta.partial_json,  # type: ignore[attr-defined]
+                            )
+
+                elif isinstance(event, ContentBlockStopEvent):
+                    pass
+
+                elif isinstance(event, MessageDeltaEvent):
+                    if event.delta.stop_reason:
+                        stop_reason = self._map_stop_reason(event.delta.stop_reason)
+                    if event.usage and llm_stream._usage:
+                        cache_read = getattr(event.usage, "cache_read_input_tokens", None)
+                        cache_write = getattr(event.usage, "cache_creation_input_tokens", None)
+                        llm_stream._usage = Usage(
+                            input_tokens=llm_stream._usage.input_tokens,
+                            output_tokens=event.usage.output_tokens,
+                            cache_read_tokens=cache_read
+                            if cache_read is not None
+                            else llm_stream._usage.cache_read_tokens,
+                            cache_write_tokens=cache_write
+                            if cache_write is not None
+                            else llm_stream._usage.cache_write_tokens,
+                        )
+
+                elif isinstance(event, MessageStopEvent):
+                    pass
+
+            yield StreamDone(stop_reason=stop_reason)
+
+        except Exception as e:
+            yield StreamError(error=str(e))
+
+    def _convert_messages(self, messages: list[Message]) -> list[MessageParam]:
+        result: list[MessageParam] = []
+
+        for msg in messages:
+            if isinstance(msg, UserMessage):
+                result.append(self._convert_user_message(msg))
+            elif isinstance(msg, AssistantMessage):
+                assistant_message = self._convert_assistant_message(msg)
+                # Anthropic rejects replayed thinking blocks without signatures.
+                # Interrupted/malformed historical messages can contain such blocks,
+                # so we drop them and skip assistant entries that become empty.
+                if assistant_message["content"]:
+                    result.append(assistant_message)
+            elif isinstance(msg, ToolResultMessage):
+                # Anthropic requires tool results as user messages
+                result.append(self._convert_tool_result(msg))
+
+        # Add cache_control to the last user message to cache conversation history
+        self._add_cache_control_to_last_user_message(result)
+
+        return result
+
+    @staticmethod
+    def _add_cache_control_to_last_user_message(messages: list[MessageParam]) -> None:
+        if not messages:
+            return
+
+        last_message = messages[-1]
+        if last_message["role"] != "user":
+            return
+
+        content = last_message["content"]
+        if isinstance(content, str):
+            # Convert string to text block with cache_control
+            last_message["content"] = [
+                {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
+            ]
+        elif isinstance(content, list) and content:
+            # Add cache_control to the last block
+            last_block = content[-1]
+            if isinstance(last_block, dict):
+                last_block_dict = cast(dict[str, Any], last_block)
+                if last_block_dict.get("type") in ("text", "image", "tool_result"):
+                    last_block_dict["cache_control"] = {"type": "ephemeral"}  # type: ignore[typeddict-unknown-key]
+
+    def _convert_user_message(self, msg: UserMessage) -> MessageParam:
+        if isinstance(msg.content, str):
+            return {"role": "user", "content": sanitize_surrogates(msg.content)}
+
+        # Multi-part content
+        parts: list[TextBlockParam | ImageBlockParam] = []
+        for item in msg.content:
+            if isinstance(item, TextContent):
+                parts.append({"type": "text", "text": sanitize_surrogates(item.text)})
+            elif isinstance(item, ImageContent):
+                parts.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": cast(Any, item.mime_type),  # image/jpeg, image/png, etc.
+                            "data": item.data,
+                        },
+                    }
+                )
+
+        return {"role": "user", "content": parts}
+
+    def _convert_assistant_message(self, msg: AssistantMessage) -> MessageParam:
+        parts: list[Any] = []
+
+        for item in msg.content:
+            if isinstance(item, ThinkingContent):
+                # Anthropic requires a signature on replayed thinking blocks.
+                # Keep valid signed thinking and drop invalid/partial thinking.
+                if not item.signature:
+                    continue
+
+                # Redacted/encrypted thinking arrives as empty thinking text with
+                # a signature payload. Replay it via the dedicated
+                # `redacted_thinking` block type so the API accepts the opaque
+                # data, matching pi-mono's behavior.
+                if not item.thinking.strip():
+                    parts.append({"type": "redacted_thinking", "data": item.signature})
+                    continue
+
+                thinking_block: dict[str, Any] = {
+                    "type": "thinking",
+                    "thinking": sanitize_surrogates(item.thinking),
+                    "signature": item.signature,
+                }
+                parts.append(thinking_block)
+            elif isinstance(item, TextContent):
+                parts.append({"type": "text", "text": sanitize_surrogates(item.text)})
+            elif isinstance(item, ToolCall):
+                parts.append(
+                    {"type": "tool_use", "id": item.id, "name": item.name, "input": item.arguments}
+                )
+
+        return {"role": "assistant", "content": parts}
+
+    def _convert_tool_result(self, msg: ToolResultMessage) -> MessageParam:
+        # Convert content to list
+        content_parts: list[TextBlockParam | ImageBlockParam] = []
+        for item in msg.content:
+            if isinstance(item, TextContent):
+                content_parts.append({"type": "text", "text": sanitize_surrogates(item.text)})
+            elif isinstance(item, ImageContent):
+                content_parts.append(
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": cast(Any, item.mime_type),
+                            "data": item.data,
+                        },
+                    }
+                )
+
+        tool_result: ToolResultBlockParam = {
+            "type": "tool_result",
+            "tool_use_id": msg.tool_call_id,
+            "content": content_parts if content_parts else "",
+        }
+
+        if msg.is_error:
+            tool_result["is_error"] = True
+
+        return {"role": "user", "content": [tool_result]}
+
+    def _convert_tools(self, tools: list[ToolDefinition]) -> list[ToolParam]:
+        return [
+            {
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": cast(Any, tool.parameters),
+            }
+            for tool in tools
+        ]
+
+    def _map_stop_reason(self, reason: str) -> StopReason:
+        match reason:
+            case "end_turn":
+                return StopReason.STOP
+            case "max_tokens":
+                return StopReason.LENGTH
+            case "tool_use":
+                return StopReason.TOOL_USE
+            case _:
+                return StopReason.STOP
+
+    def should_retry_for_error(self, error: Exception) -> bool:
+        if isinstance(error, RateLimitError):
+            return True
+        if isinstance(error, APIStatusError):
+            return error.status_code >= 500
+        return False
