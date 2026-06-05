@@ -224,7 +224,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
                 "Not logged in to OpenAI. Use /login to authenticate. "
                 "If you are using an OpenAI-compatible API key instead, select a supported "
                 "provider/model such as deepseek/deepseek-v4 and set it as the default in "
-                "~/.config/kon/config.toml."
+                "~/.rta/config.toml."
             )
 
         llm_stream = LLMStream()

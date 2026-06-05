@@ -2,7 +2,7 @@
 AGENTS.md discovery and loading.
 
 Discovers AGENTS.md (or CLAUDE.md) files from:
-1. Global config dir (~/.config/kon/)
+1. Global config dir (~/.rta/)
 2. Ancestor directories from cwd up to git root or home directory (closest last)
 """
 
@@ -62,7 +62,7 @@ def load_agent_mds(cwd: str | None = None) -> list[ContextFile]:
     Load all AGENTS.md files from config dir and ancestor directories.
 
     Discovery order:
-    1. Global config dir (~/.config/kon/) - loaded first
+    1. Global config dir (~/.rta/) - loaded first
     2. Ancestor directories from stop dir down to cwd - closest to cwd loaded last
 
     Stop directory is determined by:

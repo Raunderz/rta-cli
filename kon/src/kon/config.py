@@ -103,6 +103,8 @@ class LLMConfig(BaseModel):
 class RtaConfig(BaseModel):
     server_url: str = "https://schallten-a2xtbb49ws.hf.space"
     backup_url: str = "https://rta-tb0k.onrender.com"
+    api_key: str = ""
+    device_id: str = ""
 
 
 class CompactionConfig(BaseModel):

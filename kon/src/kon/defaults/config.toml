@@ -2,8 +2,8 @@
 config_version = 6
 
 [llm]
-default_provider = "openai-codex" # "zhipu", "github-copilot", "openai-codex"
-default_model = "gpt-5.5"
+default_provider = "rta" # "zhipu", "github-copilot", "openai-codex"
+default_model = "rta-auto"
 # Optional API base URL override for the selected provider or local/self-hosted endpoint.
 # Leave empty to use the provider's default URL.
 default_base_url = ""
