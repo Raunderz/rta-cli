@@ -25,6 +25,7 @@ from kon.config import (
     NotificationMode,
     PermissionMode,
     ThinkingLinesOption,
+    get_config,
 )
 
 from ..llm import (
@@ -160,6 +161,15 @@ class CommandsMixin:
             return True
         if cmd == "compact":
             self._handle_compact_command()
+            return True
+        if cmd == "status":
+            self.run_worker(self._rta_status_flow(), exclusive=False)
+            return True
+        if cmd == "whoami":
+            self.run_worker(self._rta_whoami_flow(), exclusive=False)
+            return True
+        if cmd == "init":
+            self._handle_init_command(args)
             return True
 
         return False
@@ -906,7 +916,7 @@ class CommandsMixin:
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
                 resp = await client.get(
-                    f"{config.get_config().rta.server_url}/v1/auth/me", headers=headers
+                    f"{get_config().rta.server_url}/v1/auth/me", headers=headers
                 )
 
             if resp.status_code == 200:
@@ -942,18 +952,12 @@ class CommandsMixin:
         ping_start = _time.monotonic()
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{config.get_config().rta.server_url}/v1/usage", headers=headers
-                )
+                resp = await client.get(f"{get_config().rta.server_url}/v1/usage", headers=headers)
             ping_ms = round((_time.monotonic() - ping_start) * 1000)
 
             if resp.status_code == 200:
                 d = resp.json()
-                server = (
-                    config.get_config()
-                    .rta.server_url.replace("https://", "")
-                    .replace("http://", "")
-                )
+                server = get_config().rta.server_url.replace("https://", "").replace("http://", "")
                 chat.add_info_message(
                     f"[bold]Server:[/bold]       {server}\n"
                     f"[bold]Ping:[/bold]         {ping_ms}ms\n"
