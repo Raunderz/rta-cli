@@ -49,6 +49,7 @@ class ChatRequest(BaseModel):
     max_tokens: int = 2000
     session_id: str = ""
     turn_index: int = 0
+    format: str = "rta"
 
 
 class ProxyResult(BaseModel):

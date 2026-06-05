@@ -150,6 +150,8 @@ async def chat_endpoint(
         payload.max_tokens = min(payload.max_tokens, cap)
 
         if payload.stream:
+            is_openai = payload.format == "openai"
+
             async def event_stream():
                 collected_text = ""
                 collected_tool_calls = []
@@ -160,17 +162,35 @@ async def chat_endpoint(
                     async for event in route_chat_request_stream(payload, user_id, user_tier):
                         if event["type"] == "text":
                             collected_text += event["content"]
+                            if is_openai:
+                                yield f"data: {json.dumps({'choices': [{'delta': {'content': event['content']}, 'index': 0}]})}\n\n"
                         elif event["type"] == "tool_calls":
                             collected_tool_calls = event["content"]
+                            if is_openai:
+                                yield f"data: {json.dumps({'choices': [{'delta': {'tool_calls': event['content']}, 'index': 0}]})}\n\n"
                         elif event["type"] == "usage":
                             collected_usage = event["content"]
                         elif event["type"] == "provider":
                             collected_provider = event["content"]
                         elif event["type"] == "meta":
                             collected_meta = event["content"]
-                        yield f"data: {json.dumps(event)}\n\n"
+                        elif event["type"] == "done":
+                            if is_openai:
+                                final_chunk = {"choices": [{"delta": {}, "finish_reason": "stop"}]}
+                                if collected_usage:
+                                    final_chunk["usage"] = collected_usage
+                                yield f"data: {json.dumps(final_chunk)}\n\n"
+                                yield "data: [DONE]\n\n"
+                            else:
+                                yield f"data: {json.dumps(event)}\n\n"
+                        else:
+                            if not is_openai:
+                                yield f"data: {json.dumps(event)}\n\n"
                 except Exception as e:
-                    yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+                    if is_openai:
+                        yield f"data: {json.dumps({'error': {'message': str(e)}})}\n\n"
+                    else:
+                        yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
 
                 try:
                     if collected_provider:
@@ -192,7 +212,6 @@ async def chat_endpoint(
                             session_id=payload.session_id,
                             turn_index=payload.turn_index,
                         )
-                        # Bill for tokens used
                         total_tokens = collected_usage.get("total_tokens", 0)
                         if total_tokens > 0:
                             update_token_usage(user_id, total_tokens)
@@ -231,6 +250,17 @@ async def chat_endpoint(
             request=payload,
             result=result
         )
+
+        if payload.format == "openai":
+            return {
+                "object": "chat.completion",
+                "choices": [{
+                    "message": result.choices[0]["message"],
+                    "finish_reason": "stop"
+                }],
+                "usage": result.usage,
+                "model": result.model,
+            }
 
         return result
 
