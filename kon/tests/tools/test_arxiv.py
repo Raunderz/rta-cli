@@ -1,4 +1,3 @@
-
 import pytest
 
 from kon.tools.arxiv import ArXivParams, ArXivTool

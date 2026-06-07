@@ -15,8 +15,6 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from .themes import ColorsConfig, get_theme, get_theme_ids
 
-CONFIG_DIR_NAME: str = "kon"
-
 OnOverflowMode = Literal["continue", "pause"]
 AuthMode = Literal["auto", "required", "none"]
 PermissionMode = Literal["prompt", "auto"]
