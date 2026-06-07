@@ -44,7 +44,10 @@ def _save(data: dict):
 class MemorizeTool(BaseTool[MemorizeParams]):
     name = "memorize"
     params = MemorizeParams
-    description = "Store a fact persistently. Use for user preferences, project decisions, or any info you want to recall later."
+    description = (
+        "Store a fact persistently. Use for user preferences, project decisions, "
+        "or any info you want to recall later."
+    )
     mutating = True
     tool_icon = "🧠"
 
@@ -68,7 +71,10 @@ class MemorizeTool(BaseTool[MemorizeParams]):
 class RecallTool(BaseTool[RecallParams]):
     name = "recall"
     params = RecallParams
-    description = "Search stored memories by keyword. Only call this when you need to remember something from earlier."
+    description = (
+        "Search stored memories by keyword. Only call this when you need "
+        "to remember something from earlier."
+    )
     mutating = False
     tool_icon = "🔍"
 

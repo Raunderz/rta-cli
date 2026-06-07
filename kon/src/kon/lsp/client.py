@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 import subprocess
@@ -56,13 +57,13 @@ class LSPClient:
                 self.process.terminate()
                 self.process.wait(timeout=3)
             except Exception:
-                try:
+                with contextlib.suppress(Exception):
                     self.process.kill()
-                except Exception:
-                    pass
             self.process = None
 
     def _send(self, data: dict[str, Any]):
+        if not self.process or not self.process.stdin:
+            return
         body = json.dumps(data).encode("utf-8")
         header = f"Content-Length: {len(body)}\r\n\r\n".encode("ascii")
         try:

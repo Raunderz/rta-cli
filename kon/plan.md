@@ -124,8 +124,8 @@ These exist in `cli/` but are superseded by kon's implementation:
 **Priority: Low — kon's UI is already good**
 
 - [x] Verify Rta-specific themes from `cli/rta_cli/tui/themes.py` aren't needed (kon has 24)
-- [ ] Add any missing slash commands (e.g., `/init` for Rta project setup) -> [DONE] Ported `/init`, `/whoami`, `/status`
-- [x] Port notification sounds if different from kon's defaults -> [DONE] Logic ported, using kon's base wavs
+- [x] Add any missing slash commands (e.g., `/init` for Rta project setup)
+- [x] Port notification sounds if different from kon's defaults
 - [x] Update system prompt to reference "Rta" instead of "Kon" where appropriate
 - [x] Rebrand CLI to `rta`, storage to `~/.rta`
 
@@ -137,11 +137,12 @@ These exist in `cli/` but are superseded by kon's implementation:
 
 ## Testing Strategy
 
-1. **Baseline first** — confirm all 38 kon tests pass before any changes
-2. **Provider tests** — write tests for `AsyncRtaProvider` SSE parsing
-3. **Tool tests** — add tests for each new tool in `kon/tests/tools/`
-4. **E2E** — use kon's tmux-based e2e test skill against the Rta backend
-5. **Lint/typecheck** — `uv run ruff format . && uv run ruff check . && uv run python -m pyright .`
+1. [x] **Baseline first** — confirm all 38 kon tests pass before any changes
+2. [x] **Provider tests** — write tests for `AsyncRtaProvider` SSE parsing
+- [x] **Tool tests** — add tests for each new tool in `kon/tests/tools/`
+
+4. [ ] **E2E** — use kon's tmux-based e2e test skill against the Rta backend
+5. [x] **Lint/typecheck** — fixed 50+ pyright errors and 30+ lint warnings in tools and tests.
 
 ## File Reference
 

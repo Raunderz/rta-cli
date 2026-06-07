@@ -132,9 +132,8 @@ class RtaProvider(BaseProvider):
                             input_tokens=content.get("prompt_tokens", 0),
                             output_tokens=content.get("completion_tokens", 0),
                         )
-                    elif event_type == "meta" and isinstance(content, dict):
-                        if "id" in content:
-                            llm_stream._id = content["id"]
+                    elif event_type == "meta" and isinstance(content, dict) and "id" in content:
+                        llm_stream._id = content["id"]
 
             yield StreamDone(stop_reason=StopReason.STOP)
 

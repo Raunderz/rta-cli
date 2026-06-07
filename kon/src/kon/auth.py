@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import os
 import platform
 import uuid
@@ -24,18 +25,14 @@ def _ensure_rta_dir() -> None:
     d = _rta_dir()
     os.makedirs(d, exist_ok=True)
     if platform.system() != "Windows":
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(d, 0o700)
-        except OSError:
-            pass
 
 
 def _set_file_perms(path: str) -> None:
     if platform.system() != "Windows":
-        try:
+        with contextlib.suppress(OSError):
             os.chmod(path, 0o600)
-        except OSError:
-            pass
 
 
 def _encode(value: str) -> str:

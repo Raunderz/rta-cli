@@ -8,7 +8,7 @@ from .version import VERSION
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Kon")
+    parser = argparse.ArgumentParser(description="Rta")
     parser.add_argument("--model", "-m", help="Model to use")
     parser.add_argument("--provider", choices=sorted(PROVIDER_API_BY_NAME), help="Provider to use")
     parser.add_argument(

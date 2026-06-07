@@ -75,7 +75,8 @@ all_tools = [
     SemanticSearchTool(),
     SkeletonTool(),
     RefactorPythonTool(),
-] + get_all_mcp_tools()
+    *get_all_mcp_tools(),
+]
 
 tools_by_name: dict[str, BaseTool] = {tool.name: tool for tool in all_tools}
 DEFAULT_TOOLS: list[str] = ["read", "edit", "write", "bash", "grep", "find"]
