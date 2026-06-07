@@ -35,6 +35,7 @@ async def test_youtube_transcript_success(monkeypatch):
 @pytest.mark.asyncio
 async def test_youtube_transcript_invalid_url():
     from kon.context.project import ProjectInfo
+
     monkeypatch_info = ProjectInfo(language="python")
 
     tool = YouTubeTranscriptTool()
@@ -45,12 +46,18 @@ async def test_youtube_transcript_invalid_url():
     assert result.result is not None
     assert "Could not extract YouTube video ID" in result.result
 
+
 @pytest.mark.asyncio
 async def test_youtube_transcript_empty(monkeypatch):
     class MockResponse:
-        def __enter__(self): return self
-        def __exit__(self, *args): pass
-        def read(self): return b"[]"
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def read(self):
+            return b"[]"
 
     monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout=None: MockResponse())
 
@@ -61,4 +68,3 @@ async def test_youtube_transcript_empty(monkeypatch):
     assert result.success is True
     assert result.result is not None
     assert "No transcript available" in result.result
-

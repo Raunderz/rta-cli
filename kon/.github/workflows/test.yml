@@ -27,6 +27,12 @@ jobs:
     - name: Install dependencies
       run: |
         pip install . --group dev
+    - name: Lint
+      run: |
+        ruff check .
+    - name: Type check
+      run: |
+        pyright
     - name: Run tests
       run: |
         python -m pytest -s
