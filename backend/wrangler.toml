@@ -1,7 +1,0 @@
-name = "rta-backend"
-main = "rta_backend/main.py"
-compatibility_date = "2024-04-01"
-compatibility_flags = [ "python_workers" ]
-
-[python]
-python_version = "3.12"
