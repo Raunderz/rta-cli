@@ -163,7 +163,7 @@ async def test_stream_impl_raises_when_openai_credentials_are_invalid(monkeypatc
 
     message = str(exc_info.value)
     assert "Not logged in to OpenAI" in message
-    assert "~/.config/kon/config.toml" in message
+    assert "~/.rta/config.toml" in message
     assert "deepseek/deepseek-v4" in message
 
 

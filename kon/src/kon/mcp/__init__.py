@@ -1,4 +1,5 @@
 import atexit
+import contextlib
 import json
 import logging
 import os
@@ -53,15 +54,13 @@ _PROCESS_CACHE: dict[str, subprocess.Popen] = {}
 
 
 def cleanup_mcp_servers():
-    for server_name, proc in _PROCESS_CACHE.items():
+    for _server_name, proc in _PROCESS_CACHE.items():
         try:
             proc.terminate()
             proc.wait(timeout=2)
         except Exception:
-            try:
+            with contextlib.suppress(Exception):
                 proc.kill()
-            except Exception:
-                pass
     _PROCESS_CACHE.clear()
 
 
@@ -101,6 +100,8 @@ def _send_rpc_stdio(server_name: str, sc: dict, request: dict, _retry: bool = Tr
         return {"error": f"Could not start MCP server '{server_name}'"}
 
     try:
+        if not proc.stdin or not proc.stdout:
+            return {"error": "Process pipes not available"}
         proc.stdin.write(json.dumps(request) + "\n")
         proc.stdin.flush()
 

@@ -58,6 +58,8 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
             return ToolResult(success=False, result=f"No LSP server found for {lang}.")
 
         uri = path_to_uri(abs_path)
+        print(f"DEBUG: abs_path={abs_path}")
+        print(f"DEBUG: tool_uri={uri}")
         try:
             with open(abs_path) as f:
                 content = f.read()
@@ -70,6 +72,7 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
             # Wait for diagnostics
             await asyncio.sleep(1)
 
+            print(f"DEBUG: client._diagnostics={client._diagnostics}")
             relevant = [d for d in client._diagnostics if d["uri"] == uri]
             if not relevant:
                 return ToolResult(success=True, result="No diagnostics found.")
@@ -116,6 +119,8 @@ class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
             return ToolResult(success=False, result=f"No LSP server found for {lang}.")
 
         uri = path_to_uri(abs_path)
+        print(f"DEBUG: abs_path={abs_path}")
+        print(f"DEBUG: tool_uri={uri}")
         try:
             result = client.send_request(
                 "textDocument/definition",

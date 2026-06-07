@@ -91,11 +91,11 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
             if cancel_event and cancel_event.is_set():
                 break
 
-            def _search() -> list[dict]:
-                return list(DDGS().text(sq, max_results=params.max_results))
+            def _search(q: str) -> list[dict]:
+                return list(DDGS().text(q, max_results=params.max_results))
 
             try:
-                work = asyncio.create_task(asyncio.to_thread(_search))
+                work = asyncio.create_task(asyncio.to_thread(_search, sq))
                 results = await await_task_or_cancel(work, cancel_event)
                 for r in results:
                     url = r.get("href", "")

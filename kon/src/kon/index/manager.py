@@ -150,7 +150,6 @@ class BM25Indexer:
 
     def _generate_skeleton(self):
         skeleton = ["# Project Skeleton\n"]
-        processed_files = set()
 
         # Group by file
         files_to_chunks = {}

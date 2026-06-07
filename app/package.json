@@ -9,7 +9,15 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-python": "^6.2.1",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.43.0",
     "@isomorphic-git/lightning-fs": "^4.6.2",
+    "codemirror": "^6.0.2",
     "expo": "~55.0.8",
     "expo-file-system": "^55.0.21",
     "expo-haptics": "~55.0.14",

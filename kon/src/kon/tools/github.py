@@ -1,5 +1,6 @@
 import asyncio
 import json
+import urllib.error
 import urllib.parse
 import urllib.request
 from typing import Literal
