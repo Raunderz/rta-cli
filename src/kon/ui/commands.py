@@ -537,6 +537,7 @@ class CommandsMixin:
         self._sync_runtime_state()
 
         info_bar.set_model(model.id, model.provider)
+        self.run_worker(self._refresh_provider_metadata(), exclusive=False)
 
         chat.add_info_message(f"Model changed to {model.id} ({model.provider})")
 

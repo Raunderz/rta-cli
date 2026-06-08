@@ -87,6 +87,37 @@ class RtaProvider(BaseProvider):
         self.server_url = config.base_url or kon_config.rta.server_url
         self.device_id = kon_config.rta.device_id or kon_auth.get_device_id()
 
+    async def get_metadata(self) -> dict[str, Any]:
+        headers = {"X-API-KEY": self.api_key or ""}
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.get(f"{self.server_url}/v1/usage", headers=headers)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    tier = data.get("tier", "free").lower()
+                    
+                    # Context windows per tier (aligned with backend TIER_CAPS)
+                    context_windows = {
+                        "free": 2000,
+                        "basic": 4000,
+                        "pro": 10000,
+                        "enterprise": 32000
+                    }
+                    
+                    window = context_windows.get(tier, 2000)
+                    
+                    # If they've used tokens today, we might want to show remaining?
+                    # The user said "according to tier and usage".
+                    # Let's just provide the window and the raw usage data.
+                    return {
+                        "context_window": window,
+                        "tier": tier,
+                        "usage": data
+                    }
+        except Exception:
+            pass
+        return {}
+
     async def _stream_impl(
         self,
         messages: list[Message],
@@ -124,12 +155,11 @@ class RtaProvider(BaseProvider):
         self, payload: dict[str, Any], headers: dict[str, str], llm_stream: LLMStream
     ) -> AsyncIterator[StreamPart]:
         try:
-            async with (
-                httpx.AsyncClient(timeout=60.0) as client,
-                client.stream(
-                    "POST", f"{self.server_url}/v1/chat", json=payload, headers=headers
-                ) as response,
-            ):
+            # 1. Enqueue job
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    f"{self.server_url}/v1/chat/async", json=payload, headers=headers
+                )
                 if response.status_code != 200:
                     error_text = await response.aread()
                     raise httpx.HTTPStatusError(
@@ -137,47 +167,76 @@ class RtaProvider(BaseProvider):
                         request=response.request,
                         response=response,
                     )
+                
+                job_data = response.json()
+                job_id = job_data["job_id"]
 
-                async for line in response.aiter_lines():
-                    if not line.startswith("data: "):
-                        continue
+            # 2. Poll for chunks
+            next_index = 0
+            consecutive_errors = 0
+            while True:
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        poll_url = f"{self.server_url}/v1/chat/job/{job_id}?after_index={next_index}"
+                        poll_resp = await client.get(poll_url, headers=headers)
+                        
+                        if poll_resp.status_code != 200:
+                            consecutive_errors += 1
+                            if consecutive_errors > 5:
+                                yield StreamError(error=f"Polling failed: {poll_resp.status_code}")
+                                return
+                            await asyncio.sleep(1)
+                            continue
+                        
+                        consecutive_errors = 0
+                        status_data = poll_resp.json()
+                        
+                        # Process chunks
+                        for event in status_data.get("chunks", []):
+                            event_type = event.get("type", "")
+                            content = event.get("content", "")
 
-                    data_str = line[6:].strip()
-                    if not data_str or data_str == "[DONE]":
-                        break
+                            if event_type == "text" and content:
+                                yield TextPart(text=content)
+                            elif event_type == "thought" and content:
+                                yield ThinkPart(think=content)
+                            elif event_type == "tool_calls":
+                                for i, tc in enumerate(content):
+                                    tc_id = tc.get("id", "")
+                                    fn = tc.get("function", {})
+                                    name = fn.get("name", "")
+                                    args = fn.get("arguments", "")
+                                    if tc_id:
+                                        yield ToolCallStart(id=tc_id, name=name, index=i)
+                                        if args:
+                                            yield ToolCallDelta(index=i, arguments_delta=args)
+                            elif event_type == "error":
+                                yield StreamError(error=content or "Unknown error")
+                                return
+                            elif event_type == "usage" and isinstance(content, dict):
+                                llm_stream._usage = Usage(
+                                    input_tokens=content.get("prompt_tokens", 0),
+                                    output_tokens=content.get("completion_tokens", 0),
+                                )
+                            elif event_type == "meta" and isinstance(content, dict) and "id" in content:
+                                llm_stream._id = content["id"]
 
-                    try:
-                        event = json.loads(data_str)
-                    except json.JSONDecodeError:
-                        continue
+                        next_index = status_data.get("next_index", next_index)
 
-                    event_type = event.get("type", "")
-                    content = event.get("content", "")
+                        if status_data.get("done"):
+                            if status_data.get("status") == "failed":
+                                yield StreamError(error=status_data.get("error", "Job failed"))
+                            break
+                        
+                        # Wait before next poll
+                        await asyncio.sleep(0.5)
 
-                    if event_type == "text" and content:
-                        yield TextPart(text=content)
-                    elif event_type == "thought" and content:
-                        yield ThinkPart(think=content)
-                    elif event_type == "tool_calls":
-                        for i, tc in enumerate(content):
-                            tc_id = tc.get("id", "")
-                            fn = tc.get("function", {})
-                            name = fn.get("name", "")
-                            args = fn.get("arguments", "")
-                            if tc_id:
-                                yield ToolCallStart(id=tc_id, name=name, index=i)
-                                if args:
-                                    yield ToolCallDelta(index=i, arguments_delta=args)
-                    elif event_type == "error":
-                        yield StreamError(error=content or "Unknown error")
+                except Exception as e:
+                    consecutive_errors += 1
+                    if consecutive_errors > 10:
+                        yield StreamError(error=f"Connection Error during polling: {e}")
                         return
-                    elif event_type == "usage" and isinstance(content, dict):
-                        llm_stream._usage = Usage(
-                            input_tokens=content.get("prompt_tokens", 0),
-                            output_tokens=content.get("completion_tokens", 0),
-                        )
-                    elif event_type == "meta" and isinstance(content, dict) and "id" in content:
-                        llm_stream._id = content["id"]
+                    await asyncio.sleep(1)
 
             yield StreamDone(stop_reason=StopReason.STOP)
 
@@ -189,6 +248,7 @@ class RtaProvider(BaseProvider):
             raise
         except Exception as e:
             yield StreamError(error=f"Connection Error: {e!s}")
+
 
     def _convert_messages(
         self, messages: list[Message], system_prompt: str | None
