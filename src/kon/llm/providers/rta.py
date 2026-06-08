@@ -1,3 +1,4 @@
+import asyncio
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -28,6 +29,47 @@ from ...core.types import (
     UserMessage,
 )
 from ..base import BaseProvider, LLMStream, ProviderConfig
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Heartbeat — keeps the RTA backend process alive on Render/HF Spaces
+# by pinging GET /v1/heartbeat every 20s while the CLI is active.
+# ──────────────────────────────────────────────────────────────────────────────
+
+_heartbeat_task: asyncio.Task | None = None
+
+
+async def _heartbeat_loop(server_url: str, api_key: str) -> None:
+    client = httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=5.0))
+    try:
+        while True:
+            await asyncio.sleep(20)
+            try:
+                await client.get(
+                    f"{server_url}/v1/heartbeat",
+                    headers={"X-API-KEY": api_key},
+                )
+            except Exception:
+                pass
+    finally:
+        await client.aclose()
+
+
+def _ensure_heartbeat(server_url: str, api_key: str) -> None:
+    global _heartbeat_task
+    if _heartbeat_task is None:
+        _heartbeat_task = asyncio.create_task(_heartbeat_loop(server_url, api_key))
+
+
+async def stop_heartbeat() -> None:
+    global _heartbeat_task
+    if _heartbeat_task is not None:
+        _heartbeat_task.cancel()
+        try:
+            await _heartbeat_task
+        except asyncio.CancelledError:
+            pass
+        _heartbeat_task = None
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Provider Implementation
@@ -71,6 +113,8 @@ class RtaProvider(BaseProvider):
         }
         if tools:
             payload["tools"] = self._convert_tools(tools)
+
+        _ensure_heartbeat(self.server_url, self.api_key)
 
         llm_stream = LLMStream()
         llm_stream.set_iterator(self._process_stream(payload, headers, llm_stream))
