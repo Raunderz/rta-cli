@@ -12,6 +12,7 @@ from rta_backend.data import router as data_router, log_telemetry_task
 from rta_backend.billing import router as billing_router
 from rta_backend.proxy import ChatRequest, ProxyResult, route_chat_request, route_chat_request_stream, AllProvidersExhaustedError
 from rta_backend.executor_proxy import executor_router, shutdown_http_client
+from rta_backend.providers import close_provider_client
 from rta_backend.security import require_api_key
 from rta_backend.db import get_user_tier
 
@@ -285,7 +286,8 @@ app.include_router(executor_router, prefix="/v1")
 
 @app.on_event("shutdown")
 async def shutdown():
-    await shutdown_http_client()
+    await shutdown_http_client()       # executor client (already existed)
+    await close_provider_client()      # provider shared client (added)
 
 @app.get("/v1/usage")
 async def usage_endpoint(

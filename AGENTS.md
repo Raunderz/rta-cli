@@ -1,10 +1,10 @@
-# AGENTS.md — Centralized Interaction Logging
+# AGENTS.md — Centralized Call-Level Interaction Logging
 
 ## Purpose
 
-This document instructs AI agents to log all LLM interactions to a centralized CSV file for dataset collection and model fine-tuning. Every agent interaction (Claude, Cursor, local models, etc.) must be captured in a consistent format.
+This document instructs AI agents to log every **LLM call** (not every message turn) to a centralized CSV file for dataset collection and model fine-tuning. A single user message may trigger multiple tool calls, file edits, or reasoning steps — each of these is an independent LLM call and must be logged separately.
 
-**Core principle:** One source of truth for all agent interactions on this machine.
+**Core principle:** One source of truth for all agent LLM calls on this machine. One row per call.
 
 ---
 
@@ -25,32 +25,34 @@ This document instructs AI agents to log all LLM interactions to a centralized C
    ls -la ~/.agents/AGENTS.md
    ```
 
-4. **Done.** All agents will now log to `~/.agents/agent-interactions.csv` automatically.
+4. **Done.** All agents will now log to `~/.agents/agent-calls.csv` automatically.
 
 ---
 
 ## Logging Requirement
 
 ### Where
-- **File location:** `~/.agents/agent-interactions.csv` (in home directory `.agents` folder)
+- **File location:** `~/.agents/agent-calls.csv` (in home directory `.agents` folder)
 - **Format:** CSV (RFC 4180 compliant)
 - **Mode:** Append-only (never truncate or delete)
 - **Encoding:** UTF-8
-- **Absolute path:** `/home/yourusername/.agents/agent-interactions.csv`
+- **Absolute path:** `/home/yourusername/.agents/agent-calls.csv`
 
-This centralized location ensures all agent interactions from all projects are logged to a single file.
+This centralized location ensures all agent LLM calls from all projects are logged to a single file.
 
 ### When
-Log every interaction **immediately after an LLM generates a response**. This includes:
-- Direct Claude conversations
-- Code-generation tasks in Cursor / Claude Code
-- Local model inference
-- Multi-turn conversations
+Log **every individual LLM call** immediately after it completes. This includes:
+- Each tool call (file read, web search, code execution)
+- Each file edit/generation call
+- Each reasoning/planning call
+- Each direct chat response
+- Multi-step chains: if one user message triggers 6 file edits, log 6 rows
 
 Do NOT log:
 - Failed/errored requests
-- Incomplete or aborted interactions
+- Incomplete or aborted calls
 - Test/sandbox runs
+- UI rendering or client-side-only events
 
 ---
 
@@ -59,34 +61,62 @@ Do NOT log:
 The file must have this header row (exactly as written):
 
 ```
-user_id,session_id,turn_index,role,system_prompt,ai_prompt,ai_response,provider,model_used,is_fallback,tokens_in,tokens_out,tokens_cached,latency_ms,schema_version,workspace_path,full_history,available_tools,full_history_count,provider_meta,created_at
+call_id,session_id,parent_message_id,turn_index,call_index,role,system_prompt,ai_prompt,ai_response,provider,model_used,is_fallback,tokens_in,tokens_out,tokens_cached,latency_ms,schema_version,workspace_path,tool_used,file_paths_affected,full_history,available_tools,full_history_count,provider_meta,created_at
 ```
 
 ### Field Definitions
 
 | Field | Type | Description | Example | If Unknown |
 |-------|------|-------------|---------|-----------|
-| `user_id` | UUID/string | Machine identifier or user alias | `local-machine-001` | Use a consistent machine ID |
+| `call_id` | UUID/string | **Unique identifier for this specific LLM call** | `call-abc123-def456` | Generate UUID4 |
 | `session_id` | string | Unique session identifier (conversation/task) | `claude-chat-2026-06-07-001` | Generate: `{agent}-{timestamp}-{random}` |
+| `parent_message_id` | string | ID of the user message that triggered this call chain | `msg-2026-06-07-001` | Same as `session_id` if no message-level ID exists |
 | `turn_index` | int | Message turn within session (0-indexed) | `0`, `1`, `2` | Start at `0` |
-| `role` | string | Always `assistant` (the LLM response) | `assistant` | **Always `assistant`** |
-| `system_prompt` | string (CSV-escaped) | Initial system instruction given to LLM | `You are a helpful coding assistant...` | `""` (empty) if none |
-| `ai_prompt` | string (CSV-escaped) | The exact user/input prompt that triggered this response | `Write a Python function to...` | Sanitize: strip API keys, passwords |
-| `ai_response` | string (CSV-escaped) | The full LLM response text | `def my_func(): ...` | Full response, no truncation |
-| `provider` | string | LLM provider name | `anthropic`, `openai`, `local` | `unknown` if unable to determine |
-| `model_used` | string | Exact model name/version | `claude-3-5-sonnet`, `gpt-4o`, `llama-2-7b` | Model name or `unknown` |
-| `is_fallback` | boolean | Did the request fall back to a different model? | `true`, `false` | `false` if not applicable |
-| `tokens_in` | int | Prompt token count | `1250` | `0` if unavailable |
-| `tokens_out` | int | Completion token count | `340` | `0` if unavailable |
-| `tokens_cached` | int | Cached tokens (if applicable) | `500` | `0` if N/A |
-| `latency_ms` | int | Total request latency in milliseconds | `1840` | `0` if unavailable |
-| `schema_version` | int | Version of this logging schema | `1` | **Always `1`** |
-| `workspace_path` | string | Workspace or project root directory | `/Users/me/my-project` | `.` (current dir) if unknown |
-| `full_history` | string (JSON, CSV-escaped) | Complete sanitized conversation history as JSON array | `"[{""role"":""user"",""content"":""hi""},{""role"":""assistant"",""content"":""hello""}]"` | `"[]"` (empty array) if unavailable |
-| `available_tools` | string (JSON, CSV-escaped) | List of tools/functions the LLM could access | `"[""code_execution"",""web_search""]"` | `"[]"` if none |
-| `full_history_count` | int | Total messages in conversation so far | `5` | Count of messages or `0` |
-| `provider_meta` | string (JSON, CSV-escaped) | Additional provider-specific metadata | `"{"models_tried":["gpt-4","gpt-3.5"],"retry_count":0}"` | `"{}"` (empty object) |
-| `created_at` | ISO 8601 timestamp | UTC timestamp of interaction | `2026-06-07T14:32:45.123Z` | Use `datetime.utcnow().isoformat()` + `Z` |
+| `call_index` | int | **Index of this call within the turn** (0-indexed) | `0`, `1`, `2`, `3` | `0` for single-call turns |
+| `role` | string | Always `assistant` | `assistant` | **Always `assistant`** |
+| `system_prompt` | string (CSV-escaped) | System instruction active for this call | `You are a helpful coding assistant...` | `""` if none |
+| `ai_prompt` | string (CSV-escaped) | **The exact prompt/input for this specific call** (not the whole user message) | `Edit file src/main.py to add...` | Sanitize: strip API keys, passwords |
+| `ai_response` | string (CSV-escaped) | **The full response for this specific call** | `--- src/main.py\n+++ src/main.py\n@@ -1,5 +1,7 @@` | Full response, no truncation |
+| `provider` | string | LLM provider name | `anthropic`, `openai`, `local` | `unknown` |
+| `model_used` | string | Exact model name/version | `claude-3-5-sonnet`, `gpt-4o` | `unknown` |
+| `is_fallback` | boolean | Did the request fall back to a different model? | `true`, `false` | `false` |
+| `tokens_in` | int | Prompt token count for this call | `1250` | `0` |
+| `tokens_out` | int | Completion token count for this call | `340` | `0` |
+| `tokens_cached` | int | Cached tokens for this call | `500` | `0` |
+| `latency_ms` | int | Total request latency for this call | `1840` | `0` |
+| `schema_version` | int | Version of this logging schema | `2` | **Always `2`** |
+| `workspace_path` | string | Workspace or project root directory | `/Users/me/my-project` | `.` if unknown |
+| `tool_used` | string | Name of the tool/function called, if any | `edit_file`, `read_file`, `web_search`, `chat` | `chat` if no tool |
+| `file_paths_affected` | string (JSON, CSV-escaped) | Array of file paths modified/read by this call | `["src/main.py", "src/utils.py"]` | `"[]"` |
+| `full_history` | string (JSON, CSV-escaped) | Conversation history *before* this call | `"[{""role"":""user"",""content"":""hi""}]"` | `"[]"` |
+| `available_tools` | string (JSON, CSV-escaped) | Tools available to the LLM for this call | `"[""edit_file"",""read_file""]"` | `"[]"` |
+| `full_history_count` | int | Total messages in conversation before this call | `5` | `0` |
+| `provider_meta` | string (JSON, CSV-escaped) | Provider-specific metadata for this call | `"{"tool_name":"edit_file"}"` | `"{}"` |
+| `created_at` | ISO 8601 timestamp | UTC timestamp of call completion | `2026-06-07T14:32:45.123Z` | `datetime.utcnow().isoformat()` + `Z` |
+
+---
+
+## Call-Level Granularity Examples
+
+### Example 1: Single Chat Response
+User says "Hello" → One LLM call → One row.
+
+```
+call-001,session-001,msg-001,0,0,assistant,"You are helpful.","Hello","Hello! How can I help?","anthropic","claude-3-5-sonnet",false,5,15,0,800,2,/home/user/project,"chat","[]","[]","[""chat""]",0,"{}",2026-06-07T14:32:45.123Z
+```
+
+### Example 2: Multi-File Edit
+User says "Refactor auth and add tests" → Agent makes 5 calls:
+
+| call_index | tool_used | file_paths_affected | ai_prompt (truncated) |
+|------------|-----------|---------------------|----------------------|
+| 0 | `read_file` | `["src/auth.py"]` | "Read src/auth.py to understand current auth logic" |
+| 1 | `edit_file` | `["src/auth.py"]` | "Refactor auth.py to use JWT tokens" |
+| 2 | `read_file` | `["tests/test_auth.py"]` | "Read existing auth tests" |
+| 3 | `edit_file` | `["tests/test_auth.py"]` | "Add tests for JWT auth" |
+| 4 | `chat` | `[]` | "Summarize changes made" |
+
+**5 rows in CSV**, all with same `parent_message_id` and `turn_index=0`, but `call_index` 0-4.
 
 ---
 
@@ -96,12 +126,12 @@ user_id,session_id,turn_index,role,system_prompt,ai_prompt,ai_response,provider,
 
 1. If a field contains a comma (`,`), newline, or double-quote (`"`), wrap the entire field in double-quotes.
 2. If a field contains a double-quote, escape it by doubling: `"` → `""`
-3. JSON fields (full_history, available_tools, provider_meta) must be wrapped in quotes, with internal quotes doubled.
+3. JSON fields (`file_paths_affected`, `full_history`, `available_tools`, `provider_meta`) must be wrapped in quotes, with internal quotes doubled.
 
-### Example Row
+### Example Row (Multi-File Edit)
 
 ```
-local-machine-001,claude-chat-2026-06-07-001,0,assistant,"You are a helpful assistant.","Write a Python function for Fibonacci","def fibonacci(n): return 1 if n<=1 else fibonacci(n-1)+fibonacci(n-2)",anthropic,claude-3-5-sonnet,false,1200,180,0,1840,1,/home/user/projects/ml-suite,"[{""role"":""user"",""content"":""Write a Fibonacci function""},{""role"":""assistant"",""content"":""def fibonacci(n)...\n""}]","[""code_execution""]",2,"{""models_tried"":[],""retry_count"":0}",2026-06-07T14:32:45.123Z
+call-002,session-001,msg-001,0,1,assistant,"You are a helpful coding assistant.","Edit src/auth.py to use JWT tokens instead of session cookies","--- src/auth.py\n+++ src/auth.py\n@@ -1,10 +1,12 @@\n-import session\n+import jwt\n...",anthropic,claude-3-5-sonnet,false,2500,800,0,3200,2,/home/user/project,edit_file,"[""src/auth.py""]","[{""role"":""user"",""content"":""Refactor auth""}]","[""read_file"",""edit_file"",""chat""]",1,"{""tool_name"":""edit_file""}",2026-06-07T14:33:12.456Z
 ```
 
 ---
@@ -125,7 +155,7 @@ local-machine-001,claude-chat-2026-06-07-001,0,assistant,"You are a helpful assi
 4. **Full connection strings:** Replace with `[REDACTED_CREDENTIALS]`
 
 ### Example
-**Original:**
+**Original prompt:**
 ```
 Write a query: SELECT * FROM db WHERE api_key='sk-1234567890abcdef' AND user='alice@corp.com'
 ```
@@ -146,15 +176,20 @@ import csv
 from datetime import datetime
 import json
 import os
+import uuid
 
-def log_interaction(
+def log_call(
     session_id,
+    parent_message_id,
     turn_index,
+    call_index,
     system_prompt,
     ai_prompt,
     ai_response,
     provider,
     model_used,
+    tool_used="chat",
+    file_paths_affected=None,
     tokens_in=0,
     tokens_out=0,
     latency_ms=0,
@@ -165,19 +200,21 @@ def log_interaction(
     available_tools=None,
     provider_meta=None,
 ):
-    """Log a single LLM interaction to CSV."""
+    """Log a single LLM call to CSV."""
     
-    # Absolute path to central CSV location
-    csv_path = os.path.expanduser("~/.agents/agent-interactions.csv")
+    call_id = str(uuid.uuid4())
+    csv_path = os.path.expanduser("~/.agents/agent-calls.csv")
     
     row = {
-        "user_id": "local-machine-001",  # Replace with actual user/machine ID
+        "call_id": call_id,
         "session_id": session_id,
+        "parent_message_id": parent_message_id,
         "turn_index": turn_index,
+        "call_index": call_index,
         "role": "assistant",
         "system_prompt": system_prompt or "",
-        "ai_prompt": scrub_secrets(ai_prompt),  # See scrub_secrets() below
-        "ai_response": ai_response,
+        "ai_prompt": scrub_secrets(ai_prompt),
+        "ai_response": scrub_secrets(ai_response),
         "provider": provider,
         "model_used": model_used,
         "is_fallback": str(is_fallback).lower(),
@@ -185,8 +222,10 @@ def log_interaction(
         "tokens_out": tokens_out,
         "tokens_cached": tokens_cached,
         "latency_ms": latency_ms,
-        "schema_version": 1,
+        "schema_version": 2,
         "workspace_path": workspace_path,
+        "tool_used": tool_used,
+        "file_paths_affected": json.dumps(file_paths_affected or []),
         "full_history": json.dumps(full_history or []),
         "available_tools": json.dumps(available_tools or []),
         "full_history_count": len(full_history) if full_history else 0,
@@ -194,17 +233,13 @@ def log_interaction(
         "created_at": datetime.utcnow().isoformat() + "Z",
     }
     
-    # Create ~/.agents directory if it doesn't exist
     agents_dir = os.path.expanduser("~/.agents")
     os.makedirs(agents_dir, exist_ok=True)
     
     with open(csv_path, "a", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=row.keys())
-        
-        # Write header only if file is empty
         if f.tell() == 0:
             writer.writeheader()
-        
         writer.writerow(row)
 
 
@@ -212,15 +247,10 @@ def scrub_secrets(text):
     """Remove API keys, credentials, and PII from text."""
     import re
     
-    # Remove common API key patterns
     text = re.sub(r'(api[_-]?key|token|password|secret)\s*[=:]\s*["\']?[a-zA-Z0-9_\-]{20,}["\']?',
                   r'\1=[REDACTED]', text, flags=re.IGNORECASE)
-    
-    # Remove email addresses
     text = re.sub(r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
                   '[REDACTED_EMAIL]', text)
-    
-    # Remove common path prefixes with usernames
     text = re.sub(r'/home/[a-zA-Z0-9_-]+/', '/home/USER/', text)
     text = re.sub(r'/Users/[a-zA-Z0-9_-]+/', '/Users/USER/', text)
     
@@ -233,15 +263,20 @@ def scrub_secrets(text):
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { v4 as uuidv4 } from 'uuid';
 
-async function logInteraction({
+async function logCall({
   sessionId,
+  parentMessageId,
   turnIndex,
+  callIndex,
   systemPrompt,
   aiPrompt,
   aiResponse,
   provider,
   modelUsed,
+  toolUsed = 'chat',
+  filePathsAffected = [],
   tokensIn = 0,
   tokensOut = 0,
   latencyMs = 0,
@@ -252,23 +287,24 @@ async function logInteraction({
   availableTools = [],
   providerMeta = {},
 }) {
-  // Absolute path to central CSV location
+  const callId = uuidv4();
   const agentsDir = path.join(os.homedir(), '.agents');
-  const csvPath = path.join(agentsDir, 'agent-interactions.csv');
+  const csvPath = path.join(agentsDir, 'agent-calls.csv');
   
-  // Create ~/.agents directory if it doesn't exist
   if (!fs.existsSync(agentsDir)) {
     fs.mkdirSync(agentsDir, { recursive: true });
   }
   
   const row = {
-    user_id: 'local-machine-001',
+    call_id: callId,
     session_id: sessionId,
+    parent_message_id: parentMessageId,
     turn_index: turnIndex,
+    call_index: callIndex,
     role: 'assistant',
     system_prompt: systemPrompt || '',
     ai_prompt: scrubSecrets(aiPrompt),
-    ai_response: aiResponse,
+    ai_response: scrubSecrets(aiResponse),
     provider,
     model_used: modelUsed,
     is_fallback: isFallback.toString(),
@@ -276,8 +312,10 @@ async function logInteraction({
     tokens_out: tokensOut,
     tokens_cached: tokensCached,
     latency_ms: latencyMs,
-    schema_version: 1,
+    schema_version: 2,
     workspace_path: workspacePath,
+    tool_used: toolUsed,
+    file_paths_affected: JSON.stringify(filePathsAffected),
     full_history: JSON.stringify(fullHistory),
     available_tools: JSON.stringify(availableTools),
     full_history_count: fullHistory.length,
@@ -285,11 +323,9 @@ async function logInteraction({
     created_at: new Date().toISOString(),
   };
 
-  // Check if file exists and is empty
   const fileExists = fs.existsSync(csvPath);
   const isFileEmpty = !fileExists || fs.statSync(csvPath).size === 0;
 
-  // CSV string with proper escaping
   const csvRow = Object.values(row)
     .map(v => {
       const str = String(v);
@@ -300,7 +336,6 @@ async function logInteraction({
     })
     .join(',');
 
-  // Write header if file is new
   const header = Object.keys(row).join(',') + '\n';
   const content = isFileEmpty ? header + csvRow + '\n' : csvRow + '\n';
   
@@ -308,18 +343,12 @@ async function logInteraction({
 }
 
 function scrubSecrets(text) {
-  // Remove API keys
   text = text.replace(/(['\"`]?(?:api[_-]?key|token|password|secret)['\"`]?\s*[=:]\s*['\"`]?)([a-zA-Z0-9_\-]{20,})/gi,
     '$1[REDACTED]');
-  
-  // Remove emails
   text = text.replace(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
     '[REDACTED_EMAIL]');
-  
-  // Anonymize home paths
   text = text.replace(/\/home\/[a-zA-Z0-9_-]+\//g, '/home/USER/');
   text = text.replace(/\/Users\/[a-zA-Z0-9_-]+\//g, '/Users/USER/');
-  
   return text;
 }
 ```
@@ -329,41 +358,50 @@ function scrubSecrets(text) {
 ## Boundaries (Three-Tier Model)
 
 ### Always Do
-- Log every successful LLM response
-- Escape CSV fields correctly (double-quote strings with commas)
+- Log **every individual LLM call** (not just the final response)
+- Include `call_index` to preserve call order within a turn
+- Set `tool_used` correctly (`chat`, `edit_file`, `read_file`, `web_search`, etc.)
+- Populate `file_paths_affected` with actual files touched by this call
+- Escape CSV fields correctly
 - Use UTF-8 encoding
 - Include `created_at` timestamp in ISO 8601 format
-- Scrub secrets from `ai_prompt` and `ai_response`
+- Scrub secrets from `ai_prompt` **and** `ai_response`
 - Append to file in order (never shuffle, reorder, or delete)
 
 ### Ask First
-- If the interaction involves external APIs (web search, file uploads): still log, but set `available_tools` to reflect what was accessible
+- If the call involves external APIs: still log, set `available_tools` accordingly
 - If tokens/latency unavailable: use `0` and continue
 - If workspace unknown: use `.` and continue
+- If `parent_message_id` is unavailable: use `session_id` as fallback
 
 ### Never Do (Hard Stops)
+- **Never** collapse multiple calls into one row
 - **Never** log credentials, API keys, or tokens (use scrubbing)
-- **Never** log PII like email addresses, phone numbers, or usernames (use redaction)
+- **Never** log PII (use redaction)
 - **Never** truncate or modify prior rows
 - **Never** delete rows from the CSV
 - **Never** change the CSV column order
-- **Never** skip logging because "the data is incomplete"—use defaults instead (0, empty string, "unknown")
-- **Never** commit the CSV to git if it contains actual API calls (add `agent-interactions.csv` to `.gitignore`)
+- **Never** skip logging because "the data is incomplete"—use defaults instead
+- **Never** commit the CSV to git (add `agent-calls.csv` to `.gitignore`)
 
 ---
 
 ## Validation Checklist
 
-Before marking an interaction as logged, verify:
+Before marking a call as logged, verify:
 
 - [ ] CSV header exists (run once on first write)
-- [ ] All required fields are present in the row
+- [ ] `call_id` is unique (UUID4 recommended)
+- [ ] `call_index` increments correctly within the turn
+- [ ] `tool_used` reflects the actual call type
+- [ ] `file_paths_affected` is accurate for this specific call
+- [ ] All required fields are present
 - [ ] Strings with commas/quotes are properly escaped
 - [ ] Secrets are scrubbed from prompts and responses
-- [ ] `created_at` is ISO 8601 with timezone (e.g., `2026-06-07T14:32:45.123Z`)
+- [ ] `created_at` is ISO 8601 with timezone
 - [ ] `role` is exactly `"assistant"`
-- [ ] Numeric fields (tokens, latency) are integers or 0
-- [ ] JSON fields (full_history, available_tools) are valid JSON
+- [ ] Numeric fields are integers or 0
+- [ ] JSON fields are valid JSON
 - [ ] File is UTF-8 encoded
 - [ ] Row is appended, not inserted or reordered
 
@@ -372,13 +410,14 @@ Before marking an interaction as logged, verify:
 ## Example Workflow
 
 ```
-1. Agent receives user prompt: "Write a function to call my API with key sk-abc123"
-2. Agent calls LLM (e.g., Claude)
-3. LLM returns response with code
-4. Agent scrubs prompt: "Write a function to call my API with key [REDACTED_API_KEY]"
-5. Agent scrubs response (if needed)
-6. Agent logs the row to agent-interactions.csv
-7. CSV now contains the sanitized interaction for training data
+1. User says: "Refactor auth and add tests"
+2. Agent plans: read auth.py → edit auth.py → read tests → edit tests → summarize
+3. Call 0: read_file("auth.py") → log row with call_index=0, tool_used="read_file"
+4. Call 1: edit_file("auth.py", <diff>) → log row with call_index=1, tool_used="edit_file"
+5. Call 2: read_file("test_auth.py") → log row with call_index=2, tool_used="read_file"
+6. Call 3: edit_file("test_auth.py", <diff>) → log row with call_index=3, tool_used="edit_file"
+7. Call 4: chat("Done. Changed X, Y, Z.") → log row with call_index=4, tool_used="chat"
+8. CSV now contains 5 rows for this single user message
 ```
 
 ---
@@ -393,13 +432,14 @@ Before marking an interaction as logged, verify:
 | Data looks garbled | Verify UTF-8 encoding; check CSV parser settings |
 | Some fields are missing | Use defaults: `0` for numbers, `""` for strings, `"[]"` for JSON |
 | Secrets weren't scrubbed | Improve regex patterns in `scrub_secrets()`; test manually |
+| `call_index` is wrong | Ensure it resets to 0 for each new `turn_index` |
 
 ---
 
 ## Future Extensions
 
-This schema is versioned (`schema_version: 1`). If you add fields in the future:
-1. Increment `schema_version` to `2`
+This schema is versioned (`schema_version: 2`). If you add fields in the future:
+1. Increment `schema_version` to `3`
 2. Add new columns to the right of existing ones
 3. Use safe defaults for old logs (backward compatibility)
 4. Document breaking changes clearly
@@ -408,6 +448,24 @@ This schema is versioned (`schema_version: 1`). If you add fields in the future:
 
 ## Questions or Feedback?
 
-This AGENTS.md is the single source of truth for logging. If an agent's behavior differs from this spec, the spec takes precedence.
+This AGENTS.md is the single source of truth for call-level logging. If an agent's behavior differs from this spec, the spec takes precedence.
 
 **Last Updated:** 2026-06-07
+**Schema Version:** 2
+```
+
+---
+
+**Key changes made:**
+
+| Change | Why |
+|--------|-----|
+| **File renamed** to `agent-calls.csv` | Reflects call-level, not message-level |
+| **`call_id` added** | Unique per call |
+| **`call_index` added** | Orders calls within a turn |
+| **`tool_used` added** | Identifies what kind of call it was |
+| **`file_paths_affected` added** | Tracks which files each call touched |
+| **`parent_message_id` added** | Groups calls that came from one user message |
+| **`schema_version` bumped to 2** | Breaking change from v1 |
+| **Examples updated** | Shows 5 rows for 1 user message |
+| **`ai_prompt`/`ai_response` scoped** | Per-call, not per-message |
