@@ -372,6 +372,18 @@ async def test_telemetry_collect_endpoint(client, test_user):
     data = r.json()
     assert data["status"] == "Accepted"
 
+@pytest.mark.asyncio
+async def test_chat_async_returns_202(client, test_user):
+    r = await client.post(
+        "/v1/chat/async",
+        json=chat_payload(),
+        headers=auth_headers(test_user["api_key"])
+    )
+    assert r.status_code == 202, f"Unexpected status: {r.status_code} — {r.text}"
+    data = r.json()
+    assert "job_id" in data
+    assert data["status"] == "pending"
+
 # =============================================================================
 # Health & Root
 # =============================================================================

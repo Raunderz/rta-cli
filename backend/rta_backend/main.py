@@ -357,10 +357,11 @@ async def chat_endpoint(
             detail="Internal server error"
         )
 
-@app.post("/v1/chat/async")
+@app.post("/v1/chat/async", status_code=202)
 
 @limiter.limit(get_tier_limit, key_func=get_user_id_key)
 async def chat_async_endpoint(
+    request: Request,
     payload: ChatRequest,
     background_tasks: BackgroundTasks,
     user_id: str = Depends(require_api_key)
