@@ -121,6 +121,81 @@ def get_tier_limit(request: Request = None) -> str:
     
     return "10/day"
 
+from rta_backend.jobs import create_job, update_job, get_job, cleanup_old_jobs
+import logging
+
+# ... (keep existing imports)
+
+async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tier: str):
+    """
+    Background worker for AI calls.
+    """
+    update_job(job_id, status="running")
+    try:
+        if payload.stream:
+            collected_text = ""
+            collected_tool_calls = []
+            collected_usage = {}
+            collected_provider = {}
+            collected_meta = {}
+            
+            async for event in route_chat_request_stream(payload, user_id, user_tier):
+                # Store chunk for polling
+                update_job(job_id, chunk=event)
+                
+                if event["type"] == "text":
+                    collected_text += event["content"]
+                elif event["type"] == "tool_calls":
+                    collected_tool_calls = event["content"]
+                elif event["type"] == "usage":
+                    collected_usage = event["content"]
+                elif event["type"] == "provider":
+                    collected_provider = event["content"]
+                elif event["type"] == "meta":
+                    collected_meta = event["content"]
+            
+            # Finalize and log telemetry
+            if collected_provider:
+                from rta_backend.db import update_token_usage
+                pr = ProxyResult(
+                    choices=[{
+                        "message": {
+                            "role": "assistant", 
+                            "content": collected_text,
+                            "tool_calls": collected_tool_calls
+                        }
+                    }],
+                    usage=collected_usage,
+                    model=collected_provider.get("model", ""),
+                    provider_used=collected_provider.get("provider_used", ""),
+                    models_tried=collected_meta.get("models_tried", []),
+                    latency_ms=collected_meta.get("latency_ms", 0),
+                    tool_calls_log=collected_tool_calls,
+                    fallback_used=collected_meta.get("fallback_used", False),
+                    session_id=payload.session_id,
+                    turn_index=payload.turn_index,
+                )
+                total_tokens = collected_usage.get("total_tokens", 0)
+                if total_tokens > 0:
+                    update_token_usage(user_id, total_tokens)
+                await log_telemetry_task(user_id, payload, pr)
+                update_job(job_id, status="completed", result=pr.dict())
+            else:
+                update_job(job_id, status="completed")
+        else:
+            result = await route_chat_request(payload, user_id, user_tier)
+            from rta_backend.db import update_token_usage
+            if result and result.usage:
+                total_tokens = result.usage.get("total_tokens", 0)
+                if total_tokens > 0:
+                    update_token_usage(user_id, total_tokens)
+            await log_telemetry_task(user_id, payload, result)
+            update_job(job_id, status="completed", result=result.dict())
+
+    except Exception as e:
+        logging.error(f"Job {job_id} failed: {e}")
+        update_job(job_id, status="failed", error=str(e))
+
 @app.post("/v1/chat")
 @limiter.limit(get_tier_limit, key_func=get_user_id_key)
 async def chat_endpoint(
@@ -281,6 +356,69 @@ async def chat_endpoint(
             status_code=500,
             detail="Internal server error"
         )
+
+@app.post("/v1/chat/async")
+
+@limiter.limit(get_tier_limit, key_func=get_user_id_key)
+async def chat_async_endpoint(
+    payload: ChatRequest,
+    background_tasks: BackgroundTasks,
+    user_id: str = Depends(require_api_key)
+):
+    """
+    Enqueues a chat request and returns a job_id immediately.
+    """
+    user_tier = get_user_tier(user_id)
+    caps = TIER_CAPS.get(user_tier.lower(), TIER_CAPS["free"])
+    
+    # Check limits
+    from rta_backend.db import check_and_update_daily_calls
+    allowed, reason = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"], caps["tokens_day"])
+    if not allowed:
+        raise HTTPException(status_code=429, detail=reason)
+
+    job_id = create_job()
+    background_tasks.add_task(run_chat_job, job_id, payload, user_id, user_tier)
+    
+    return {"job_id": job_id, "status": "pending"}
+
+@app.get("/v1/chat/job/{job_id}")
+async def get_chat_job_status(
+    job_id: str,
+    after_index: int = 0,
+    user_id: str = Depends(require_api_key)
+):
+    """
+    Poll for job status and new chunks.
+    """
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    
+    # Only return chunks the client hasn't seen yet
+    chunks = job.get("chunks", [])[after_index:]
+    
+    return {
+        "job_id": job["job_id"],
+        "status": job["status"],
+        "done": job["done"],
+        "error": job["error"],
+        "result": job["result"] if job["done"] else None,
+        "chunks": chunks,
+        "next_index": after_index + len(chunks)
+    }
+
+@app.on_event("startup")
+async def startup_event():
+    # Cleanup old jobs every hour
+    async def cleanup_loop():
+        while True:
+            cleanup_old_jobs()
+            await asyncio.sleep(3600)
+    
+    import asyncio
+    asyncio.create_task(cleanup_loop())
+
 
 # Include routers
 app.include_router(auth_router, prefix="/v1")
