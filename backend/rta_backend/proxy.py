@@ -320,12 +320,12 @@ async def route_chat_request(
         except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
             models_tried.append(f"{provider_name}:{type(e).__name__}")
             last_error = e
-            logging.error(f"Provider {provider_name} failed: {e}")
+            logging.error(f"Provider {provider_name} failed: {type(e).__name__}: {e}")
             continue
         except Exception as e:
             models_tried.append(f"{provider_name}:unhandled_error")
             last_error = e
-            logging.error(f"Unexpected error in {provider_name}: {e}")
+            logging.error(f"Unexpected error in {provider_name}: {type(e).__name__}: {e}")
             continue
 
     # Last resort: try backup groq models
@@ -429,10 +429,12 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
         except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
             models_tried.append(f"{provider_name}:{type(e).__name__}")
             last_error = e
+            logging.error(f"Stream provider {provider_name} failed: {type(e).__name__}: {e}")
             continue
         except Exception as e:
             models_tried.append(f"{provider_name}:unhandled_error")
             last_error = e
+            logging.error(f"Stream unexpected error in {provider_name}: {type(e).__name__}: {e}")
             continue
 
     yield {"type": "error", "content": f"All providers failed: {models_tried}"}

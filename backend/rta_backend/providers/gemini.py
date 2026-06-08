@@ -1,6 +1,6 @@
 import httpx
 import json
-from . import RateLimitError, ProviderDownError, ProviderTimeoutError, get_provider_client
+from . import RateLimitError, ProviderDownError, ProviderTimeoutError, get_provider_client, reset_provider_client
 
 def translate_messages(messages):
     gemini_contents = []
@@ -118,6 +118,8 @@ async def call_gemini(messages, model, tools, api_key, max_tokens) -> dict:
     except Exception as e:
         if isinstance(e, RateLimitError):
             raise
+        if isinstance(e, (httpx.ConnectError, httpx.RemoteProtocolError, httpx.LocalProtocolError, httpx.ReadError, httpx.WriteError)):
+            await reset_provider_client()
         raise ProviderDownError(f"Gemini unexpected error: {e}")
 
 
@@ -212,4 +214,6 @@ async def call_gemini_stream(messages, model, tools, api_key, max_tokens):
     except Exception as e:
         if isinstance(e, (RateLimitError, ProviderDownError, ProviderTimeoutError)):
             raise
+        if isinstance(e, (httpx.ConnectError, httpx.RemoteProtocolError, httpx.LocalProtocolError, httpx.ReadError, httpx.WriteError)):
+            await reset_provider_client()
         raise ProviderDownError(f"Gemini unexpected error: {e}")

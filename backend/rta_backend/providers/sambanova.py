@@ -1,6 +1,6 @@
 import httpx
 import json
-from . import RateLimitError, ProviderDownError, ProviderTimeoutError, get_provider_client
+from . import RateLimitError, ProviderDownError, ProviderTimeoutError, get_provider_client, reset_provider_client
 
 async def call_sambanova(messages, model, tools, api_key, max_tokens) -> dict:
     url = "https://api.sambanova.ai/v1/chat/completions"
@@ -47,6 +47,8 @@ async def call_sambanova(messages, model, tools, api_key, max_tokens) -> dict:
     except Exception as e:
         if isinstance(e, RateLimitError):
             raise
+        if isinstance(e, (httpx.ConnectError, httpx.RemoteProtocolError, httpx.LocalProtocolError, httpx.ReadError, httpx.WriteError)):
+            await reset_provider_client()
         raise ProviderDownError(f"SambaNova unexpected error: {e}")
 
 
@@ -128,4 +130,6 @@ async def call_sambanova_stream(messages, model, tools, api_key, max_tokens):
     except Exception as e:
         if isinstance(e, (RateLimitError, ProviderDownError, ProviderTimeoutError)):
             raise
+        if isinstance(e, (httpx.ConnectError, httpx.RemoteProtocolError, httpx.LocalProtocolError, httpx.ReadError, httpx.WriteError)):
+            await reset_provider_client()
         raise ProviderDownError(f"SambaNova unexpected error: {e}")

@@ -484,6 +484,10 @@ async def root():
 async def health_check():
     return {"status": "healthy"}
 
+@app.get("/v1/heartbeat")
+async def heartbeat():
+    return {"ok": True, "timestamp": time.time()}
+
 def main():
     import uvicorn
     # Disable reload by default in production for security and performance.
