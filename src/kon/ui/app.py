@@ -331,6 +331,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
 
         self.run_worker(self._ensure_binaries(), exclusive=False)
         self.run_worker(self._check_for_updates(), exclusive=False)
+        self.run_worker(self._refresh_provider_metadata(), exclusive=False)
 
         try:
             init_result = self._runtime.initialize(
@@ -397,6 +398,37 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         import gc
 
         gc.freeze()
+
+    async def _refresh_provider_metadata(self) -> None:
+        """Fetch and apply provider metadata (like tier-based context window)."""
+        if not self._runtime.provider:
+            return
+
+        try:
+            metadata = await self._runtime.provider.get_metadata()
+            if not metadata:
+                return
+
+            context_window = metadata.get("context_window")
+            if context_window or metadata.get("tier"):
+                # Update runtime agent config
+                if context_window and self._runtime.agent:
+                    self._runtime.agent.config.context_window = context_window
+                
+                # Update InfoBar UI
+                try:
+                    info_bar = self.query_one("#info-bar", InfoBar)
+                    if context_window:
+                        info_bar._context_window = context_window
+                    if metadata.get("tier"):
+                        info_bar._tier = metadata["tier"]
+                    if metadata.get("usage"):
+                        info_bar._usage_data = metadata["usage"]
+                    info_bar.refresh()
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     def _refresh_git_branch(self) -> None:
         info_bar = self.query_one("#info-bar", InfoBar)

@@ -196,6 +196,10 @@ class BaseProvider(ABC):
             max_tokens=max_tokens,
         )
 
+    async def get_metadata(self) -> dict[str, Any]:
+        """Fetch provider-specific metadata like context window."""
+        return {}
+
     @abstractmethod
     async def _stream_impl(
         self,

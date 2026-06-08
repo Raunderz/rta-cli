@@ -145,6 +145,8 @@ class InfoBar(Vertical):
         self._cache_read_tokens = 0
         self._cache_write_tokens = 0
         self._context_tokens: int | None = None
+        self._tier: str | None = None
+        self._usage_data: dict[str, Any] | None = None
         self._file_changes: dict[str, tuple[int, int]] = {}  # path -> (added, removed)
         self._permission_mode = config.permissions.mode
         self._file_changes_text_start: int | None = None
@@ -243,6 +245,15 @@ class InfoBar(Vertical):
         if self._model_provider:
             model_text = f"({self._model_provider}) {self._model}"
         result = Text(model_text)
+
+        if self._tier:
+            result.append(f" • {self._tier.capitalize()}", style=config.ui.colors.accent)
+            if self._usage_data:
+                calls = self._usage_data.get("calls_today", 0)
+                limit = self._usage_data.get("calls_limit", 0)
+                if limit > 0:
+                    result.append(f" ({calls}/{limit} calls)", style=config.ui.colors.dim)
+
         result.append(f" • {self._thinking_level}")
         return result
 
