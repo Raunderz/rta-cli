@@ -165,10 +165,14 @@ async def chat_endpoint(
                             collected_text += event["content"]
                             if is_openai:
                                 yield f"data: {json.dumps({'choices': [{'delta': {'content': event['content']}, 'index': 0}]})}\n\n"
+                            else:
+                                yield f"data: {json.dumps(event)}\n\n"
                         elif event["type"] == "tool_calls":
                             collected_tool_calls = event["content"]
                             if is_openai:
                                 yield f"data: {json.dumps({'choices': [{'delta': {'tool_calls': event['content']}, 'index': 0}]})}\n\n"
+                            else:
+                                yield f"data: {json.dumps(event)}\n\n"
                         elif event["type"] == "usage":
                             collected_usage = event["content"]
                         elif event["type"] == "provider":
