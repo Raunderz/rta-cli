@@ -178,3 +178,29 @@ The project consists of a Python CLI agent ("kon"), a FastAPI backend, a Go mobi
 3. Add Python version check at runtime
 4. Validate `--extra-tools` early
 5. Add Windows compatibility checks
+
+---
+
+## Binary Distribution
+
+The `rta` binary is 62MB. Tracking it in git bloats the repo (299M `.git`). Plan: host externally and remove from git.
+
+### Plan: Catbox Hosting
+- Upload `rta` binary to catbox.moe (or similar free file host)
+- Update download URL in website and install scripts
+- Remove `website/public/rta` and `website/public/rta.exe` from git
+- Update `mobile_backend/Dockerfile` to fetch binary from catbox instead of `rta-three.vercel.app/rta`
+
+### Install script update
+```bash
+# Before (binary in git)
+curl -fsSL https://rta-three.vercel.app/rta -o /usr/local/bin/rta
+
+# After (binary on catbox)
+curl -fsSL https://files.catbox.moe/XXXXXX -o /usr/local/bin/rta
+```
+
+### CI workflow (future)
+- GitHub Actions builds `rta` on tag push
+- Uploads binary as release asset or to catbox
+- No binary committed to git
