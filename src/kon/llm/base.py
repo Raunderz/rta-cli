@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from ipaddress import ip_address
-from typing import Literal
+from typing import Any, Literal
 from urllib.parse import urlparse
 
 import httpx
