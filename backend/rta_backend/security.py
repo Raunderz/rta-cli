@@ -43,30 +43,62 @@ def hash_key(key:str)->str:
 API_KEY_NAME = "X-API-KEY"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
+import time
+# API Key and Token Cache
+# key: hashed_key or token, value: (user_id, expiry)
+_auth_cache = {}
+AUTH_CACHE_TTL = 300  # 5 minutes
+
 async def require_api_key(request: Request, api_key: str = Security(api_key_header)) -> str:
     """
     Dependency to validate API key OR Bearer token and return user_id.
     """
-    supabase = get_supabase_client()
+    now = time.time()
     user_id = None
+    cache_key = None
 
     # 1. Check for X-API-KEY
+    if api_key:
+        cache_key = hash_key(api_key)
+        if cache_key in _auth_cache:
+            uid, expiry = _auth_cache[cache_key]
+            if now < expiry:
+                user_id = uid
+
+    # 2. Check for Bearer token if API key failed or not in cache
+    if not user_id:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            bearer_token = auth_header.split(" ")[1]
+            cache_key = f"bearer_{hash_key(bearer_token)}"
+            if cache_key in _auth_cache:
+                uid, expiry = _auth_cache[cache_key]
+                if now < expiry:
+                    user_id = uid
+
+    if user_id:
+        request.state.user_id = user_id
+        return user_id
+
+    # Cache miss - hit Supabase
+    supabase = get_supabase_client()
+    
     if api_key:
         hashed = hash_key(api_key)
         res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
         if res.data:
             user_id = res.data[0]["user_id"]
+            _auth_cache[hashed] = (user_id, now + AUTH_CACHE_TTL)
 
-    # 2. Check for Bearer token if API key failed
     if not user_id:
         auth_header = request.headers.get("Authorization")
         if auth_header and auth_header.startswith("Bearer "):
             token = auth_header.split(" ")[1]
             try:
-                # Use supabase.auth.get_user to verify token
                 auth_res = supabase.auth.get_user(token)
                 if auth_res.user:
                     user_id = auth_res.user.id
+                    _auth_cache[f"bearer_{hash_key(token)}"] = (user_id, now + AUTH_CACHE_TTL)
             except Exception:
                 pass
 

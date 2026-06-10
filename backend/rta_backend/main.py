@@ -17,8 +17,42 @@ from rta_backend.security import require_api_key
 from rta_backend.db import get_user_tier
 
 import os
+import logging
+import re
 from dotenv import load_dotenv
 load_dotenv()
+
+# Secret scrubbing filter
+class SecretScrubber(logging.Filter):
+    def filter(self, record):
+        if not isinstance(record.msg, str):
+            return True
+        # Scrub common secret patterns
+        record.msg = re.sub(r'(sk-[a-zA-Z0-9]{20,})', '[REDACTED_KEY]', record.msg)
+        record.msg = re.sub(r'(AIza[a-zA-Z0-9_-]{30,})', '[REDACTED_KEY]', record.msg)
+        record.msg = re.sub(r'(gsk_[a-zA-Z0-9]{20,})', '[REDACTED_KEY]', record.msg)
+        return True
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("rta_backend.log")
+    ]
+)
+for _h in logging.root.handlers:
+    _h.addFilter(SecretScrubber())
+
+logger = logging.getLogger("rta_backend")
+# Also force uvicorn loggers to INFO level
+for _log_name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
+    _log = logging.getLogger(_log_name)
+    _log.setLevel(logging.INFO)
+    for _h in _log.handlers:
+        _h.addFilter(SecretScrubber())
+
+print("--- RTA BACKEND STARTING (Logging to rta_backend.log) ---")
 
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 

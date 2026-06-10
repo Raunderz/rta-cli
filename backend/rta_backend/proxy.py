@@ -122,15 +122,12 @@ def get_routing_sequence(
         requested_model in ("auto", "rta-auto", "gpt-oss-120b")
     ):
         return [
-            {"provider": "groq", "model": "openai/gpt-oss-120b"},
-            {"provider": "groq", "model": "openai/gpt-oss-20b"},
-            {"provider": "openrouter", "model": "minimax/minimax-m2.5:free"},
-            {"provider": "openrouter", "model": "deepseek/deepseek-v4-flash:free"},
-            {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-30b-a3b:free"},
-            {"provider": "gemini", "model": "gemini-2.5-flash"},
-            {"provider": "gemini", "model": "gemini-3.1-flash-lite"},
-            {"provider": "sambanova", "model": "Meta-Llama-3.1-70B-Instruct"},
-            {"provider": "cerebras", "model": "llama3.1-70b"},
+            {"provider": "openrouter", "model": "qwen/qwen-2.5-coder-32b-instruct:free"},
+            {"provider": "openrouter", "model": "nousresearch/hermes-3-llama-3.1-405b:free"},
+            {"provider": "gemini", "model": "gemini-1.5-flash"},
+            {"provider": "gemini", "model": "gemini-2.0-flash"},
+            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
+            {"provider": "openrouter", "model": "openrouter/free"},
         ]
 
     # Normalized model name for other cases
@@ -289,6 +286,8 @@ async def route_chat_request(
             logging.warning(f"Skipping {provider_name}: API key missing")
             continue
 
+        logging.info(f"Attempting provider: {provider_name} with model: {model_to_use}")
+        print(f"DEBUG: Attempting provider: {provider_name} with model: {model_to_use}")
         try:
             # Call provider module
             result = await call_provider(
@@ -389,6 +388,8 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
         if not stream_func:
             continue
 
+        logging.info(f"Attempting stream provider: {provider_name} with model: {model_to_use}")
+        print(f"DEBUG: Attempting stream provider: {provider_name} with model: {model_to_use}")
         try:
             models_tried.append(f"{provider_name}/{model_to_use}")
             yield {

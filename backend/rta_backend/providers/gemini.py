@@ -9,6 +9,7 @@ def translate_messages(messages):
     for msg in messages:
         role = msg.get("role")
         content = msg.get("content", "")
+        if not content: continue
         
         if role == "system":
             system_instruction += content + "\n\n"
@@ -20,11 +21,16 @@ def translate_messages(messages):
             "parts": [{"text": content}]
         })
         
-    if system_instruction and gemini_contents:
-        for entry in gemini_contents:
-            if entry["role"] == "user":
-                entry["parts"][0]["text"] = f"[SYSTEM]\n{system_instruction}[END SYSTEM]\n\n{entry['parts'][0]['text']}"
-                break
+    if system_instruction:
+        if gemini_contents and gemini_contents[0]["role"] == "user":
+            # Prepend to first user message
+            gemini_contents[0]["parts"][0]["text"] = f"[SYSTEM]\n{system_instruction}[END SYSTEM]\n\n{gemini_contents[0]['parts'][0]['text']}"
+        else:
+            # Create a dummy user message if no user message exists or first is model
+            gemini_contents.insert(0, {
+                "role": "user",
+                "parts": [{"text": f"[SYSTEM]\n{system_instruction}[END SYSTEM]\n\nUnderstood. Please wait for my instructions."}]
+            })
             
     return gemini_contents
 

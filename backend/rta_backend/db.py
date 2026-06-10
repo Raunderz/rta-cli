@@ -52,13 +52,28 @@ def log_telemetry(user_id: str, data: dict):
         **data
     }).execute()
 
+import time
+# Tier Cache
+# key: user_id, value: (tier, expiry)
+_tier_cache = {}
+TIER_CACHE_TTL = 600  # 10 minutes
+
 def get_user_tier(user_id: str) -> str:
-    """Fetch user subscription tier."""
+    """Fetch user subscription tier (with caching)."""
+    now = time.time()
+    if user_id in _tier_cache:
+        tier, expiry = _tier_cache[user_id]
+        if now < expiry:
+            return tier
+
     client = get_supabase_client()
     res = client.table("profiles").select("subscription_tier").eq("id", user_id).execute()
+    tier = "free"
     if res.data:
-        return res.data[0].get("subscription_tier", "free")
-    return "free"
+        tier = res.data[0].get("subscription_tier", "free")
+    
+    _tier_cache[user_id] = (tier, now + TIER_CACHE_TTL)
+    return tier
 
 def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int, token_limit: int) -> tuple[bool, str]:
     """
