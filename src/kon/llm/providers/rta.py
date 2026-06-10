@@ -39,7 +39,7 @@ _heartbeat_task: asyncio.Task | None = None
 
 
 async def _heartbeat_loop(server_url: str, api_key: str) -> None:
-    client = httpx.AsyncClient(timeout=httpx.Timeout(connect=5.0, read=5.0))
+    client = httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0, read=5.0))
     try:
         while True:
             await asyncio.sleep(20)
@@ -157,10 +157,11 @@ class RtaProvider(BaseProvider):
         try:
             # 1. Enqueue job
             async with httpx.AsyncClient(timeout=30.0) as client:
+                print(f"DEBUG: Connecting to {self.server_url}/v1/chat/async")
                 response = await client.post(
                     f"{self.server_url}/v1/chat/async", json=payload, headers=headers
                 )
-                if response.status_code != 200:
+                if response.status_code not in (200, 202):
                     error_text = await response.aread()
                     raise httpx.HTTPStatusError(
                         f"API Error {response.status_code}: {error_text.decode()}",
@@ -170,6 +171,7 @@ class RtaProvider(BaseProvider):
                 
                 job_data = response.json()
                 job_id = job_data["job_id"]
+                print(f"\n[~] Enqueued job: {job_id}")
 
             # 2. Poll for chunks
             next_index = 0
@@ -178,10 +180,13 @@ class RtaProvider(BaseProvider):
                 try:
                     async with httpx.AsyncClient(timeout=10.0) as client:
                         poll_url = f"{self.server_url}/v1/chat/job/{job_id}?after_index={next_index}"
+                        # print(f"DEBUG: Polling {poll_url}")
                         poll_resp = await client.get(poll_url, headers=headers)
                         
                         if poll_resp.status_code != 200:
                             consecutive_errors += 1
+                            err_body = await poll_resp.aread()
+                            print(f"DEBUG: Polling failed ({poll_resp.status_code}): {err_body.decode()}")
                             if consecutive_errors > 5:
                                 yield StreamError(error=f"Polling failed: {poll_resp.status_code}")
                                 return

@@ -3,11 +3,12 @@ from PyInstaller.utils.hooks import collect_data_files
 
 datas = []
 datas += collect_data_files('kon')
+datas += [('src/kon/defaults/config.toml', 'kon/defaults')]
 
 
 a = Analysis(
     ['run.py'],
-    pathex=['src'],
+    pathex=['src', '.venv/lib/python3.13/site-packages'],
     binaries=[],
     datas=datas,
     hiddenimports=[
