@@ -80,6 +80,9 @@ async def call_openrouter_stream(messages, model, tools, api_key, max_tokens):
                 raise RateLimitError("OpenRouter rate limit exceeded", retry_after=retry_after)
             elif resp.status_code >= 500:
                 raise ProviderDownError(f"OpenRouter server error: {resp.status_code}")
+            elif resp.status_code == 400:
+                body = await resp.aread()
+                raise ProviderDownError(f"OpenRouter bad request: {body.decode()[:200]}")
 
             resp.raise_for_status()
 

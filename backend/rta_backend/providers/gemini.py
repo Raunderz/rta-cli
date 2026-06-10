@@ -51,7 +51,8 @@ def translate_tools(openai_tools):
     return [{"function_declarations": function_declarations}]
 
 async def call_gemini(messages, model, tools, api_key, max_tokens) -> dict:
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+    headers = {"x-goog-api-key": api_key}
     
     gemini_contents = translate_messages(messages)
     gemini_tools = translate_tools(tools)
@@ -67,7 +68,7 @@ async def call_gemini(messages, model, tools, api_key, max_tokens) -> dict:
 
     client = get_provider_client()
     try:
-        response = await client.post(url, json=payload)
+        response = await client.post(url, json=payload, headers=headers)
         
         if response.status_code == 429:
             raise RateLimitError("Gemini rate limit exceeded")
@@ -130,7 +131,8 @@ async def call_gemini(messages, model, tools, api_key, max_tokens) -> dict:
 
 
 async def call_gemini_stream(messages, model, tools, api_key, max_tokens):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?key={api_key}&alt=sse"
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:streamGenerateContent?alt=sse"
+    headers = {"x-goog-api-key": api_key}
     
     gemini_contents = translate_messages(messages)
     gemini_tools = translate_tools(tools)
@@ -146,7 +148,7 @@ async def call_gemini_stream(messages, model, tools, api_key, max_tokens):
 
     client = get_provider_client()
     try:
-        async with client.stream("POST", url, json=payload) as resp:
+        async with client.stream("POST", url, json=payload, headers=headers) as resp:
             if resp.status_code == 429:
                 raise RateLimitError("Gemini rate limit exceeded")
             elif resp.status_code >= 500:

@@ -31,6 +31,8 @@ class SecretScrubber(logging.Filter):
         record.msg = re.sub(r'(sk-[a-zA-Z0-9]{20,})', '[REDACTED_KEY]', record.msg)
         record.msg = re.sub(r'(AIza[a-zA-Z0-9_-]{30,})', '[REDACTED_KEY]', record.msg)
         record.msg = re.sub(r'(gsk_[a-zA-Z0-9]{20,})', '[REDACTED_KEY]', record.msg)
+        # Scrub API keys in URL query params (e.g. ?key=... or &key=...)
+        record.msg = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED_KEY]', record.msg)
         return True
 
 logging.basicConfig(
@@ -45,8 +47,8 @@ for _h in logging.root.handlers:
     _h.addFilter(SecretScrubber())
 
 logger = logging.getLogger("rta_backend")
-# Also force uvicorn loggers to INFO level
-for _log_name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
+# Also force uvicorn and httpx loggers to INFO level
+for _log_name in ["uvicorn", "uvicorn.error", "uvicorn.access", "httpx"]:
     _log = logging.getLogger(_log_name)
     _log.setLevel(logging.INFO)
     for _h in _log.handlers:

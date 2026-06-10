@@ -122,12 +122,12 @@ def get_routing_sequence(
         requested_model in ("auto", "rta-auto", "gpt-oss-120b")
     ):
         return [
-            {"provider": "openrouter", "model": "qwen/qwen-2.5-coder-32b-instruct:free"},
-            {"provider": "openrouter", "model": "nousresearch/hermes-3-llama-3.1-405b:free"},
-            {"provider": "gemini", "model": "gemini-1.5-flash"},
-            {"provider": "gemini", "model": "gemini-2.0-flash"},
-            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
             {"provider": "openrouter", "model": "openrouter/free"},
+            {"provider": "openrouter", "model": "nvidia/nemotron-3-nano-30b-a3b:free"},
+            {"provider": "openrouter", "model": "openai/gpt-oss-20b:free"},
+            {"provider": "openrouter", "model": "nvidia/nemotron-3-ultra-550b-a55b:free"},
+            {"provider": "gemini", "model": "gemini-2.5-flash"},
+            {"provider": "groq", "model": "llama-3.3-70b-versatile"},
         ]
 
     # Normalized model name for other cases

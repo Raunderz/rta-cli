@@ -25,6 +25,8 @@ async def call_groq(messages, model, tools, api_key, max_tokens) -> dict:
             raise RateLimitError("Groq rate limit exceeded", retry_after=retry_after)
         elif response.status_code >= 500:
             raise ProviderDownError(f"Groq server error: {response.status_code}")
+        elif response.status_code == 400:
+            raise ProviderDownError(f"Groq bad request: {response.text[:200]}")
         
         response.raise_for_status()
         data = response.json()
@@ -76,6 +78,9 @@ async def call_groq_stream(messages, model, tools, api_key, max_tokens):
                 raise RateLimitError("Groq rate limit exceeded", retry_after=retry_after)
             elif resp.status_code >= 500:
                 raise ProviderDownError(f"Groq server error: {resp.status_code}")
+            elif resp.status_code == 400:
+                body = await resp.aread()
+                raise ProviderDownError(f"Groq bad request: {body.decode()[:200]}")
 
             resp.raise_for_status()
 
