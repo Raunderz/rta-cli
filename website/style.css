@@ -6,10 +6,10 @@
   --secondary-light: #FEF3C7;
   --secondary-soft: rgba(251, 191, 36, 0.15);
 
-  --bg-deep: #FAFAF8;
-  --bg-surface: #FFFFFF;
+  --bg-deep: #FDF6E3;
+  --bg-surface: #FEF9EF;
   --bg-elevated: #F0F9FF;
-  --bg-card: #FFFFFF;
+  --bg-card: #FEF9EF;
   --text-primary: #1F2937;
   --text-secondary: #6B7280;
   --text-muted: #9CA3AF;
@@ -104,7 +104,7 @@ h1, h2, h3, h4, h5, h6 {
   height: 56px;
   display: flex;
   align-items: center;
-  background: rgba(255,255,255,0.6);
+  background: rgba(253,246,227,0.7);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   z-index: 3000;
@@ -315,7 +315,7 @@ h1, h2, h3, h4, h5, h6 {
   right: 0;
   bottom: 0;
   background:
-    linear-gradient(180deg, rgba(240,249,255,0.6) 0%, rgba(255,255,255,0.8) 100%),
+    linear-gradient(180deg, rgba(253,246,227,0.5) 0%, rgba(254,249,239,0.85) 100%),
     url('/assets/hero-bg.jpg') center center / cover no-repeat;
   pointer-events: none;
 }
@@ -692,7 +692,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Footer */
 .footer {
   padding: var(--space-xl) 0 var(--space-m);
-  background: var(--bg-surface);
+  background: var(--bg-deep);
   border-top: 1px solid var(--border);
 }
 
@@ -1037,7 +1037,7 @@ h1, h2, h3, h4, h5, h6 {
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(255,255,255,0.97);
+    background: rgba(253,246,227,0.97);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     flex-direction: column;

@@ -233,6 +233,11 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
+        document.body.classList.add("dashboard-body");
+        return () => document.body.classList.remove("dashboard-body");
+    }, []);
+
+    useEffect(() => {
         if (!user) {
             window.location.href = "/";
             return;

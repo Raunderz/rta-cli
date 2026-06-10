@@ -1093,6 +1093,19 @@ const NotFoundPage = () => (
   </div>
 );
 
+const ServiceNotice = () => (
+  <div style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); width: calc(100% - 2rem); max-width: 520px; background: var(--bg-card); border: 1px solid var(--border); padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 9999; display: flex; flex-direction: column; gap: 0.75rem;">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--primary); display: inline-block;"></span>
+      <span style="font-weight: 600; font-size: 0.85rem; color: var(--text-primary);">Pre-release notice</span>
+    </div>
+    <p style="font-size: 0.85rem; line-height: 1.6; margin: 0; color: var(--text-secondary);">
+      Rta is in active development and not yet available for public use. 
+      Full launch coming in v1.0.0. In the meantime, feel free to explore the docs and API.
+    </p>
+  </div>
+);
+
 const CookieBanner = () => {
   const [visible, setVisible] = useState(false);
 
@@ -1146,6 +1159,7 @@ const App = () => {
           </Switch>
         </Router>
       </main>
+      <ServiceNotice />
       <CookieBanner />
       <AppFooter />
       <Analytics />
