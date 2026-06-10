@@ -1,4 +1,4 @@
-:root {
+.dashboard-body {
     --bg-deep: #0C0A09;
     --bg-surface: #161312;
     --bg-elevated: #1D1A17;
@@ -6,15 +6,17 @@
     --text-primary: #F5F0EA;
     --text-secondary: #A0988A;
     --text-muted: #7A7266;
-    --accent: #D4A26A;
-    --accent-soft: #B8926A;
-    --accent-glow: rgba(212, 162, 106, 0.12);
+    --accent: #0D9488;
+    --accent-soft: #14B8A6;
+    --accent-glow: rgba(13, 148, 136, 0.15);
+    --secondary: #FBBF24;
+    --secondary-glow: rgba(251, 191, 36, 0.15);
     --border: #2A2520;
     --border-light: rgba(245, 240, 234, 0.06);
-    --red: #E85D4A;
-    --red-soft: rgba(232, 93, 74, 0.12);
-    --font-display: 'Playfair Display', Georgia, serif;
-    --font-body: 'DM Sans', system-ui, sans-serif;
+    --red: #EF4444;
+    --red-soft: rgba(239, 68, 68, 0.12);
+    --font-display: 'Inter', system-ui, sans-serif;
+    --font-body: system-ui, -apple-system, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
@@ -26,18 +28,6 @@
     margin: 0;
     overflow: hidden;
     position: relative;
-}
-
-.dashboard-body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
-    opacity: 0.25;
-    pointer-events: none;
-    z-index: 1;
 }
 
 #dash-app {
@@ -103,7 +93,6 @@
     color: var(--text-primary);
     margin-bottom: 40px;
     text-decoration: none;
-    letter-spacing: -0.03em;
 }
 
 .nav-group {
@@ -267,10 +256,9 @@
     padding: 10px 20px;
     border-radius: 6px;
     text-decoration: none;
-    font-family: var(--font-mono);
+    font-family: var(--font-body);
     font-weight: 600;
-    font-size: 0.8rem;
-    letter-spacing: 0.03em;
+    font-size: 0.85rem;
     transition: all 0.3s var(--ease-out-expo);
 }
 
@@ -373,13 +361,13 @@
     cursor: pointer;
     background: var(--accent);
     color: var(--bg-deep);
-    box-shadow: 0 8px 24px rgba(212, 162, 106, 0.25);
+    box-shadow: 0 8px 24px rgba(13, 148, 136, 0.3);
     transition: all 0.3s var(--ease-out-expo);
 }
 
 .chat-trigger:hover {
     transform: scale(1.05);
-    box-shadow: 0 12px 32px rgba(212, 162, 106, 0.35);
+    box-shadow: 0 12px 32px rgba(13, 148, 136, 0.4);
 }
 
 .status-indicator {
@@ -409,7 +397,6 @@
 }
 
 .markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4 {
-    font-family: var(--font-display);
     font-weight: 600;
     margin: 1rem 0 0.5rem;
     color: var(--text-primary);

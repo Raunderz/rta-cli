@@ -8,108 +8,38 @@ import { Analytics } from "@vercel/analytics/react";
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 
-const FlowerIcon = ({ size = 24, color = "currentColor", style = {} }) => {
-  const rotations = [0, 45, 90, 135, 180, 225, 270, 315];
-  const gold = "#D4A26A";
-  const ember = "#E85D4A";
-  const cream = "#F5F0EA";
-
-  return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 400 400"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ verticalAlign: 'middle', ...style }}
-    >
-      <defs>
-        <filter id="warmglow" x="-20%" y="-20%" width="140%" height="140%">
-          <feGaussianBlur stdDeviation="3" result="blur" />
-          <feComposite in="SourceGraphic" in2="blur" operator="over" />
-        </filter>
-
-        <g id="petal-warm">
-          <path
-            d="M0,-20 C35,-90 85,-90 100,-10 C85,70 35,70 0,0 C-35,70 -85,70 -100,-10 C-85,-90 -35,-90 0,-20 Z"
-            stroke={gold}
-            strokeWidth="2"
-            fill={gold}
-            fillOpacity="0.04"
-          />
-          <g stroke={cream} strokeWidth="1.5" opacity="0.6">
-            <path d="M0,-10 C0,-30 0,-55 0,-75" />
-            <path d="M0,-20 C20,-35 40,-45 65,-55" />
-            <path d="M0,-20 C-20,-35 -40,-45 -65,-55" />
-            <path d="M0,0 C20,10 40,20 60,35" />
-            <path d="M0,0 C-20,10 -40,20 -60,35" />
-          </g>
-        </g>
-      </defs>
-
-      <style>{`
-        @keyframes warmBloom {
-          0%, 100% { transform: scale(1); }
-          50% { transform: scale(1.04); }
-        }
-        @keyframes slowSpin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        .wf-group {
-          transform-origin: center;
-          transform-box: fill-box;
-          animation: warmBloom 5s ease-in-out infinite;
-        }
-        .wf-petals {
-          transform-origin: center;
-          transform-box: fill-box;
-          animation: slowSpin 40s linear infinite;
-        }
-        .wf-dot {
-          animation: warmTwinkle 2.5s ease-in-out infinite;
-        }
-        @keyframes warmTwinkle {
-          0%, 100% { opacity: 0.3; transform: scale(0.8); }
-          50% { opacity: 1; transform: scale(1.1); }
-        }
-      `}</style>
-
-      <g transform="translate(200, 200)">
-        <g fill={cream} opacity="0.15">
-          {[
-            { x: -120, y: -100, r: 1 }, { x: 140, y: -130, r: 1.5 },
-            { x: -150, y: 120, r: 1 }, { x: 130, y: 150, r: 0.8 },
-            { x: 50, y: -160, r: 1.2 }, { x: -80, y: 140, r: 1 },
-            { x: 170, y: 0, r: 0.9 }, { x: -160, y: -40, r: 1.1 }
-          ].map((s, i) => (
-            <circle key={i} className="wf-dot" cx={s.x} cy={s.y} r={s.r} style={{ animationDelay: `${i * 0.4}s`, transformOrigin: `${s.x}px ${s.y}px` }} />
-          ))}
-        </g>
-
-        <g className="wf-group">
-          <g className="wf-petals">
-            {rotations.map(deg => (
-              <use key={deg} href="#petal-warm" transform={`rotate(${deg})`} />
-            ))}
-          </g>
-
-          <g fill="none">
-            <circle cx="0" cy="0" r="35" stroke={gold} strokeWidth="1" strokeDasharray="4 6" opacity="0.3"/>
-            <circle cx="0" cy="0" r="28" stroke={ember} strokeWidth="2" filter="url(#warmglow)" opacity="0.8"/>
-            <g fill={cream} stroke="none">
-              <circle className="wf-dot" cx="-10" cy="-8" r="2" style={{ animationDelay: '0s', transformOrigin: '-10px -8px' }}/>
-              <circle className="wf-dot" cx="12" cy="-6" r="2" style={{ animationDelay: '0.5s', transformOrigin: '12px -6px' }}/>
-              <circle className="wf-dot" cx="-6" cy="10" r="2" style={{ animationDelay: '1s', transformOrigin: '-6px 10px' }}/>
-              <circle className="wf-dot" cx="9" cy="12" r="2" style={{ animationDelay: '1.5s', transformOrigin: '9px 12px' }}/>
-              <circle className="wf-dot" cx="0" cy="0" r="2.5" filter="url(#warmglow)" style={{ transformOrigin: '0 0' }}/>
-            </g>
-          </g>
-        </g>
-      </g>
+const LandscapeHero = () => (
+  <div class="landscape-hero">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" fill="none" xmlns="http://www.w3.org/2000/svg">
+      {/* Floating particles */}
+      {[180, 400, 600, 900, 1100, 1300].map((x, i) => (
+        <circle key={i} cx={x} cy={250 + i * 40} r={2.5} fill="#FBBF24" opacity="0.3">
+          <animate attributeName="cy" values={`${250 + i * 40};${240 + i * 40};${250 + i * 40}`} dur={`${3 + i}s`} repeatCount="indefinite" />
+          <animate attributeName="opacity" values="0.2;0.5;0.2" dur={`${4 + i}s`} repeatCount="indefinite" />
+        </circle>
+      ))}
     </svg>
-  );
-};
+  </div>
+);
+
+const LeafIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M11 20A7 7 0 0 1 9.8 6.9C15.5 4.9 17 3.5 19 2c1 2 2 4.5 2 8 0 5.5-4.78 10-10 10Z" />
+    <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+  </svg>
+);
+
+const ZapIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+  </svg>
+);
+
+const CloudIcon = ({ size = 24 }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z" />
+  </svg>
+);
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
 
@@ -133,7 +63,7 @@ const Navbar = () => {
     <nav class="navbar">
       <div class="container nav-content">
         <Link href="/" class="logo">
-          <FlowerIcon size={24} color="var(--accent)" style={{ marginRight: '6px' }} />
+          <span class="logo-dot"></span>
           Rta
         </Link>
 
@@ -195,13 +125,13 @@ const TerminalDemo = () => {
       if (!isRunning || !infoRef.current) return;
       const line = el('div', "display: flex; justify-content: space-between; margin-bottom: 0.2rem; font-size: 9px; line-height: 1.5;");
       line.appendChild(el('span', "color: var(--text-muted);", label));
-      line.appendChild(el('span', "color: var(--accent); font-weight: 500;", value));
+      line.appendChild(el('span', "color: var(--primary); font-weight: 500;", value));
       infoRef.current.appendChild(line);
     };
 
     const typeCmd = async (text, speed = 30) => {
       if (!isRunning || !terminalRef.current) return;
-      const span = el('span', "color: var(--accent);");
+      const span = el('span', "color: var(--primary);");
       terminalRef.current.lastChild.appendChild(span);
       for (let char of text) {
         if (!isRunning) return;
@@ -216,7 +146,7 @@ const TerminalDemo = () => {
       const frames = ['-', '\\', '|', '/'];
       let frame = 0;
       const start = Date.now();
-      const loaderSpan = el('span', "color: var(--accent); font-size: 10px;");
+      const loaderSpan = el('span', "color: var(--primary); font-size: 10px;");
       terminalRef.current.appendChild(loaderSpan);
       return new Promise((r) => {
         const iv = setInterval(() => {
@@ -238,7 +168,7 @@ const TerminalDemo = () => {
       await sleep(400);
       if (!isRunning || !terminalRef.current) return;
       const line = el('div', "color: var(--text-secondary); margin-bottom: 0.3rem; font-size: 10px; display: flex; align-items: center; gap: 0.5rem;");
-      line.appendChild(el('span', "color: var(--accent); font-weight: bold;", "[+]"));
+      line.appendChild(el('span', "color: var(--primary); font-weight: bold;", "[+]"));
       line.appendChild(el('span', "", name));
       terminalRef.current.appendChild(line);
       scrollToBottom();
@@ -251,7 +181,7 @@ const TerminalDemo = () => {
     const agentMsg = async (msg) => {
       await sleep(600);
       if (!isRunning || !terminalRef.current) return;
-      const line = el('div', "color: var(--text-primary); margin-top: 0.4rem; padding: 0.5rem; background: rgba(0, 0, 0, 0.03); border-left: 2px solid var(--accent); font-size: 10px; line-height: 1.5;");
+      const line = el('div', "color: var(--text-primary); margin-top: 0.4rem; padding: 0.5rem; background: var(--accent-glow); border-left: 2px solid var(--primary); font-size: 10px; line-height: 1.5;");
       terminalRef.current.appendChild(line);
       for (let char of msg) {
         if (!isRunning) return;
@@ -295,7 +225,7 @@ const TerminalDemo = () => {
       await sleep(400);
       if (!isRunning || !terminalRef.current) return;
 
-      const prompt = el('div', "color: var(--accent); margin-bottom: 0.3rem; font-size: 10px; margin-top: 0.6rem;", "rta >");
+      const prompt = el('div', "color: var(--primary); margin-bottom: 0.3rem; font-size: 10px; margin-top: 0.6rem;", "rta >");
       terminalRef.current.appendChild(prompt);
       await typeCmd(scenario.command, 40);
       await showLoader(2000);
@@ -346,15 +276,16 @@ const TerminalDemo = () => {
 
 const Hero = () => (
   <section class="hero">
+    <LandscapeHero />
     <div class="container" style="width:100%;">
       <div class="hero-grid">
         <div class="hero-content">
-          <h1 style={{ fontStyle: 'normal' }}>Code <br /> anywhere.</h1>
-          <p>Your AI coding workspace in your pocket. Build, preview, and iterate on any device—no powerful machine required.</p>
+          <h1>Code <span class="highlight">anywhere</span>.</h1>
+          <p>Your AI coding workspace in your pocket. Build, preview, and iterate on any device — no powerful machine required.</p>
           <div class="hero-actions">
-            <Link href="/chat" class="btn btn-primary">AI Chat</Link>
-            <Link href="/auth" class="btn">Start Building</Link>
-            <Link href="/releases" class="btn">Download App</Link>
+            <Link href="/chat" class="btn btn-primary">Try AI Chat</Link>
+            <Link href="/auth" class="btn btn-secondary">Start building</Link>
+            <Link href="/releases" class="btn btn-ghost">Download app</Link>
           </div>
         </div>
         <TerminalDemo />
@@ -365,27 +296,30 @@ const Hero = () => (
 
 const FeaturesSection = () => {
   const features = [
-    { id: "01", title: "Freedom to roam", desc: "Code from a hillside or a cafe. Your entire dev environment lives in the cloud." },
-    { id: "02", title: "Your AI partner", desc: "Describe your idea in plain language and watch it become real code in minutes." },
-    { id: "03", title: "Seamless transition", desc: "Start on your phone, finish on your laptop. Perfect sync across all your devices." }
+    { icon: CloudIcon, title: "Freedom to roam", desc: "Code from a hillside or a cafe. Your entire dev environment lives in the cloud, ready when you are." },
+    { icon: ZapIcon, title: "Your AI partner", desc: "Describe your idea in plain language and watch it become real code in minutes. No boilerplate, just results." },
+    { icon: LeafIcon, title: "Seamless transition", desc: "Start on your phone, finish on your laptop. Perfect sync across all your devices, zero friction." }
   ];
 
   return (
     <section class="features container">
       <div class="section-header">
-        <h2 style={{ fontStyle: 'normal' }}>Mobility</h2>
-        <p class="mono">Unbound Creativity</p>
+        <h2>Mobility</h2>
+        <p>Unbound creativity for modern makers.</p>
       </div>
       <div class="features-grid">
-        {features.map(f => (
-          <div class="feature-card" key={f.id}>
-            <div class="feature-icon">
-              <FlowerIcon size={44} color="var(--accent)" />
+        {features.map((f, i) => {
+          const Icon = f.icon;
+          return (
+            <div class="feature-card" key={i}>
+              <div class="feature-icon">
+                <Icon size={22} />
+              </div>
+              <h3>{f.title}</h3>
+              <p>{f.desc}</p>
             </div>
-            <h3>{f.title}</h3>
-            <p>{f.desc}</p>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -407,31 +341,32 @@ const PricingPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
-        <h2 style={{ fontStyle: 'normal' }}>Pricing</h2>
-        <p class="mono">Accessible to everyone</p>
+        <h2>Pricing</h2>
+        <p>Simple, transparent pricing for every maker.</p>
       </div>
-      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
+      <div style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 3rem; flex-wrap: wrap;">
         <button class={`btn ${currency === 'USD' ? 'btn-primary' : ''}`} onClick={() => setCurrency('USD')}>USD</button>
         <button class={`btn ${currency === 'INR' ? 'btn-primary' : ''}`} onClick={() => setCurrency('INR')}>INR</button>
       </div>
 
-      <div style="max-width: 600px; margin: 0 auto 4rem auto; padding: 1.5rem; background: rgba(232, 93, 74, 0.1); border: 2px solid #E85D4A; border-radius: 12px; text-align: center;">
-        <h4 class="mono" style="color: #E85D4A; margin-bottom: 0.5rem; font-weight: bold;">[PAYMENT_GATEWAY_OFFLINE]</h4>
-        <p class="mono" style="font-size: 13px; color: var(--text-primary); margin: 0; line-height: 1.6;">
-          Subscription systems are in **Sandbox Mode**. <br />
-          Card processing is disabled. Select a plan to join the priority queue.
+      <div style="max-width: 600px; margin: 0 auto 4rem auto; padding: 1.25rem; background: var(--secondary-soft); border: 1.5px solid var(--secondary); border-radius: var(--radius-md); text-align: center;">
+        <p style="font-size: 0.85rem; color: var(--text-primary); margin: 0; line-height: 1.6; font-weight: 500;">
+          Payment systems are in sandbox mode. Select a plan to join the priority queue.
         </p>
       </div>
 
       <div class="pricing-grid">
         {tiers.map(t => (
           <div class={`pricing-card ${t.featured ? 'featured' : ''}`} key={t.name}>
+            {t.featured && <span class="pricing-badge">Recommended</span>}
             <div class="pricing-tier">{t.name}</div>
-            <div class="pricing-price">{t.price}<span>/mo</span></div>
+            <div class="pricing-price">{t.price}<span> /month</span></div>
             <ul class="pricing-features">
               {t.features.map(f => <li key={f}>{f}</li>)}
             </ul>
-            <button class={t.featured ? 'btn btn-primary' : 'btn'}>Select Plan</button>
+            <button class={t.featured ? 'btn btn-primary' : 'btn'} style={t.featured ? '' : 'border-color: var(--primary); color: var(--primary);'}>
+              {t.price === "$0" || t.price === "₹0" ? "Get started" : "Select plan"}
+            </button>
           </div>
         ))}
       </div>
@@ -498,18 +433,15 @@ const AuthPage = () => {
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="auth-box">
-        <h2 style="margin-bottom: 2rem; text-align: center; font-size: 1.8rem;">{isLogin ? "Authenticate" : "Register"}</h2>
+        <h2 style="margin-bottom: 2rem; text-align: center; font-size: 1.5rem;">{isLogin ? "Welcome back" : "Create account"}</h2>
 
-        <div style="background: var(--accent-glow); border-left: 3px solid var(--accent); padding: 12px 16px; margin-bottom: 24px;">
-          <p class="mono" style="font-size: 11px; color: var(--accent); margin: 0; line-height: 1.5; font-weight: bold;">
-            [Protocol Suggestion]
-          </p>
-          <p class="mono" style="font-size: 11px; color: var(--text-secondary); margin: 4px 0 0 0; line-height: 1.5;">
-            GitHub Authentication is recommended for optimal performance and CLI integration.
+        <div style="background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 24px;">
+          <p style="font-size: 0.85rem; color: var(--primary); margin: 0; line-height: 1.5; font-weight: 500;">
+            GitHub authentication is recommended for CLI integration.
           </p>
         </div>
 
-        {authError && <div style="color: var(--red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--red); font-family: var(--font-mono);">{authError}</div>}
+        {authError && <div style="color: var(--red); margin-bottom: 1rem; font-size: 14px; padding: 10px; border: 1px solid var(--red); border-radius: var(--radius-sm); background: var(--red-soft);">{authError}</div>}
 
         <button class="btn" style="width: 100%; margin-bottom: 1.5rem;" onClick={() => window.location.href = `${API_BASE_URL}/v1/auth/github`}>
           {isLogin ? "Continue with GitHub" : "Sign up with GitHub"}
@@ -519,7 +451,7 @@ const AuthPage = () => {
           <>
             <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; opacity: 0.4;">
               <div style="flex: 1; height: 1px; background: var(--border);"></div>
-              <span class="mono" style="font-size: 10px;">OR</span>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">or</span>
               <div style="flex: 1; height: 1px; background: var(--border);"></div>
             </div>
 
@@ -536,7 +468,7 @@ const AuthPage = () => {
 
         <div style="margin-top: 2rem; text-align: center;">
           <a href="#" class="nav-link" onClick={e => { e.preventDefault(); setIsLogin(!isLogin); setAuthError(""); }}>
-            {isLogin ? "No clearance? Register" : "Have clearance? Login"}
+            {isLogin ? "No account? Sign up" : "Have an account? Login"}
           </a>
         </div>
       </div>
@@ -550,19 +482,19 @@ const LegalPage = () => (
     <div style="color: var(--text-secondary); font-size: 1.05rem; line-height: 1.8;">
       <p style="margin-bottom: 2rem;">By accessing Rta, you agree to these terms. Read carefully.</p>
       
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">1. Account Usage</h3>
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">1. Account Usage</h3>
       <p style="margin-bottom: 1rem;">Users must provide accurate info. One person per account. Sharing credentials is prohibited. We reserve right to terminate access for any violation.</p>
 
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">2. AI & Code Generation</h3>
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">2. AI & Code Generation</h3>
       <p style="margin-bottom: 1rem;">Rta provides AI-assisted code. We do not guarantee accuracy or safety of generated code. Review all output before execution. User assumes all risk for code deployed via Rta.</p>
 
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">3. Prohibited Conduct</h3>
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">3. Prohibited Conduct</h3>
       <p style="margin-bottom: 1rem;">Do not use Rta for: malware creation, illegal hacking, harassment, or bypassing system limits. Do not attempt to reverse engineer the CLI or backend infrastructure.</p>
 
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">4. Intellectual Property</h3>
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">4. Intellectual Property</h3>
       <p style="margin-bottom: 1rem;">You own code you write. We own the Rta platform, branding, and proprietary algorithms. License to use Rta is non-exclusive and revocable.</p>
 
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-family: var(--font-display);">5. Limitation of Liability</h3>
+      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">5. Limitation of Liability</h3>
       <p style="margin-bottom: 1rem;">Rta is provided "as is". We are not liable for data loss, system failure, or financial damages resulting from use of our tools.</p>
     </div>
   </div>
@@ -589,21 +521,21 @@ const RoadmapPage = () => (
   <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
     <div class="section-header">
       <h2>Roadmap</h2>
-      <p class="mono">Upcoming Deployments</p>
+      <p>What's coming next.</p>
     </div>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 0.7rem; color: var(--accent);">Phase 01 [Active]</div>
+        <div class="feature-icon" style="font-size: 0.7rem; background: var(--accent-glow); color: var(--primary);">Phase 01</div>
         <h3>Core CLI v1.0</h3>
         <p>Auth, Telemetry, Project Indexing</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 0.7rem;">Phase 02 [Soon]</div>
+        <div class="feature-icon" style="font-size: 0.7rem; background: var(--secondary-soft); color: #B45309;">Phase 02</div>
         <h3>Public Beta</h3>
         <p>Context Sync, AI Refactor Engine</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon mono" style="font-size: 0.7rem; color: var(--text-primary);">Phase 03 [Beta]</div>
+        <div class="feature-icon" style="font-size: 0.7rem; background: var(--primary-light); color: var(--primary);">Phase 03</div>
         <h3>Mobile App</h3>
         <p>Android Chat Interface, Account Sync</p>
       </div>
@@ -615,14 +547,13 @@ const DownloadsSection = ({ os }) => {
   if (os === 'android') {
     return (
       <div style="padding: var(--space-m); text-align: center;">
-        <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-primary);">Mobile Protocol [Beta]</h4>
-        <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: 12px; margin-bottom: 2rem; box-shadow: 0 0 30px rgba(212, 162, 106, 0.15);">
+        <h4 style="margin-bottom: 2rem; color: var(--text-primary); font-weight: 700;">Mobile App (Beta)</h4>
+        <div style="background: #fff; padding: 1.5rem; display: inline-block; border-radius: var(--radius-lg); margin-bottom: 2rem; box-shadow: var(--shadow-md);">
           <img src="/assets/android_qr.png" alt="Android QR" style="width: 220px; height: 220px; max-width: 100%; display: block;" />
         </div>
-        <div style="max-width: 500px; margin: 0 auto; padding: 1.5rem; background: rgba(0, 0, 0, 0.03); border: 1px solid var(--border); border-radius: 8px;">
-          <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
-            [Classified] Mobile deployment is restricted to Chat & Telemetry.
-            Full Autonomous Agent capabilities (Code Execution/Refactoring) remain exclusive to CLI & Desktop nodes.
+        <div style="max-width: 500px; margin: 0 auto; padding: 1.25rem; background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius-md);">
+          <p style="font-size: 0.85rem; color: var(--primary); line-height: 1.6; margin: 0; font-weight: 500;">
+            Mobile deployment is currently limited to Chat and Telemetry. Full autonomous agent capabilities remain exclusive to CLI and Desktop.
           </p>
         </div>
       </div>
@@ -633,7 +564,7 @@ const DownloadsSection = ({ os }) => {
     return (
       <div style="padding: var(--space-m);">
         <div class="status-header">
-          <span class="mono">RTA Desktop IDE [Linux]</span>
+          <span class="mono">RTA Desktop IDE (Linux)</span>
           <a
             href="/rta-desktop-linux.tar.gz"
             download="rta-desktop-linux.tar.gz"
@@ -644,14 +575,13 @@ const DownloadsSection = ({ os }) => {
           </a>
         </div>
         <div style="padding: 1rem 0;">
-          <div style="background: rgba(232, 93, 74, 0.08); border: 1px solid rgba(232, 93, 74, 0.3); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-            <p class="mono" style="font-size: 11px; color: var(--accent); line-height: 1.6; margin: 0;">
-              [Notice] This is a standalone code editor based on Lite XL.
-              AI agent features are not yet integrated — they are exclusive to the CLI.
+          <div style="background: var(--primary-light); border: 1px solid var(--primary); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.5rem;">
+            <p style="font-size: 0.85rem; color: var(--primary); line-height: 1.6; margin: 0; font-weight: 500;">
+              This is a standalone code editor based on Lite XL. AI agent features are not yet integrated — they are exclusive to the CLI.
             </p>
           </div>
-          <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
-          <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">tar xzf rta-desktop-linux.tar.gz
+          <h4 style="margin-bottom: 1rem;">Quick Install</h4>
+          <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">tar xzf rta-desktop-linux.tar.gz
 sudo mv rta-desktop data /usr/local/bin/
 rta-desktop</pre>
         </div>
@@ -662,7 +592,7 @@ rta-desktop</pre>
   return (
     <>
       <div class="status-header">
-        <span class="mono">v1.4.2 [Stable]</span>
+        <span class="mono">v1.4.2 (Stable)</span>
         <a
           href={os === 'linux' ? "/rta" : "/rta.exe"}
           download={os === 'linux' ? "rta" : "rta.exe"}
@@ -673,8 +603,8 @@ rta-desktop</pre>
         </a>
       </div>
       <div style="padding: var(--space-m);">
-        <h4 class="mono" style="margin-bottom: 1rem;">Quick Install</h4>
-        <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
+        <h4 style="margin-bottom: 1rem;">Quick Install</h4>
+        <pre style="background: var(--bg-deep); padding: 1.5rem; border: 1px solid var(--border); border-radius: var(--radius-md); color: var(--text-secondary); font-family: var(--font-mono); font-size: 14px; overflow-x: auto;">
           {os === 'linux' ? `chmod +x rta
 sudo mv rta /usr/local/bin/
 rta chat` : `rta.exe chat`}
@@ -691,9 +621,9 @@ const ReleasesPage = () => {
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="section-header">
         <h2>Releases</h2>
-        <p class="mono">Download Binaries</p>
+        <p>Download the tools.</p>
       </div>
-      <div style="display: flex; justify-content: center; gap: 1rem; margin-bottom: 3rem; flex-wrap: wrap;">
+      <div style="display: flex; justify-content: center; gap: 0.75rem; margin-bottom: 3rem; flex-wrap: wrap;">
         <button class={`btn ${os === 'linux' ? 'btn-primary' : ''}`} onClick={() => setOs('linux')}>CLI · Linux</button>
         <button class={`btn ${os === 'windows' ? 'btn-primary' : ''}`} onClick={() => setOs('windows')}>CLI · Windows</button>
         <button class={`btn ${os === 'desktop' ? 'btn-primary' : ''}`} onClick={() => setOs('desktop')}>Desktop IDE</button>
@@ -789,10 +719,10 @@ Add your Personal Access Token to the config to enable repository management, is
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
       <div class="docs-layout">
         <aside class="docs-sidebar">
-          <h4 class="mono" style="margin-bottom: 2rem; color: var(--text-muted);">Index</h4>
+          <h4 style="margin-bottom: 2rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Index</h4>
           <nav style="display: flex; flex-direction: column; gap: 1rem;">
             {sections.map(s => (
-              <a href={`#${s.id}`} class="nav-link mono" style="font-size: 0.8rem;" key={s.id}>{s.title.toUpperCase()}</a>
+              <a href={`#${s.id}`} class="nav-link" style="font-size: 0.85rem;" key={s.id}>{s.title}</a>
             ))}
           </nav>
         </aside>
@@ -800,12 +730,12 @@ Add your Personal Access Token to the config to enable repository management, is
         <div style="flex: 1; max-width: 700px; width: 100%;">
           <div class="section-header" style="text-align: left; margin-bottom: 4rem;">
             <h2>Documentation</h2>
-            <p class="mono">System Operation Manual v0.4.0</p>
+            <p>System Operation Manual v0.4.0</p>
           </div>
 
           {sections.map(s => (
             <div id={s.id} style="margin-bottom: 6rem;" key={s.id}>
-              <h3 style="font-size: clamp(1.6rem, 4vw, 2rem); margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem; font-family: var(--font-display);">
+              <h3 style="font-size: clamp(1.4rem, 4vw, 1.8rem); margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
                 {s.title}
               </h3>
               <div class="markdown-body" style="font-size: 1rem; line-height: 1.8; color: var(--text-secondary);">
@@ -836,8 +766,8 @@ const ApiPage = () => {
         onClick={() => copy(code, id)}
         style={{
           position: 'absolute', top: '8px', right: '8px',
-          background: 'var(--accent)', color: '#fff', border: 'none',
-          padding: '4px 10px', borderRadius: '4px', cursor: 'pointer',
+          background: 'var(--primary)', color: '#fff', border: 'none',
+          padding: '4px 10px', borderRadius: 'var(--radius-sm)', cursor: 'pointer',
           fontSize: '11px', fontFamily: 'var(--font-mono)', zIndex: 1,
         }}
       >
@@ -845,7 +775,7 @@ const ApiPage = () => {
       </button>
       <pre style={{
         background: 'var(--bg-deep)', padding: '1.25rem',
-        border: '1px solid var(--border)', borderRadius: '8px',
+        border: '1px solid var(--border)', borderRadius: 'var(--radius-md)',
         overflow: 'auto', fontSize: '13px', lineHeight: 1.6,
         fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)',
       }}>
@@ -858,9 +788,9 @@ const ApiPage = () => {
     <div style={{ marginBottom: '4rem' }} id={path.replace(/[\/\s]/g, '-').slice(1)}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
         <span style={{
-          background: method === 'GET' ? 'rgba(72, 187, 120, 0.15)' : 'rgba(210, 106, 74, 0.15)',
-          color: method === 'GET' ? '#48BB78' : 'var(--accent)',
-          padding: '3px 10px', borderRadius: '4px', fontSize: '11px',
+          background: method === 'GET' ? 'rgba(16, 185, 129, 0.15)' : 'var(--primary-light)',
+          color: method === 'GET' ? '#10B981' : 'var(--primary)',
+          padding: '3px 10px', borderRadius: 'var(--radius-sm)', fontSize: '11px',
           fontFamily: 'var(--font-mono)', fontWeight: 'bold', letterSpacing: '0.05em',
         }}>
           {method}
@@ -877,33 +807,33 @@ const ApiPage = () => {
   return (
     <div class="container" style={{ paddingTop: 'clamp(100px, 15vh, 140px)', paddingBottom: '80px', maxWidth: '900px' }}>
       <div class="section-header" style={{ marginBottom: '3rem' }}>
-        <h2 style={{ fontStyle: 'normal' }}>API</h2>
-        <p class="mono">Build with Rta</p>
+        <h2>API</h2>
+        <p>Build with Rta.</p>
       </div>
 
       <div style={{ marginBottom: '4rem' }}>
         <div style={{
-          background: 'var(--accent-glow)', border: '1px solid var(--accent)',
-          borderRadius: '8px', padding: '1.25rem', marginBottom: '2rem',
+          background: 'var(--primary-light)', border: '1px solid var(--primary)',
+          borderRadius: 'var(--radius-md)', padding: '1.25rem', marginBottom: '2rem',
         }}>
-          <p class="mono" style={{ fontSize: '12px', color: 'var(--accent)', margin: 0, fontWeight: 'bold', marginBottom: '0.5rem' }}>
-            [Base URL]
+          <p style={{ fontSize: '0.85rem', color: 'var(--primary)', margin: 0, fontWeight: '600', marginBottom: '0.5rem' }}>
+            Base URL
           </p>
           <code style={{ fontFamily: 'var(--font-mono)', fontSize: '15px', color: 'var(--text-primary)' }}>
             {API_BASE}
           </code>
         </div>
 
-        <h3 style={{ fontSize: '1.4rem', marginBottom: '1rem', fontFamily: 'var(--font-display)' }}>Authentication</h3>
+        <h3 style={{ fontSize: '1.3rem', marginBottom: '1rem' }}>Authentication</h3>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem', lineHeight: 1.7 }}>
-          All requests require an API key passed via the <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: '3px' }}>X-API-KEY</code> header.
-          Generate your key from the <Link href="/dashboard" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>Dashboard</Link>.
+          All requests require an API key passed via the <code style={{ fontFamily: 'var(--font-mono)', background: 'var(--bg-elevated)', padding: '2px 6px', borderRadius: 'var(--radius-sm)' }}>X-API-KEY</code> header.
+          Generate your key from the <Link href="/dashboard" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Dashboard</Link>.
         </p>
         <CodeBlock id="auth-header" code={`curl -H "X-API-KEY: your_api_key_here" ${API_BASE}/v1/chat`} />
       </div>
 
       <Endpoint method="POST" path="/v1/chat" desc="Send a chat message. Supports streaming (SSE) and non-streaming responses. OpenAI-compatible format available.">
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>REQUEST BODY</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Request Body</h4>
         <CodeBlock id="chat-request" code={`{
   "model": "rta-auto",
   "messages": [
@@ -914,9 +844,9 @@ const ApiPage = () => {
   "max_tokens": 2000
 }`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>PARAMETERS</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Parameters</h4>
         <div style={{ overflowX: 'auto', marginBottom: '1.5rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px', fontFamily: 'var(--font-mono)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
                 <th style={{ textAlign: 'left', padding: '8px 12px', color: 'var(--text-muted)', fontWeight: 500 }}>Parameter</th>
@@ -959,7 +889,7 @@ const ApiPage = () => {
           </table>
         </div>
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>EXAMPLE — NON-STREAMING (OPENAI FORMAT)</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Example — Non-streaming (OpenAI format)</h4>
         <CodeBlock id="chat-curl" code={`curl -X POST ${API_BASE}/v1/chat \\
   -H "Content-Type: application/json" \\
   -H "X-API-KEY: your_api_key_here" \\
@@ -969,7 +899,7 @@ const ApiPage = () => {
     "format": "openai"
   }'`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>RESPONSE (OPENAI FORMAT)</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Response (OpenAI format)</h4>
         <CodeBlock id="chat-response" code={`{
   "object": "chat.completion",
   "choices": [
@@ -989,7 +919,7 @@ const ApiPage = () => {
   "model": "openai/gpt-oss-120b"
 }`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>EXAMPLE — STREAMING</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Example — Streaming</h4>
         <CodeBlock id="chat-stream-curl" code={`curl -X POST ${API_BASE}/v1/chat \\
   -H "Content-Type: application/json" \\
   -H "X-API-KEY: your_api_key_here" \\
@@ -1000,7 +930,7 @@ const ApiPage = () => {
     "format": "openai"
   }'`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>STREAM EVENTS (OPENAI FORMAT)</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Stream Events (OpenAI format)</h4>
         <CodeBlock id="chat-stream-events" code={`data: {"choices":[{"delta":{"role":"assistant"},"index":0}]}
 
 data: {"choices":[{"delta":{"content":"Hello"},"index":0}]}
@@ -1011,7 +941,7 @@ data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":
 
 data: [DONE]`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>JAVASCRIPT EXAMPLE</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>JavaScript Example</h4>
         <CodeBlock id="chat-js" code={`const response = await fetch("${API_BASE}/v1/chat", {
   method: "POST",
   headers: {
@@ -1045,11 +975,11 @@ while (true) {
       </Endpoint>
 
       <Endpoint method="GET" path="/v1/usage" desc="Check your current token and call usage for today and this month.">
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>EXAMPLE</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Example</h4>
         <CodeBlock id="usage-curl" code={`curl ${API_BASE}/v1/usage \\
   -H "X-API-KEY: your_api_key_here"`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>RESPONSE</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Response</h4>
         <CodeBlock id="usage-response" code={`{
   "tier": "free",
   "calls_today": 3,
@@ -1061,10 +991,10 @@ while (true) {
       </Endpoint>
 
       <Endpoint method="GET" path="/v1/status" desc="Public service status. No authentication required.">
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>EXAMPLE</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Example</h4>
         <CodeBlock id="status-curl" code={`curl ${API_BASE}/v1/status`} />
 
-        <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em' }}>RESPONSE</h4>
+        <h4 style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.75rem', letterSpacing: '0.05em', textTransform: 'uppercase' }}>Response</h4>
         <CodeBlock id="status-response" code={`{
   "status": "operational",
   "version": "0.1.0",
@@ -1083,14 +1013,14 @@ while (true) {
       </Endpoint>
 
       <div style={{
-        background: 'rgba(232, 93, 74, 0.08)', border: '1px solid rgba(232, 93, 74, 0.3)',
-        borderRadius: '8px', padding: '1.25rem', marginTop: '2rem',
+        background: 'var(--primary-light)', border: '1px solid var(--primary)',
+        borderRadius: 'var(--radius-md)', padding: '1.25rem', marginTop: '2rem',
       }}>
-        <p class="mono" style={{ fontSize: '12px', color: 'var(--accent)', margin: 0, fontWeight: 'bold', marginBottom: '0.5rem' }}>
-          [Rate Limits]
+        <p style={{ fontSize: '0.85rem', color: 'var(--primary)', margin: 0, fontWeight: '600', marginBottom: '0.5rem' }}>
+          Rate Limits
         </p>
         <p style={{ fontSize: '14px', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.6 }}>
-          Free tier: 10 calls/day. Upgrade via <Link href="/pricing" style={{ color: 'var(--accent)', textDecoration: 'underline' }}>Pricing</Link>.
+          Free tier: 10 calls/day. Upgrade via <Link href="/pricing" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>Pricing</Link>.
           Rate limits are enforced per API key.
         </p>
       </div>
@@ -1104,10 +1034,10 @@ const AppFooter = () => (
       <div class="footer-grid">
         <div class="footer-col">
           <Link href="/" class="logo" style="margin-bottom: 0.5rem;">
-            <FlowerIcon size={20} color="var(--accent)" style={{ marginRight: '6px' }} />
+            <span class="logo-dot"></span>
             Rta
           </Link>
-          <p class="footer-logo-text">The high-performance developer toolkit for the next era of computing.</p>
+          <p class="footer-logo-text">Your AI coding workspace in your pocket. Build anywhere, on any device.</p>
         </div>
         <div class="footer-col">
           <h4>Platform</h4>
@@ -1147,19 +1077,19 @@ const NotFoundPage = () => (
     <div class="status-board" style="max-width: 600px; width: 100%; text-align: center; padding: 4rem 2rem;">
       <div class="section-header" style="margin-bottom: 2rem;">
         <h2 style="font-size: clamp(5rem, 12vw, 7rem); margin-bottom: 0;">404</h2>
-        <p class="mono">Resource Not Found</p>
+        <p>Page not found</p>
       </div>
       <div style="margin-bottom: 3rem; opacity: 0.6; display: flex; justify-content: center;">
-        <FlowerIcon size={100} color="var(--accent)" />
+        <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 20A7 7 0 0 1 9.8 6.9C15.5 4.9 17 3.5 19 2c1 2 2 4.5 2 8 0 5.5-4.78 10-10 10Z" />
+          <path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12" />
+        </svg>
       </div>
       <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap;">
-        <Link href="/" class="btn btn-primary">Return to Base</Link>
-        <Link href="/status" class="btn">Diagnostics</Link>
+        <Link href="/" class="btn btn-primary">Go home</Link>
+        <Link href="/status" class="btn">Check status</Link>
       </div>
     </div>
-    <p class="mono" style="margin-top: 2rem; color: var(--text-muted); font-size: 0.7rem; letter-spacing: 0.2em;">
-      Terminated Session: {Math.random().toString(16).slice(2, 10).toUpperCase()}
-    </p>
   </div>
 );
 
@@ -1179,21 +1109,15 @@ const CookieBanner = () => {
   if (!visible) return null;
 
   return (
-    <div style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); width: calc(100% - 2rem); max-width: 500px; background: var(--bg-deep); border: 1px solid var(--border); padding: 1.5rem; border-radius: 12px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); z-index: 9999; display: flex; flex-direction: column; gap: 1rem;">
-      <p class="mono" style="font-size: 12px; line-height: 1.6; margin: 0; color: var(--text-secondary);">
-        [PROTOCOL_NOTICE] We use essential cookies and anonymous telemetry to improve system stability. 
-        Read our <Link href="/privacy" style="color: var(--accent); text-decoration: underline;">Privacy Policy</Link>.
+    <div style="position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%); width: calc(100% - 2rem); max-width: 500px; background: var(--bg-surface); border: 1px solid var(--border); padding: 1.5rem; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg); z-index: 9999; display: flex; flex-direction: column; gap: 1rem;">
+      <p style="font-size: 0.85rem; line-height: 1.6; margin: 0; color: var(--text-secondary);">
+        We use essential cookies and anonymous telemetry to improve the experience. 
+        Read our <Link href="/privacy" style="color: var(--primary); text-decoration: underline;">Privacy Policy</Link>.
       </p>
-      <button onClick={accept} class="btn btn-primary" style="width: 100%; font-size: 12px; padding: 0.6rem;">ACKNOWLEDGE</button>
+      <button onClick={accept} class="btn btn-primary" style="width: 100%;">Got it</button>
     </div>
   );
 };
-
-const ServiceBanner = () => (
-  <div style="background: var(--accent); color: var(--bg-deep); padding: 8px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: bold; position: sticky; top: 0; z-index: 2000; letter-spacing: 0.05em;">
-    [SYSTEM_NOTICE] RTA SERVICE CLOSED FOR NOW. WILL OPEN IN V1.0.0 DUE TO LOCAL TESTING & PRODUCTION FINALIZING.
-  </div>
-);
 
 const App = () => {
   const [match] = useRoute("/chat");
@@ -1201,9 +1125,8 @@ const App = () => {
 
   return (
     <div class="app-container">
-      <ServiceBanner />
       <Navbar />
-      <main class="main-content" style="padding-top: calc(76px + 30px);">
+      <main class="main-content">
         <Router>
           <Switch>
             <Route path="/" component={Home} />
