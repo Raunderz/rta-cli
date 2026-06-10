@@ -239,7 +239,7 @@ const Dashboard = () => {
 
     useEffect(() => {
         if (!user) {
-            window.location.href = "/";
+            window.location.href = "/auth";
             return;
         }
 

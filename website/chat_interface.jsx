@@ -66,7 +66,7 @@ const ChatInterface = ({ user: propUser }) => {
   const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    if (!user) window.location.href = "/";
+    if (!user) window.location.href = "/auth";
     localStorage.removeItem("rta_chat_messages");
     localStorage.removeItem("rta_chat_session");
     localStorage.removeItem("rta_chat_turn");
