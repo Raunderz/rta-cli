@@ -1189,14 +1189,21 @@ const CookieBanner = () => {
   );
 };
 
+const ServiceBanner = () => (
+  <div style="background: var(--accent); color: var(--bg-deep); padding: 8px; text-align: center; font-family: var(--font-mono); font-size: 11px; font-weight: bold; position: sticky; top: 0; z-index: 2000; letter-spacing: 0.05em;">
+    [SYSTEM_NOTICE] RTA SERVICE CLOSED FOR NOW. WILL OPEN IN V1.0.0 DUE TO LOCAL TESTING & PRODUCTION FINALIZING.
+  </div>
+);
+
 const App = () => {
   const [match] = useRoute("/chat");
   if (match) return <ChatInterface />;
 
   return (
     <div class="app-container">
+      <ServiceBanner />
       <Navbar />
-      <main class="main-content">
+      <main class="main-content" style="padding-top: calc(76px + 30px);">
         <Router>
           <Switch>
             <Route path="/" component={Home} />
