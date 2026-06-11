@@ -145,3 +145,9 @@ vite.config.ts.timestamp-*
 .rta_project.json
 rta-desktop/data/data
 website/public/rta
+
+# Training data / imports
+backend/gemini_sessions.csv
+backend/import_sessions.py
+backend/import_opencode.py
+backend/session_import_plan.md
