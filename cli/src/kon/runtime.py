@@ -191,7 +191,7 @@ class ConversationRuntime:
         if provider:
             valid_levels = provider.thinking_levels
             if thinking_level not in valid_levels:
-                thinking_level = valid_levels[0] if valid_levels else "high"
+                thinking_level = valid_levels[0] if valid_levels else "none"
                 provider.set_thinking_level(thinking_level)
 
         if not continue_recent and not resume_session:
