@@ -7,6 +7,7 @@ exchange for a Copilot token that can be used with the Copilot API.
 
 import asyncio
 import json
+import sys
 from base64 import b64decode
 from dataclasses import dataclass
 from pathlib import Path
@@ -79,7 +80,8 @@ def save_credentials(creds: CopilotCredentials) -> None:
         data["enterprise_domain"] = creds.enterprise_domain
 
     path.write_text(json.dumps(data, indent=2))
-    path.chmod(0o600)
+    if sys.platform != "win32":
+        path.chmod(0o600)
 
 
 def clear_credentials() -> None:

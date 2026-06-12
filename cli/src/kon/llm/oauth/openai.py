@@ -10,6 +10,7 @@ import contextlib
 import hashlib
 import json
 import secrets
+import sys
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -76,7 +77,8 @@ def save_openai_credentials(creds: OpenAICredentials) -> None:
             indent=2,
         )
     )
-    path.chmod(0o600)
+    if sys.platform != "win32":
+        path.chmod(0o600)
 
 
 def clear_openai_credentials() -> None:

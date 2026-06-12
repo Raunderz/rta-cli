@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import uuid
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -194,7 +195,8 @@ class Session:
         safe_cwd = cwd.replace("/", "-").replace("\\", "-").strip("-")
         sessions_dir = get_config_dir() / "sessions" / safe_cwd
         sessions_dir.mkdir(parents=True, exist_ok=True)
-        sessions_dir.chmod(0o700)
+        if sys.platform != "win32":
+            sessions_dir.chmod(0o700)
         return sessions_dir
 
     def __init__(
