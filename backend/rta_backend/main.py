@@ -1,4 +1,6 @@
+import asyncio
 import json
+import time
 from fastapi import FastAPI, Request, Header, BackgroundTasks, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -670,8 +672,6 @@ async def dashboard_endpoint(
         logger.error(f"DASHBOARD ERROR for user {user_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Internal server error")
 
-
-import time
 
 # Simple in-memory cache for status
 _status_cache = {"data": None, "expiry": 0}
