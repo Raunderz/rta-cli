@@ -91,6 +91,19 @@ def main() -> None:
         [t.strip() for t in args.extra_tools.split(",") if t.strip()] if args.extra_tools else None
     )
 
+    if extra_tools:
+        from .tools import EXTRA_TOOLS
+
+        known = set(EXTRA_TOOLS)
+        unknown = [t for t in extra_tools if t not in known]
+        if unknown:
+            print(
+                f"Warning: unknown tool(s) ignored: {', '.join(unknown)}\n"
+                f"Available: {', '.join(sorted(known))}",
+                file=sys.stderr,
+            )
+            extra_tools = [t for t in extra_tools if t in known] or None
+
     if args.prompt is not None:
         from .headless import run_headless
 
