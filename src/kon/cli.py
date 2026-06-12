@@ -1,5 +1,8 @@
 import argparse
 import asyncio
+import logging
+import os
+import sys
 
 from kon import config
 
@@ -55,17 +58,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     return parser
 
-
-import argparse
-import asyncio
-import logging
-import os
-import sys
-
-from kon import config
-
-from .llm import PROVIDER_API_BY_NAME
-from .version import VERSION
 
 def setup_logging():
     """Initializes logging to file in ~/.rta/kon.log"""
