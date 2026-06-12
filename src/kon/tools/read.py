@@ -8,7 +8,12 @@ from pydantic import BaseModel, Field
 from ..core.types import ImageContent
 from ..tools_manager import ensure_tool
 from ._read_image import is_image_file, read_and_process_image
-from ._tool_utils import ToolCancelledError, communicate_or_cancel, shorten_path
+from ._tool_utils import (
+    ToolCancelledError,
+    communicate_or_cancel,
+    shorten_path,
+    verify_path_sandbox,
+)
 from .base import BaseTool, ToolResult
 
 MAX_CHARS_PER_LINE = 2000
@@ -189,8 +194,9 @@ class ReadTool(BaseTool):
         )
 
     async def execute(
-        self, params: ReadParams, cancel_event: asyncio.Event | None = None
+        self, params: ReadParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
+        verify_path_sandbox(params.path, cwd)
         file_path = Path(params.path)
 
         if not file_path.exists():

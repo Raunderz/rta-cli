@@ -37,7 +37,7 @@ class SequentialThinkingTool(BaseTool[ThinkingParams]):
     tool_icon = "💭"
 
     async def execute(
-        self, params: ThinkingParams, cancel_event: asyncio.Event | None = None
+        self, params: ThinkingParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         session_id = current_session_id.get() or "default"
 

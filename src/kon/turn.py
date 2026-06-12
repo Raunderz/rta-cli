@@ -182,7 +182,7 @@ def _finalize_tool_call_data(tool_call_data: dict, tools: list[BaseTool]) -> Pen
 
 
 async def _execute_tool(
-    tool_call: ToolCall, tool: BaseTool | None, cancel_event: asyncio.Event | None = None
+    tool_call: ToolCall, tool: BaseTool | None, cwd: str, cancel_event: asyncio.Event | None = None
 ) -> tuple[ToolResultMessage, FileChanges | None]:
     if not tool:
         return ToolResultMessage(
@@ -194,7 +194,7 @@ async def _execute_tool(
 
     try:
         params = tool.params(**tool_call.arguments)
-        result: ToolResult = await tool.execute(params, cancel_event=cancel_event)
+        result: ToolResult = await tool.execute(params, cwd=cwd, cancel_event=cancel_event)
 
         content: list[TextContent | ImageContent] = []
         if result.result:
@@ -244,6 +244,7 @@ async def run_single_turn(
     provider: BaseProvider,
     messages: list[Message],
     tools: list[BaseTool],
+    cwd: str,
     system_prompt: str | None = None,
     turn: int = 0,
     cancel_event: asyncio.Event | None = None,
@@ -297,7 +298,8 @@ async def run_single_turn(
             return
 
     # Stream should be set at this point
-    assert stream is not None
+    if stream is None:
+        raise RuntimeError("LLM stream initialization failed: provider returned None")
 
     content: list[TextContent | ThinkingContent | ToolCall] = []
     tool_results: list[ToolResultMessage] = []
@@ -597,7 +599,7 @@ async def run_single_turn(
 
             if approved:
                 result, file_changes = await _execute_tool(
-                    pending.tool_call, pending.tool, cancel_event
+                    pending.tool_call, pending.tool, cwd, cancel_event
                 )
             else:
                 result = _create_skipped_tool_result(

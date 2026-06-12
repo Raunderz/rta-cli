@@ -1,10 +1,13 @@
 import argparse
 import asyncio
 import glob
+import logging
 import os
 import time
 from collections import deque
 from typing import ClassVar, Literal
+
+logger = logging.getLogger(__name__)
 
 from rich.console import Console
 from textual import events, on
@@ -425,9 +428,11 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                     if metadata.get("usage"):
                         info_bar._usage_data = metadata["usage"]
                     info_bar.refresh()
-                except Exception:
+                except Exception as e:
+                    logger.debug(f"Error refreshing info_bar: {e}")
                     pass
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error in _refresh_provider_metadata: {e}")
             pass
 
     def _refresh_git_branch(self) -> None:

@@ -40,9 +40,8 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
     tool_icon = "⚠️"
 
     async def execute(
-        self, params: GetDiagnosticsParams, cancel_event: asyncio.Event | None = None
+        self, params: GetDiagnosticsParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
-        cwd = os.getcwd()
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
         if not os.path.exists(abs_path):
             return ToolResult(success=False, result=f"File not found: {params.file_path}")
@@ -99,9 +98,8 @@ class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
     tool_icon = "📍"
 
     async def execute(
-        self, params: GoToDefinitionParams, cancel_event: asyncio.Event | None = None
+        self, params: GoToDefinitionParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
-        cwd = os.getcwd()
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
 
         info = discover_project(cwd)
