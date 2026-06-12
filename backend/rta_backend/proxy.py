@@ -1,3 +1,4 @@
+import asyncio
 import copy
 import logging
 import os
@@ -5,6 +6,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from rta_backend.providers import (
     ProviderDownError,
@@ -228,8 +230,14 @@ def get_provider_keys() -> Dict[str, str]:
     }
 
 
+@retry(
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(multiplier=1, min=1, max=10),
+    retry=retry_if_exception_type((RateLimitError, ProviderDownError, ProviderTimeoutError)),
+    reraise=True,
+)
 async def call_provider(name: str, **kwargs) -> dict:
-    """Dispatcher for provider modules."""
+    """Dispatcher for provider modules with retry on transient errors."""
     if os.getenv("TEST_MODE", "false").lower() == "true":
         # Check if we should actually call the provider or just mock it
         if not kwargs.get("api_key") or kwargs.get("api_key").endswith("..."):
@@ -393,53 +401,62 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
 
         logging.info(f"Attempting stream provider: {provider_name} with model: {model_to_use}")
         print(f"DEBUG: Attempting stream provider: {provider_name} with model: {model_to_use}")
-        try:
-            models_tried.append(f"{provider_name}/{model_to_use}")
-            yield {
-                "type": "provider",
-                "content": {"model": model_to_use, "provider_used": provider_name},
-            }
+        
+        # Retry transient errors once per provider before falling through
+        for attempt in range(2):
+            try:
+                if attempt > 0:
+                    logging.info(f"Retrying stream provider {provider_name} (attempt {attempt + 1})")
+                    await asyncio.sleep(min(2 ** attempt, 10))
+                
+                models_tried.append(f"{provider_name}/{model_to_use}")
+                yield {
+                    "type": "provider",
+                    "content": {"model": model_to_use, "provider_used": provider_name},
+                }
 
-            has_yielded_content = False
-            async for event in stream_func(
-                messages=messages,
-                model=model_to_use,
-                tools=request.tools,
-                api_key=api_key,
-                max_tokens=max_tokens,
-            ):
-                if event["type"] in ["text", "tool_calls", "usage"]:
-                    has_yielded_content = True
-                yield event
+                has_yielded_content = False
+                async for event in stream_func(
+                    messages=messages,
+                    model=model_to_use,
+                    tools=request.tools,
+                    api_key=api_key,
+                    max_tokens=max_tokens,
+                ):
+                    if event["type"] in ["text", "tool_calls", "usage"]:
+                        has_yielded_content = True
+                    yield event
 
-            if not has_yielded_content:
-                logging.warning(
-                    f"Provider {provider_name} returned empty response. Falling back."
-                )
-                continue
+                if not has_yielded_content:
+                    logging.warning(
+                        f"Provider {provider_name} returned empty response. Falling back."
+                    )
+                    break
 
-            latency_ms = (time.time() - start_time) * 1000
-            yield {
-                "type": "meta",
-                "content": {
-                    "models_tried": models_tried,
-                    "latency_ms": latency_ms,
-                    "fallback_used": len(models_tried) > 1,
-                },
-            }
-            yield {"type": "done"}
-            return
+                latency_ms = (time.time() - start_time) * 1000
+                yield {
+                    "type": "meta",
+                    "content": {
+                        "models_tried": models_tried,
+                        "latency_ms": latency_ms,
+                        "fallback_used": len(models_tried) > 1,
+                    },
+                }
+                yield {"type": "done"}
+                return
 
-        except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
-            models_tried.append(f"{provider_name}:{type(e).__name__}")
-            last_error = e
-            logging.error(f"Stream provider {provider_name} failed: {type(e).__name__}: {e}")
-            continue
-        except Exception as e:
-            models_tried.append(f"{provider_name}:unhandled_error")
-            last_error = e
-            logging.error(f"Stream unexpected error in {provider_name}: {type(e).__name__}: {e}")
-            continue
+            except (RateLimitError, ProviderDownError, ProviderTimeoutError) as e:
+                models_tried.append(f"{provider_name}:{type(e).__name__}")
+                last_error = e
+                logging.error(f"Stream provider {provider_name} failed: {type(e).__name__}: {e}")
+                if attempt == 0:
+                    continue  # retry once
+                break  # move to next provider
+            except Exception as e:
+                models_tried.append(f"{provider_name}:unhandled_error")
+                last_error = e
+                logging.error(f"Stream unexpected error in {provider_name}: {type(e).__name__}: {e}")
+                break
 
     yield {"type": "error", "content": f"All providers failed: {models_tried}"}
     meta = {"models_tried": models_tried, "latency_ms": 0, "fallback_used": True}
