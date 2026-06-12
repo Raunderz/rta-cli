@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 import time
@@ -88,6 +89,8 @@ def truncate_messages(messages: List[Dict], max_chars: int = 120000) -> List[Dic
     """
     if not messages:
         return []
+
+    messages = copy.deepcopy(messages)
 
     system_msg = messages[0] if messages[0].get("role") == "system" else None
     other_msgs = messages[1:] if system_msg else messages

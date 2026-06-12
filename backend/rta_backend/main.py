@@ -307,8 +307,8 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
             update_job(job_id, status="completed", result=result.dict())
 
     except Exception as e:
-        logging.error(f"Job {job_id} failed: {e}")
-        update_job(job_id, status="failed", error=str(e))
+        logging.error(f"Job {job_id} failed: {type(e).__name__}: {e}")
+        update_job(job_id, status="failed", error="Job execution failed")
 
 @app.post("/v1/chat")
 @limiter.limit(get_tier_limit, key_func=get_user_id_key)
@@ -381,10 +381,12 @@ async def chat_endpoint(
                             if not is_openai:
                                 yield f"data: {json.dumps(event)}\n\n"
                 except Exception as e:
+                    logging.error(f"Stream error for user {user_id}: {type(e).__name__}: {e}")
+                    error_msg = "An internal error occurred. Please try again."
                     if is_openai:
-                        yield f"data: {json.dumps({'error': {'message': str(e)}})}\n\n"
+                        yield f"data: {json.dumps({'error': {'message': error_msg}})}\n\n"
                     else:
-                        yield f"data: {json.dumps({'type': 'error', 'content': str(e)})}\n\n"
+                        yield f"data: {json.dumps({'type': 'error', 'content': error_msg})}\n\n"
 
                 try:
                     if collected_provider:

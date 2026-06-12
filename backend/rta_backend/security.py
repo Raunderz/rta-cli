@@ -2,7 +2,6 @@ import os
 import re
 from dotenv import load_dotenv
 import secrets
-import bcrypt
 import hashlib
 import httpx  # for hCaptcha verification
 from fastapi import Depends, HTTPException, Security, Request

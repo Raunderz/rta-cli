@@ -173,16 +173,12 @@ async def proxy_websocket(websocket: WebSocket, path: str):
     logger.info(f"WS proxy accepted for user {user_id}: /v1/executor/ws/{safe_path}")
 
     upstream_ws_url = f"{WS_GO_BASE}/ws/{safe_path}"
-    if "?" in upstream_ws_url:
-        upstream_ws_url += f"&api_key={api_key}"
-    else:
-        upstream_ws_url += f"?api_key={api_key}"
         
     logger.info(f"WS proxy connecting upstream: {upstream_ws_url}")
 
     try:
-        # Pass API key to upstream Go backend via query param or headers
-        async with websockets.connect(upstream_ws_url) as upstream_ws:
+        # Pass API key to upstream Go backend via custom header (not query param)
+        async with websockets.connect(upstream_ws_url, additional_headers={"X-API-KEY": api_key}) as upstream_ws:
             logger.info(f"WS proxy upstream connected: {upstream_ws_url}")
 
             async def mobile_to_go():
