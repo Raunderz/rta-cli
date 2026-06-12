@@ -54,11 +54,14 @@ json_handler.setFormatter(JSONFormatter())
 json_handler.addFilter(SecretScrubber())
 root_logger.addHandler(json_handler)
 
-# File handler (also JSON)
-file_handler = logging.FileHandler("rta_backend.log")
-file_handler.setFormatter(JSONFormatter())
-file_handler.addFilter(SecretScrubber())
-root_logger.addHandler(file_handler)
+# File handler (also JSON) — skip if no write permission (e.g. containers)
+try:
+    file_handler = logging.FileHandler("rta_backend.log")
+    file_handler.setFormatter(JSONFormatter())
+    file_handler.addFilter(SecretScrubber())
+    root_logger.addHandler(file_handler)
+except PermissionError:
+    pass
 
 logger = logging.getLogger("rta_backend")
 
