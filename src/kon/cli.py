@@ -20,7 +20,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run a single prompt non-interactively, then exit "
         "(omit the value or pipe stdin to read the prompt from stdin)",
     )
-    parser.add_argument("--api-key", "-k", help="API key")
     parser.add_argument("--base-url", "-u", help="Base URL for API")
     parser.add_argument(
         "--openai-compat-auth",
@@ -80,7 +79,6 @@ def main() -> None:
                     prompt_arg=args.prompt,
                     model=args.model,
                     provider=args.provider,
-                    api_key=args.api_key,
                     base_url=args.base_url,
                     openai_compat_auth_mode=args.openai_compat_auth,
                     anthropic_compat_auth_mode=args.anthropic_compat_auth,

@@ -1526,7 +1526,6 @@ def run_tui(args: argparse.Namespace, *, extra_tools: list[str] | None) -> None:
     app = Rta(
         model=args.model,
         provider=args.provider,
-        api_key=args.api_key,
         base_url=args.base_url,
         resume_session=args.resume_session,
         continue_recent=args.continue_recent,
