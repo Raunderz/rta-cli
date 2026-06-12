@@ -334,7 +334,6 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
 
         self.run_worker(self._ensure_binaries(), exclusive=False)
         self.run_worker(self._check_for_updates(), exclusive=False)
-        self.run_worker(self._refresh_provider_metadata(), exclusive=False)
 
         try:
             init_result = self._runtime.initialize(
@@ -345,6 +344,8 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
             chat = self.query_one("#chat-log", ChatLog)
             self._flush_launch_warnings(chat)
             return
+
+        self.run_worker(self._refresh_provider_metadata(), exclusive=False)
 
         self._session_start_time = time.time()
 
