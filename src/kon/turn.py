@@ -120,6 +120,7 @@ async def _close_stream(stream: LLMStream) -> None:
 
 
 def tool_call_idle_timeout_seconds() -> float | None:
+    """Return the configured timeout for stalled tool-call streams, or None if disabled."""
     timeout = kon_config.llm.tool_call_idle_timeout_seconds
     return None if timeout <= 0 else timeout
 

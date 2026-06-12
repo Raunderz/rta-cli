@@ -51,6 +51,7 @@ def _decode(value: str) -> str:
 
 
 def save_credential(key_name: str, value: str) -> None:
+    """Save an encoded credential to ~/.rta/credentials, creating the file if needed."""
     _ensure_rta_dir()
     creds = _credentials_file()
     entries: dict[str, str] = {}
@@ -69,6 +70,7 @@ def save_credential(key_name: str, value: str) -> None:
 
 
 def load_credential(key_name: str) -> str | None:
+    """Load and decode a credential by name. Returns None if not found."""
     creds = _credentials_file()
     if not os.path.exists(creds):
         return None
@@ -87,6 +89,7 @@ def load_credential(key_name: str) -> str | None:
 
 
 def delete_credential(key_name: str) -> None:
+    """Remove a credential by name from ~/.rta/credentials."""
     creds = _credentials_file()
     if not os.path.exists(creds):
         return
@@ -105,6 +108,7 @@ def delete_credential(key_name: str) -> None:
 
 
 def get_device_id() -> str:
+    """Return the persistent device UUID, creating one on first call."""
     _ensure_rta_dir()
     did_file = _device_id_file()
     if os.path.exists(did_file):

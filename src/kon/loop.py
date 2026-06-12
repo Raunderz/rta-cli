@@ -50,6 +50,7 @@ from .turn import run_single_turn
 def build_system_prompt(
     cwd: str, context: Context | None = None, tools: list[BaseTool] | None = None
 ) -> str:
+    """Assemble the system prompt from config, AGENTS.md, skills, git context, and tool guidelines."""
     now = datetime.now()
     date_time = now.strftime("%A, %B %d, %Y at %I:%M %p %Z").strip()
 
@@ -119,10 +120,12 @@ class Agent:
 
     @property
     def context(self) -> Context:
+        """The loaded context (AGENTS.md, skills, git info) for the current project."""
         return self._context
 
     @property
     def system_prompt(self) -> str:
+        """The assembled system prompt sent to the LLM."""
         return self._system_prompt
 
     def reload_context(self) -> None:
@@ -132,6 +135,7 @@ class Agent:
 
     @property
     def messages(self) -> list[Message]:
+        """The session's message history."""
         return self.session.messages
 
     def _add_usage(self, usage: Usage | None) -> None:
