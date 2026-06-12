@@ -42,10 +42,13 @@ async def test_kill_process_tree_no_such_process():
     """kill_process_tree should handle already-dead PIDs gracefully."""
     import types
 
+    async def _fake_wait():
+        return None
+
     fake_proc = types.SimpleNamespace(
         pid=999999999,
         returncode=None,
-        wait=asyncio.coroutine(lambda: None),
+        wait=_fake_wait,
     )
     # Should not raise
     await _kill_process_tree(fake_proc)
