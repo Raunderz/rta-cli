@@ -72,6 +72,7 @@ class UIConfig(BaseModel):
 
     @property
     def colors(self) -> ColorsConfig:
+        """Resolved color palette for the current theme."""
         return get_theme(self.theme).colors
 
 
@@ -149,22 +150,28 @@ class ConfigSchema(BaseModel):
 
 
 class _BinariesConfig:
+    """Tracks which binary tools (rg, fd, gh) are locally installed."""
+
     def __init__(self, binaries: set[str]) -> None:
         self._binaries = binaries
 
     def has(self, binary: str) -> bool:
+        """Check if a specific binary is available."""
         return binary in self._binaries
 
     @property
     def rg(self) -> bool:
+        """Whether ripgrep (rg) is installed."""
         return "rg" in self._binaries
 
     @property
     def fd(self) -> bool:
+        """Whether fd (fd-find) is installed."""
         return "fd" in self._binaries
 
     @property
     def gh(self) -> bool:
+        """Whether GitHub CLI (gh) is installed."""
         return "gh" in self._binaries
 
 
@@ -177,6 +184,7 @@ class Config:
 
     @staticmethod
     def deep_merge(base: dict[str, Any], overrides: dict[str, Any]) -> dict[str, Any]:
+        """Recursively merge overrides into base, returning a new dict."""
         merged = deepcopy(base)
         for key, value in overrides.items():
             current_value = merged.get(key)
@@ -208,43 +216,53 @@ class Config:
 
     @staticmethod
     def merge_with_defaults(data: dict[str, Any]) -> dict[str, Any]:
+        """Merge user config data with default values, applying legacy key shims."""
         normalized_data = Config._apply_legacy_key_shims(data)
         return Config.deep_merge(_DEFAULT_CONFIG_DATA, normalized_data)
 
     @property
     def llm(self) -> LLMConfig:
+        """LLM provider, model, and prompt configuration."""
         return self._parsed.llm
 
     @property
     def rta(self) -> RtaConfig:
+        """RTA backend connection settings."""
         return self._parsed.rta
 
     @property
     def ui(self) -> UIConfig:
+        """UI theme, display, and interaction preferences."""
         return self._parsed.ui
 
     @property
     def compaction(self) -> CompactionConfig:
+        """Context compaction settings for long conversations."""
         return self._parsed.compaction
 
     @property
     def agent(self) -> AgentConfig:
+        """Agent behavior settings (max turns, context window)."""
         return self._parsed.agent
 
     @property
     def permissions(self) -> PermissionsConfig:
+        """Tool permission mode (ask, auto-edit, full-auto)."""
         return self._parsed.permissions
 
     @property
     def tools(self) -> ToolsConfig:
+        """Tool availability and configuration."""
         return self._parsed.tools
 
     @property
     def notifications(self) -> NotificationsConfig:
+        """Desktop notification settings."""
         return self._parsed.notifications
 
     @property
     def binaries(self) -> _BinariesConfig:
+        """Locally installed binary tools (rg, fd, gh)."""
         return _BinariesConfig(AVAILABLE_BINARIES)
 
 
