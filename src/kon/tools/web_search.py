@@ -31,7 +31,7 @@ class WebSearchTool(BaseTool):
         return f'"{query}"'
 
     async def execute(
-        self, params: WebSearchParams, cancel_event: asyncio.Event | None = None
+        self, params: WebSearchParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         def _search() -> list[dict]:
             return list(DDGS().text(params.query, max_results=params.max_results))

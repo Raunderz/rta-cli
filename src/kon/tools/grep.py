@@ -11,6 +11,7 @@ from ._tool_utils import (
     communicate_or_cancel,
     shorten_path,
     truncate_lines_by_bytes,
+    verify_path_sandbox,
 )
 from .base import BaseTool
 
@@ -52,8 +53,11 @@ class GrepTool(BaseTool):
         return " ".join(parts)
 
     async def execute(
-        self, params: GrepParams, cancel_event: asyncio.Event | None = None
+        self, params: GrepParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
+        if params.path:
+            verify_path_sandbox(params.path, cwd)
+
         rg_path = await ensure_tool("rg", silent=True)
         if not rg_path:
             msg = "ripgrep (rg) is not available and could not be downloaded"

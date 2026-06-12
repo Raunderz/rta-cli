@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from kon import config
 
 from ..core.types import FileChanges
-from ._tool_utils import shorten_path
+from ._tool_utils import shorten_path, verify_path_sandbox
 from .base import BaseTool, ToolResult
 
 
@@ -48,8 +48,9 @@ class WriteTool(BaseTool):
         return "\n".join(colored)
 
     async def execute(
-        self, params: WriteParams, cancel_event: asyncio.Event | None = None
+        self, params: WriteParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
+        verify_path_sandbox(params.path, cwd)
         file_path = Path(params.path)
         file_path.parent.mkdir(parents=True, exist_ok=True)
         file_existed = file_path.exists()

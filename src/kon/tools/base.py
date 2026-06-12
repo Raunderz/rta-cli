@@ -21,7 +21,7 @@ class BaseTool[T: BaseModel](ABC):
 
     @abstractmethod
     async def execute(
-        self, params: T, cancel_event: asyncio.Event | None = None
+        self, params: T, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult: ...
 
     def format_call(self, params: T) -> str:

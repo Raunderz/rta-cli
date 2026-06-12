@@ -24,7 +24,7 @@ class ArXivTool(BaseTool[ArXivParams]):
     tool_icon = "📄"
 
     async def execute(
-        self, params: ArXivParams, cancel_event: asyncio.Event | None = None
+        self, params: ArXivParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         try:
             query_encoded = urllib.parse.urlencode(

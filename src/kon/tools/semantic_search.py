@@ -23,9 +23,8 @@ class SemanticSearchTool(BaseTool[SemanticSearchParams]):
     tool_icon = "🔎"
 
     async def execute(
-        self, params: SemanticSearchParams, cancel_event: asyncio.Event | None = None
+        self, params: SemanticSearchParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
-        cwd = os.getcwd()
         try:
             indexer = BM25Indexer(cwd)
             # Background indexing/update

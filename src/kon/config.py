@@ -1,10 +1,13 @@
 import contextlib
+import logging
 import os
 import shutil
 import sys
 import tempfile
 import tomllib
 from contextvars import ContextVar
+
+logger = logging.getLogger(__name__)
 from copy import deepcopy
 from datetime import datetime
 from importlib import resources
@@ -407,7 +410,14 @@ def _migrate_config_data(data: dict[str, Any]) -> tuple[dict[str, Any], int, int
     current_version = _get_config_version(original)
     migrated = deepcopy(original)
 
+    iterations = 0
+    max_iterations = 100
     while current_version < CURRENT_CONFIG_VERSION:
+        iterations += 1
+        if iterations > max_iterations:
+            raise RuntimeError(
+                f"Config migration loop detected (stuck at version {current_version})"
+            )
         if current_version == 0:
             migrated = _migrate_v0_to_v1(migrated)
             current_version = 1
@@ -497,7 +507,8 @@ def _atomic_write_text(path: Path, content: str) -> None:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(content)
         os.replace(tmp_path, path)
-    except Exception:
+    except Exception as e:
+        logger.warning(f"Error in _atomic_write_text for {path}: {e}")
         with contextlib.suppress(FileNotFoundError):
             tmp_path.unlink()
         raise

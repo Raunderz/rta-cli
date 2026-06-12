@@ -44,7 +44,7 @@ class MCPTool(BaseTool[BaseModel]):
         self.params = create_model(f"{self.name}_Params", **fields)
 
     async def execute(
-        self, params: BaseModel, cancel_event: asyncio.Event | None = None
+        self, params: BaseModel, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         args = params.model_dump(exclude_none=True)
         try:

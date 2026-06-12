@@ -1,8 +1,11 @@
 import base64
 import contextlib
+import logging
 import os
 import platform
 import uuid
+
+logger = logging.getLogger(__name__)
 
 
 def _rta_dir() -> str:
@@ -42,7 +45,8 @@ def _encode(value: str) -> str:
 def _decode(value: str) -> str:
     try:
         return base64.b64decode(value.encode()).decode()
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Error in _decode: {e}")
         return value
 
 
@@ -76,7 +80,8 @@ def load_credential(key_name: str) -> str | None:
                     k, v = line.split("=", 1)
                     if k.strip() == key_name:
                         return _decode(v.strip())
-    except Exception:
+    except Exception as e:
+        logger.debug(f"Error in load_credential: {e}")
         pass
     return None
 
@@ -108,7 +113,8 @@ def get_device_id() -> str:
                 did = f.read().strip()
             if did:
                 return did
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error in get_device_id: {e}")
             pass
     did = str(uuid.uuid4())
     with open(did_file, "w", encoding="utf-8") as f:
