@@ -406,10 +406,12 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
     async def _refresh_provider_metadata(self) -> None:
         """Fetch and apply provider metadata (like tier-based context window)."""
         if not self._runtime.provider:
+            logger.debug("_refresh_provider_metadata: no provider, skipping")
             return
 
         try:
             metadata = await self._runtime.provider.get_metadata()
+            logger.debug(f"_refresh_provider_metadata: got {len(metadata)} keys")
             if not metadata:
                 return
 
@@ -426,6 +428,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                         info_bar._context_window = context_window
                     if metadata.get("tier"):
                         info_bar._tier = metadata["tier"]
+                        logger.debug(f"_refresh_provider_metadata: tier={metadata['tier']}")
                     if metadata.get("usage"):
                         info_bar._usage_data = metadata["usage"]
                     info_bar.refresh()
