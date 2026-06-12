@@ -346,6 +346,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
             return
 
         self.run_worker(self._refresh_provider_metadata(), exclusive=False)
+        self.run_worker(self._refresh_provider_metadata_retry(), exclusive=False)
 
         self._session_start_time = time.time()
 
@@ -406,12 +407,10 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
     async def _refresh_provider_metadata(self) -> None:
         """Fetch and apply provider metadata (like tier-based context window)."""
         if not self._runtime.provider:
-            logger.debug("_refresh_provider_metadata: no provider, skipping")
             return
 
         try:
             metadata = await self._runtime.provider.get_metadata()
-            logger.debug(f"_refresh_provider_metadata: got {len(metadata)} keys")
             if not metadata:
                 return
 
@@ -442,6 +441,12 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
     def _refresh_git_branch(self) -> None:
         info_bar = self.query_one("#info-bar", InfoBar)
         info_bar.refresh_git_branch()
+
+    async def _refresh_provider_metadata_retry(self) -> None:
+        """Retry metadata fetch after a short delay (provider may not be ready on first call)."""
+        import asyncio
+        await asyncio.sleep(2)
+        await self._refresh_provider_metadata()
 
     async def _collect_file_paths(self) -> None:
         """Collect file paths using glob (fallback when fd is unavailable)."""
