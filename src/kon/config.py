@@ -169,6 +169,8 @@ class _BinariesConfig:
 
 
 class Config:
+    """Application configuration, loaded from ~/.rta/config.toml with defaults."""
+
     def __init__(self, data: dict[str, Any]) -> None:
         merged = self.merge_with_defaults(data)
         self._parsed = ConfigSchema.model_validate(merged)
@@ -253,10 +255,12 @@ CONFIG_DIR_NAME: str = "rta"
 
 
 def get_config_dir() -> Path:
+    """Return the ~/.rta directory path, creating it if needed."""
     return Path.home() / ".rta"
 
 
 def get_agents_dir() -> Path:
+    """Return the ~/.rta/agents directory path for AGENTS.md files."""
     return Path.home() / ".rta" / "skills"
 
 
@@ -277,6 +281,7 @@ def _record_config_warning(message: str) -> None:
 
 
 def consume_config_warnings() -> list[str]:
+    """Return and clear any config migration warnings for display to the user."""
     warnings = _config_warnings.copy()
     _config_warnings.clear()
     return warnings
@@ -532,6 +537,7 @@ AVAILABLE_BINARIES = _detect_available_binaries()
 
 
 def update_available_binaries() -> None:
+    """Detect locally installed binary tools (rg, fd) and update config."""
     AVAILABLE_BINARIES.clear()
     AVAILABLE_BINARIES.update(_detect_available_binaries())
 
@@ -578,6 +584,7 @@ def _load_config() -> Config:
 
 
 def get_config() -> Config:
+    """Load and return the global config singleton. Creates default config on first call."""
     """
     Get the current config instance.
 
@@ -592,11 +599,13 @@ def get_config() -> Config:
 
 
 def set_config(config: Config) -> None:
+    """Replace the global config singleton (used in tests)."""
     """Set the config instance (useful for testing)."""
     _config_var.set(config)
 
 
 def reload_config() -> Config:
+    """Force reload config from disk, bypassing the cache."""
     """Reload config from file and update the context variable."""
     cfg = _load_config()
     _config_var.set(cfg)
@@ -612,6 +621,7 @@ def _set_config_version(data: dict[str, Any]) -> None:
 
 
 def set_theme(theme: str) -> Config:
+    """Change the UI theme and save to config file."""
     get_theme(theme)
 
     config_file = _ensure_config_file()
@@ -631,6 +641,7 @@ def set_theme(theme: str) -> Config:
 
 
 def set_show_welcome_shortcuts(enabled: bool) -> Config:
+    """Toggle display of keyboard shortcuts in the welcome message."""
     config_file = _ensure_config_file()
     data = _read_config_data(config_file)
 
@@ -647,6 +658,7 @@ def set_show_welcome_shortcuts(enabled: bool) -> Config:
 
 
 def set_permissions_mode(mode: PermissionMode) -> Config:
+    """Set the tool permission mode (ask, auto-edit, full-auto)."""
     config_file = _ensure_config_file()
     data = _read_config_data(config_file)
 
@@ -663,6 +675,7 @@ def set_permissions_mode(mode: PermissionMode) -> Config:
 
 
 def set_thinking_lines(lines: ThinkingLinesOption) -> Config:
+    """Set the max lines shown for thinking/reasoning output."""
     config_file = _ensure_config_file()
     data = _read_config_data(config_file)
 
@@ -679,6 +692,7 @@ def set_thinking_lines(lines: ThinkingLinesOption) -> Config:
 
 
 def set_git_context(enabled: bool) -> Config:
+    """Toggle inclusion of git branch/diff context in system prompt."""
     config_file = _ensure_config_file()
     data = _read_config_data(config_file)
 
@@ -700,6 +714,7 @@ def set_git_context(enabled: bool) -> Config:
 
 
 def set_colored_tool_badge(enabled: bool) -> Config:
+    """Toggle colored icons on tool call badges in the UI."""
     config_file = _ensure_config_file()
     data = _read_config_data(config_file)
 
@@ -716,6 +731,7 @@ def set_colored_tool_badge(enabled: bool) -> Config:
 
 
 def set_notifications_enabled(enabled: bool) -> Config:
+    """Toggle desktop notifications for task completion."""
     config_file = _ensure_config_file()
     data = _read_config_data(config_file)
 
@@ -732,6 +748,7 @@ def set_notifications_enabled(enabled: bool) -> Config:
 
 
 def reset_config() -> None:
+    """Clear the config singleton (used in tests to restore defaults)."""
     """Reset config to uninitialized state (next get_config() will reload from file)."""
     _config_var.set(None)
     _config_warnings.clear()
