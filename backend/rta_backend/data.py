@@ -80,6 +80,7 @@ async def collect_container_log(
     }
     
     def insert_log(log_data):
+        """Insert a container log entry into Supabase."""
         try:
             supabase = get_supabase_client()
             supabase.table("container_logs").insert(log_data).execute()

@@ -89,6 +89,7 @@ async def proxy_http(
     request: Request,
     user_id: str = Depends(require_api_key),
 ):
+    """Proxy HTTP requests to the Go executor service, forwarding headers and body."""
     safe_path = sanitize_path(path)
     client = get_http_client()
     timeout = get_timeout_for_path(safe_path)
@@ -112,6 +113,7 @@ async def proxy_http(
     try:
         if is_streaming:
             async def body_stream():
+                """Stream request body chunks to the upstream executor."""
                 async for chunk in request.stream():
                     yield chunk
 
@@ -153,6 +155,7 @@ WS_GO_BASE = GO_BASE_URL.replace("http://", "ws://").replace("https://", "wss://
 
 @executor_router.websocket("/ws/{path:path}")
 async def proxy_websocket(websocket: WebSocket, path: str):
+    """Proxy WebSocket connections to the Go executor service with API key auth."""
     safe_path = sanitize_path(path)
     
     # Extract and validate API key for authentication
@@ -187,6 +190,7 @@ async def proxy_websocket(websocket: WebSocket, path: str):
             logger.info(f"WS proxy upstream connected: {upstream_ws_url}")
 
             async def mobile_to_go():
+                """Forward messages from the client WebSocket to the upstream executor."""
                 try:
                     while True:
                         data = await websocket.receive()
@@ -203,6 +207,7 @@ async def proxy_websocket(websocket: WebSocket, path: str):
                     logger.warning(f"WS proxy: mobile_to_go error: {e}")
 
             async def go_to_mobile():
+                """Forward messages from the upstream executor back to the client WebSocket."""
                 try:
                     async for message in upstream_ws:
                         if isinstance(message, str):
