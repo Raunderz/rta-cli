@@ -19,7 +19,9 @@ from rta_backend.db import get_user_tier
 import os
 import logging
 import re
+import uuid
 from dotenv import load_dotenv
+from rta_backend.utils import JSONFormatter
 load_dotenv()
 
 # Secret scrubbing filter
@@ -35,28 +37,79 @@ class SecretScrubber(logging.Filter):
         record.msg = re.sub(r'([?&]key=)[^&\s]+', r'\1[REDACTED_KEY]', record.msg)
         return True
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("rta_backend.log")
-    ]
-)
-for _h in logging.root.handlers:
-    _h.addFilter(SecretScrubber())
+# Logging configuration
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+root_logger = logging.getLogger()
+root_logger.setLevel(log_level)
+
+# Clear existing handlers
+for handler in root_logger.handlers[:]:
+    root_logger.removeHandler(handler)
+
+# JSON handler
+json_handler = logging.StreamHandler()
+json_handler.setFormatter(JSONFormatter())
+json_handler.addFilter(SecretScrubber())
+root_logger.addHandler(json_handler)
+
+# File handler (also JSON)
+file_handler = logging.FileHandler("rta_backend.log")
+file_handler.setFormatter(JSONFormatter())
+file_handler.addFilter(SecretScrubber())
+root_logger.addHandler(file_handler)
 
 logger = logging.getLogger("rta_backend")
-# Also force uvicorn and httpx loggers to INFO level
+
+# Also force uvicorn and httpx loggers to use the same handlers
 for _log_name in ["uvicorn", "uvicorn.error", "uvicorn.access", "httpx"]:
     _log = logging.getLogger(_log_name)
-    _log.setLevel(logging.INFO)
-    for _h in _log.handlers:
-        _h.addFilter(SecretScrubber())
+    _log.setLevel(log_level)
+    _log.propagate = True # Let it bubble up to root logger
 
-print("--- RTA BACKEND STARTING (Logging to rta_backend.log) ---")
+logger.info("--- RTA BACKEND STARTING ---")
+
+def validate_env():
+    """Validates that all required environment variables are set."""
+    required_vars = [
+        "SUPABASE_URL",
+        "SUPABASE_KEY",
+        "SECRET_KEY",
+        "FRONTEND_URL"
+    ]
+    missing = [v for v in required_vars if not os.getenv(v)]
+    if missing:
+        logger.error(f"MISSING REQUIRED ENV VARS: {', '.join(missing)}")
+        raise RuntimeError(f"Startup failed. Missing env vars: {', '.join(missing)}")
+
+validate_env()
 
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    logger.info("Starting up RTA Backend...")
+    
+    # Cleanup old jobs loop
+    async def cleanup_loop():
+        try:
+            while True:
+                cleanup_old_jobs()
+                await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            logger.info("Cleanup loop cancelled")
+
+    app.state.cleanup_task = asyncio.create_task(cleanup_loop())
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down RTA Backend...")
+    app.state.cleanup_task.cancel()
+    await shutdown_http_client()       # executor client
+    await close_provider_client()      # provider shared client
 
 app = FastAPI(
     title="Rta Backend API",
@@ -64,26 +117,49 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/docs" if TEST_MODE else None,
     redoc_url="/redoc" if TEST_MODE else None,
+    lifespan=lifespan
 )
 
-# Context variable to hold the current request for rate limiting
+# Context variable to hold the current request for rate limiting and logging
 request_var: ContextVar[Request] = ContextVar("request", default=None)
 
 @app.middleware("http")
-async def request_context_middleware(request: Request, call_next):
+async def observability_middleware(request: Request, call_next):
+    # Get or generate Request ID
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+    request.state.request_id = request_id
+    
+    # Set request ID in context for logging
     token = request_var.set(request)
+    
+    # Custom log record factory to inject request_id into all logs during this request
+    old_factory = logging.getLogRecordFactory()
+    def record_factory(*args, **kwargs):
+        record = old_factory(*args, **kwargs)
+        record.request_id = request_id
+        return record
+    logging.setLogRecordFactory(record_factory)
+    
+    start_time = time.time()
     try:
         response = await call_next(request)
+        process_time = time.time() - start_time
+        response.headers["X-Request-ID"] = request_id
+        response.headers["X-Process-Time"] = str(process_time)
         return response
     finally:
         request_var.reset(token)
+        logging.setLogRecordFactory(old_factory)
 
 # CORS setup
-origins = [
-    "http://localhost:5173", # local test
-    "https://rta-three.vercel.app", # website
-    "http://localhost:1420", # desktop
-]
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
+origins = [o.strip() for o in allowed_origins if o.strip()]
+if not origins:
+    origins = [
+        "http://localhost:5173", # local test
+        "https://rta-three.vercel.app", # website
+        "http://localhost:1420", # desktop
+    ]
 
 app.add_middleware(
     CORSMiddleware,
@@ -120,7 +196,8 @@ def get_user_id_key(request: Request):
                 res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
                 if res.data:
                     user_id = res.data[0]["user_id"]
-            except:
+            except Exception as e:
+                logger.debug(f"Failed to lookup user_id for key: {e}")
                 pass
     return user_id if user_id else get_remote_address(request)
 
@@ -147,7 +224,8 @@ def get_tier_limit(request: Request = None) -> str:
                 res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
                 if res.data:
                     user_id = res.data[0]["user_id"]
-            except:
+            except Exception as e:
+                logger.debug(f"Failed to lookup user_id for key: {e}")
                 pass
 
     if user_id:
@@ -448,28 +526,11 @@ async def get_chat_job_status(
         "next_index": after_index + len(chunks)
     }
 
-@app.on_event("startup")
-async def startup_event():
-    # Cleanup old jobs every hour
-    async def cleanup_loop():
-        while True:
-            cleanup_old_jobs()
-            await asyncio.sleep(3600)
-    
-    import asyncio
-    asyncio.create_task(cleanup_loop())
-
-
 # Include routers
 app.include_router(auth_router, prefix="/v1")
 app.include_router(data_router, prefix="/v1")
 app.include_router(billing_router, prefix="/v1")
 app.include_router(executor_router, prefix="/v1")
-
-@app.on_event("shutdown")
-async def shutdown():
-    await shutdown_http_client()       # executor client (already existed)
-    await close_provider_client()      # provider shared client (added)
 
 @app.get("/v1/usage")
 async def usage_endpoint(
@@ -481,7 +542,8 @@ async def usage_endpoint(
     Powers `rta status`.
     """
     from datetime import datetime, timezone
-    supabase = __import__("rta_backend.db", fromlist=["get_supabase_client"]).get_supabase_client()
+    from rta_backend.db import get_supabase_client
+    supabase = get_supabase_client()
     tier = get_user_tier(user_id)
 
     # Calls and tokens today (from profile)
@@ -658,7 +720,20 @@ async def root():
 
 @app.api_route("/health", methods=["GET", "HEAD"])
 async def health_check():
-    return {"status": "healthy"}
+    """Verify core dependencies are functional."""
+    try:
+        from rta_backend.db import get_supabase_client
+        supabase = get_supabase_client()
+        # Minimal query to check DB
+        supabase.table("profiles").select("id").limit(1).execute()
+        return {"status": "healthy", "database": "up"}
+    except Exception as e:
+        logger.error(f"Health check failed: {e}")
+        return Response(
+            content=json.dumps({"status": "unhealthy", "database": "down"}),
+            status_code=503,
+            media_type="application/json"
+        )
 
 @app.get("/v1/heartbeat")
 async def heartbeat():

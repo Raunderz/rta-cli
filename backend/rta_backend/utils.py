@@ -1,4 +1,24 @@
 import re
+import json
+import logging
+
+class JSONFormatter(logging.Formatter):
+    """Custom JSON formatter for structured logging."""
+    def format(self, record):
+        log_record = {
+            "timestamp": self.formatTime(record, self.datefmt),
+            "level": record.levelname,
+            "name": record.name,
+            "message": record.getMessage(),
+        }
+        # Add request_id if available (from middleware)
+        if hasattr(record, "request_id"):
+            log_record["request_id"] = record.request_id
+        
+        if record.exc_info:
+            log_record["exception"] = self.formatException(record.exc_info)
+        
+        return json.dumps(log_record)
 
 class Sanitizer:
     """Handles scrubbing of sensitive info before DB insertion."""

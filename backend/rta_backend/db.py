@@ -11,14 +11,21 @@ from supabase.lib.client_options import ClientOptions
 
 load_dotenv()
 
+_supabase_client = None
+
 def get_supabase_client():
+    global _supabase_client
+    if _supabase_client is not None:
+        return _supabase_client
+
     url = os.getenv("SUPABASE_URL")
     key = os.getenv("sp_service_role") or os.getenv("SUPABASE_KEY")
     
     if not url or not key:
         raise ValueError("SUPABASE_URL or SUPABASE_KEY missing in environment")
     
-    return supabase.create_client(url, key)
+    _supabase_client = supabase.create_client(url, key)
+    return _supabase_client
 
 def upsert_profile(user_id: str, username: str):
     """Create or update user profile."""
