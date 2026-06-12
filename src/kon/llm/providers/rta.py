@@ -89,18 +89,13 @@ class RtaProvider(BaseProvider):
         self.device_id = kon_config.rta.device_id or kon_auth.get_device_id()
 
     async def get_metadata(self) -> dict[str, Any]:
-        import logging
-        log = logging.getLogger("kon.rta")
-        
         if not self.api_key:
-            log.debug("get_metadata: no API key, skipping")
             return {}
         
         headers = {"X-API-KEY": self.api_key}
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.get(f"{self.server_url}/v1/usage", headers=headers)
-                log.debug(f"get_metadata: response {resp.status_code}")
                 if resp.status_code == 200:
                     data = resp.json()
                     tier = data.get("tier", "free").lower()
@@ -120,8 +115,8 @@ class RtaProvider(BaseProvider):
                         "tier": tier,
                         "usage": data
                     }
-        except Exception as e:
-            log.debug(f"get_metadata failed: {e}")
+        except Exception:
+            pass
         return {}
 
     async def _stream_impl(
