@@ -739,7 +739,7 @@ Add your Personal Access Token to the config to enable repository management, is
                 {s.title}
               </h3>
               <div class="markdown-body" style="font-size: 1rem; line-height: 1.8; color: var(--text-secondary);">
-                <div dangerouslySetInnerHTML={{ __html: marked(s.content) }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked(s.content)) }} />
               </div>
             </div>
           ))}

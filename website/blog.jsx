@@ -2,6 +2,7 @@ import { h } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { Link, useLocation } from 'wouter';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 
 export const BlogPage = ({ params }) => {
   const [, setLocation] = useLocation();
@@ -1034,7 +1035,7 @@ To speed up operations, we implemented a dependency graph for tool execution. If
           <span class="mono" style="color: var(--text-secondary); font-size: 0.8rem;">{selectedArticle.date}</span>
           <span class="mono" style="color: var(--text-secondary); font-size: 0.8rem;">{selectedArticle.readTime}</span>
         </div>
-        <div class="markdown-body" dangerouslySetInnerHTML={{ __html: htmlContent }} />
+        <div class="markdown-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(htmlContent) }} />
       </div>
     );
   }

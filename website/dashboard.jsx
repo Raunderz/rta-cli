@@ -1,6 +1,7 @@
 import { render, h, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { marked } from 'marked';
+import DOMPurify from 'dompurify';
 // forcing rebuild from vercel
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL ? import.meta.env.VITE_BACKEND_URL.replace(/\/?$/, "") : "";
@@ -189,7 +190,7 @@ const ChatView = ({ user }) => {
                             {m.role === 'user' ? (
                                 <div style="white-space: pre-wrap;">{m.content}</div>
                             ) : (
-                                <div class="markdown-body" dangerouslySetInnerHTML={{ __html: marked.parse(m.content) }} />
+                                <div class="markdown-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(m.content)) }} />
                             )}
                         </div>
                     ))

@@ -102,6 +102,7 @@ export default function Terminal({ apiKey, session }) {
     function connectShell() {
       log('Connecting: ' + WS_URL);
       ws = new WebSocket(WS_URL);
+      window._rta_ws = ws;
       ws.binaryType = 'arraybuffer';
 
       ws.onopen = function() {
@@ -128,6 +129,7 @@ export default function Terminal({ apiKey, session }) {
 
       ws.onclose = function(e) {
         log('WS Closed: ' + e.code);
+        window._rta_ws = null;
         term.write('\\r\\n\\x1b[33m\\u26A0 Disconnected (' + e.code + ')\\x1b[0m\\r\\n');
       };
     }
