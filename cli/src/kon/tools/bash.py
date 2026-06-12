@@ -193,6 +193,7 @@ class BashTool(BaseTool):
     async def execute(
         self,
         params: BashParams,
+        cwd: str,
         cancel_event: asyncio.Event | None = None,
         inline_output: bool = False,
     ) -> ToolResult:
@@ -202,10 +203,10 @@ class BashTool(BaseTool):
 
         command = params.command
 
-        cwd = Path.cwd()
-        if not cwd.exists():
+        cwd_path = Path(cwd)
+        if not cwd_path.exists():
             return ToolResult(
-                success=False, ui_summary=f"[red]Working directory does not exist: {cwd}[/red]"
+                success=False, ui_summary=f"[red]Working directory does not exist: {cwd_path}[/red]"
             )
 
         proc = None
@@ -217,6 +218,7 @@ class BashTool(BaseTool):
                 stdin=asyncio.subprocess.DEVNULL,
                 env=_get_env(),
                 executable=_get_shell(),
+                cwd=cwd_path,
                 start_new_session=not _IS_WINDOWS,
             )
 

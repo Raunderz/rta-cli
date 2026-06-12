@@ -10,6 +10,7 @@ from ._tool_utils import (
     communicate_or_cancel,
     shorten_path,
     truncate_lines_by_bytes,
+    verify_path_sandbox,
 )
 from .base import BaseTool
 
@@ -47,8 +48,11 @@ class FindTool(BaseTool):
         return " ".join(parts)
 
     async def execute(
-        self, params: FindParams, cancel_event: asyncio.Event | None = None
+        self, params: FindParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
+        if params.path:
+            verify_path_sandbox(params.path, cwd)
+
         fd_path = await ensure_tool("fd", silent=True)
         if not fd_path:
             msg = "fd is not available and could not be downloaded"

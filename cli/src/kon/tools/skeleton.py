@@ -20,9 +20,8 @@ class SkeletonTool(BaseTool[SkeletonParams]):
     tool_icon = "💀"
 
     async def execute(
-        self, params: SkeletonParams, cancel_event: asyncio.Event | None = None
+        self, params: SkeletonParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
-        cwd = os.getcwd()
         try:
             indexer = BM25Indexer(cwd)
             # Ensure index exists

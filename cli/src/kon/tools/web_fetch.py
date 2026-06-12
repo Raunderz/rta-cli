@@ -172,7 +172,7 @@ class WebFetchTool(BaseTool):
         return params.url
 
     async def execute(
-        self, params: WebFetchParams, cancel_event: asyncio.Event | None = None
+        self, params: WebFetchParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         try:
             curl_resolve = await _prepare_curl_resolve(params.url, cancel_event)

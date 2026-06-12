@@ -26,8 +26,9 @@ class YouTubeTranscriptTool(BaseTool[YouTubeTranscriptParams]):
     tool_icon = "🎬"
 
     async def execute(
-        self, params: YouTubeTranscriptParams, cancel_event: asyncio.Event | None = None
+        self, params: YouTubeTranscriptParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
+
         video_id = self._extract_youtube_id(params.video_url)
         if not video_id:
             return ToolResult(

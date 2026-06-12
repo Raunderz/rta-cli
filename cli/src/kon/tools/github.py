@@ -30,7 +30,7 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
     tool_icon = "🐙"
 
     async def execute(
-        self, params: GitHubSearchParams, cancel_event: asyncio.Event | None = None
+        self, params: GitHubSearchParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         try:
             params_v = {

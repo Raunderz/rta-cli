@@ -32,14 +32,13 @@ class RefactorPythonTool(BaseTool[RefactorParams]):
     tool_icon = "🏗️"
 
     async def execute(
-        self, params: RefactorParams, cancel_event: asyncio.Event | None = None
+        self, params: RefactorParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         if cst is None or m is None:
             return ToolResult(
                 success=False, result="Error: libcst not installed. AST refactoring unavailable."
             )
 
-        cwd = os.getcwd()
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
         if not os.path.exists(abs_path):
             return ToolResult(success=False, result=f"File {params.file_path} not found.")

@@ -9,10 +9,13 @@ The loop ends on stop/error/interruption, compaction pause mode, or max turns.
 """
 
 import asyncio
+import logging
 import os
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 
 from . import config as kon_config
 from .context import Context, formatted_agent_mds, formatted_git_context, formatted_skills
@@ -186,6 +189,7 @@ class Agent:
                         provider=self.provider,
                         messages=messages,
                         tools=self.tools,
+                        cwd=self._cwd,
                         system_prompt=system_prompt,
                         turn=turn,
                         cancel_event=cancel_event,
@@ -309,5 +313,6 @@ class Agent:
 
             yield CompactionEndEvent(tokens_before=tokens_before)
 
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Error in _check_compaction: {e}")
             yield CompactionEndEvent(tokens_before=tokens_before, aborted=True)

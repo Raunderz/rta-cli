@@ -61,6 +61,18 @@ async def communicate_or_cancel(
                 await cancel
 
 
+from pathlib import Path
+
+def verify_path_sandbox(path: str, cwd: str) -> None:
+    """
+    Ensures that the given path is within the current working directory.
+    Raises ValueError if the path is outside the sandbox.
+    """
+    p = Path(path).resolve()
+    base = Path(cwd).resolve()
+    if not p.is_relative_to(base):
+        raise ValueError(f"Access denied: path '{path}' is outside the project directory.")
+
 def shorten_path(path: str) -> str:
     home = os.path.expanduser("~")
     if path.startswith(home):

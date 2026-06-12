@@ -10,7 +10,7 @@ from kon import config
 from kon.diff_display import DIFF_BG_PAD_MARKER, blend_hex
 
 from ..core.types import FileChanges
-from ._tool_utils import shorten_path
+from ._tool_utils import shorten_path, verify_path_sandbox
 from .base import BaseTool, ToolResult
 
 CONTEXT_LINES = 4
@@ -213,8 +213,9 @@ class EditTool(BaseTool):
         return format_diff_display(diff)
 
     async def execute(
-        self, params: EditParams, cancel_event: asyncio.Event | None = None
+        self, params: EditParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
+        verify_path_sandbox(params.path, cwd)
         file_path = Path(params.path)
 
         if not file_path.exists():

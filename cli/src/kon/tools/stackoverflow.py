@@ -23,7 +23,7 @@ class StackOverflowTool(BaseTool[StackOverflowParams]):
     tool_icon = "📚"
 
     async def execute(
-        self, params: StackOverflowParams, cancel_event: asyncio.Event | None = None
+        self, params: StackOverflowParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         try:
             query_encoded = urllib.parse.urlencode(

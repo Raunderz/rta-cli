@@ -52,7 +52,7 @@ class MemorizeTool(BaseTool[MemorizeParams]):
     tool_icon = "🧠"
 
     async def execute(
-        self, params: MemorizeParams, cancel_event: asyncio.Event | None = None
+        self, params: MemorizeParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         data = _load()
         data[params.key] = {
@@ -79,7 +79,7 @@ class RecallTool(BaseTool[RecallParams]):
     tool_icon = "🔍"
 
     async def execute(
-        self, params: RecallParams, cancel_event: asyncio.Event | None = None
+        self, params: RecallParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         data = _load()
         if not data:
@@ -116,7 +116,7 @@ class ForgetTool(BaseTool[ForgetParams]):
     tool_icon = "🗑️"
 
     async def execute(
-        self, params: ForgetParams, cancel_event: asyncio.Event | None = None
+        self, params: ForgetParams, cwd: str, cancel_event: asyncio.Event | None = None
     ) -> ToolResult:
         data = _load()
         if params.key in data:
