@@ -352,6 +352,10 @@ async def chat_endpoint(
                 collected_meta = {}
                 try:
                     async for event in route_chat_request_stream(payload, user_id, user_tier):
+                        if await request.is_disconnected():
+                            logging.info(f"Stream client disconnected for user {user_id}")
+                            return
+
                         if event["type"] == "text":
                             collected_text += event["content"]
                             if is_openai:
@@ -415,7 +419,6 @@ async def chat_endpoint(
                             await update_token_usage(user_id, total_tokens)
                         await log_telemetry_task(user_id, payload, pr)
                 except Exception as te:
-                    import logging
                     logging.error(f"Stream telemetry failed: {te}")
 
             return StreamingResponse(
