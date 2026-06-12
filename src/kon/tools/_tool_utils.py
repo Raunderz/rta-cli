@@ -8,10 +8,11 @@ _SUBPROCESS_DRAIN_TIMEOUT_SECONDS = 1.0
 
 
 class ToolCancelledError(Exception):
-    pass
+    """Raised when a tool execution is cancelled by the user."""
 
 
 async def await_task_or_cancel(work: asyncio.Task, cancel_event: asyncio.Event | None):
+    """Await an asyncio task, converting OperationCancelledError to ToolCancelledError."""
     try:
         return await await_or_cancel(work, cancel_event)
     except OperationCancelledError as e:
@@ -21,6 +22,7 @@ async def await_task_or_cancel(work: asyncio.Task, cancel_event: asyncio.Event |
 async def communicate_or_cancel(
     proc: asyncio.subprocess.Process, cancel_event: asyncio.Event | None
 ) -> tuple[bytes, bytes]:
+    """Wait for subprocess output, killing the process if cancel_event fires."""
     comm_task = asyncio.create_task(proc.communicate())
     if not cancel_event:
         return await comm_task
@@ -74,6 +76,7 @@ def verify_path_sandbox(path: str, cwd: str) -> None:
         raise ValueError(f"Access denied: path '{path}' is outside the project directory.")
 
 def shorten_path(path: str) -> str:
+    """Replace home directory prefix with ~ for display purposes."""
     home = os.path.expanduser("~")
     if path.startswith(home):
         return "~" + path[len(home) :]
@@ -81,12 +84,14 @@ def shorten_path(path: str) -> str:
 
 
 def truncate_text(text: str, n: int = 80) -> str:
+    """Truncate text to n characters, appending '...' if shortened."""
     return text[:77] + "..." if len(text) > n else text
 
 
 def truncate_lines_by_bytes(
     lines: list[str], max_output_bytes: int, marker: str = "[output truncated]"
 ) -> tuple[str, bool]:
+    """Truncate lines to fit within byte limit. Returns (result, was_truncated)."""
     total_bytes = 0
     result_lines: list[str] = []
 
