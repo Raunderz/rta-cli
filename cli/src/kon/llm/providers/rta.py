@@ -106,9 +106,6 @@ class RtaProvider(BaseProvider):
                     
                     window = context_windows.get(tier, 2000)
                     
-                    # If they've used tokens today, we might want to show remaining?
-                    # The user said "according to tier and usage".
-                    # Let's just provide the window and the raw usage data.
                     return {
                         "context_window": window,
                         "tier": tier,
