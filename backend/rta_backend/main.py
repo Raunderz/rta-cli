@@ -291,7 +291,10 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
                     session_id=payload.session_id,
                     turn_index=payload.turn_index,
                 )
-                total_tokens = collected_usage.get("total_tokens", 0)
+                total_tokens = (
+                    collected_usage.get("total_tokens", 0)
+                    or (collected_usage.get("prompt_tokens", 0) + collected_usage.get("completion_tokens", 0))
+                )
                 if total_tokens > 0:
                     await update_token_usage(user_id, total_tokens)
                 await log_telemetry_task(user_id, payload, pr)
@@ -302,7 +305,10 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
             result = await route_chat_request(payload, user_id, user_tier)
             from rta_backend.db import update_token_usage
             if result and result.usage:
-                total_tokens = result.usage.get("total_tokens", 0)
+                total_tokens = (
+                    result.usage.get("total_tokens", 0)
+                    or (result.usage.get("prompt_tokens", 0) + result.usage.get("completion_tokens", 0))
+                )
                 if total_tokens > 0:
                     await update_token_usage(user_id, total_tokens)
             await log_telemetry_task(user_id, payload, result)
@@ -414,7 +420,10 @@ async def chat_endpoint(
                             session_id=payload.session_id,
                             turn_index=payload.turn_index,
                         )
-                        total_tokens = collected_usage.get("total_tokens", 0)
+                        total_tokens = (
+                            collected_usage.get("total_tokens", 0)
+                            or (collected_usage.get("prompt_tokens", 0) + collected_usage.get("completion_tokens", 0))
+                        )
                         if total_tokens > 0:
                             await update_token_usage(user_id, total_tokens)
                         await log_telemetry_task(user_id, payload, pr)
@@ -440,7 +449,10 @@ async def chat_endpoint(
 
         # Bill for tokens used (non-streaming)
         if result and result.usage:
-            total_tokens = result.usage.get("total_tokens", 0)
+            total_tokens = (
+                result.usage.get("total_tokens", 0)
+                or (result.usage.get("prompt_tokens", 0) + result.usage.get("completion_tokens", 0))
+            )
             if total_tokens > 0:
                 await update_token_usage(user_id, total_tokens)
 
