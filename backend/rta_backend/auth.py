@@ -7,6 +7,8 @@ from fastapi.responses import RedirectResponse
 from rta_backend.db import get_supabase_client, upsert_profile, save_api_key, get_user_tier
 from rta_backend.security import verify_hcaptcha, validate_password_strength, generate_api_key, hash_key, require_api_key
 import os
+import logging
+logger = logging.getLogger(__name__)
 
 TEST_MODE = os.getenv("TEST_MODE", "false").lower() == "true"
 
@@ -98,15 +100,43 @@ async def auth_callback(request: Request):
             save_api_key(user_id, hashed_key, new_api_key[:8]+"...")
         
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-        # Pass session to frontend via hash params (secure)
-        redirect_url = f"{frontend_url}/dashboard#access_token={res.session.access_token}&refresh_token={res.session.refresh_token}"
+        # Store tokens in HTTP-only cookies instead of URL hash
+        # Prevents leakage through browser history, Referer headers, and server logs
+        response = RedirectResponse(f"{frontend_url}/dashboard")
+        cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+        response.set_cookie(
+            key="access_token",
+            value=res.session.access_token,
+            httponly=True,
+            max_age=3600,
+            samesite="lax",
+            secure=cookie_secure,
+            path="/",
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=res.session.refresh_token,
+            httponly=True,
+            max_age=3600,
+            samesite="lax",
+            secure=cookie_secure,
+            path="/",
+        )
         if new_api_key:
-            redirect_url += f"&api_key={new_api_key}"
-            
-        return RedirectResponse(redirect_url)
+            response.set_cookie(
+                key="api_key",
+                value=new_api_key,
+                httponly=True,
+                max_age=3600,
+                samesite="lax",
+                secure=cookie_secure,
+                path="/",
+            )
+        return response
     except Exception as e:
+        logger.error(f"OAuth callback failed: {e}")
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
-        return RedirectResponse(f"{frontend_url}/auth?error={str(e)}")
+        return RedirectResponse(f"{frontend_url}/auth?error=Authentication+failed")
 
 @router.post("/signup")
 @limiter.limit("100/hour")
@@ -170,7 +200,8 @@ async def login(request: Request, data: LoginRequest):
             "api_key": raw_key
         }
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Invalid credentials: {e}")
+        logger.error(f"Login failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
 @router.post("/refresh-key")
 @limiter.limit("100/hour")
@@ -221,4 +252,5 @@ async def get_me(request: Request, user_id: str = Depends(require_api_key)):
             "created_at": data.get("created_at", ""),
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Profile lookup failed: {e}")
+        logger.error(f"Profile lookup failed for user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail="Profile lookup failed")

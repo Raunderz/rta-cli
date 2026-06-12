@@ -213,7 +213,7 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
                 )
                 total_tokens = collected_usage.get("total_tokens", 0)
                 if total_tokens > 0:
-                    update_token_usage(user_id, total_tokens)
+                    await update_token_usage(user_id, total_tokens)
                 await log_telemetry_task(user_id, payload, pr)
                 update_job(job_id, status="completed", result=pr.dict())
             else:
@@ -224,7 +224,7 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
             if result and result.usage:
                 total_tokens = result.usage.get("total_tokens", 0)
                 if total_tokens > 0:
-                    update_token_usage(user_id, total_tokens)
+                    await update_token_usage(user_id, total_tokens)
             await log_telemetry_task(user_id, payload, result)
             update_job(job_id, status="completed", result=result.dict())
 
@@ -251,7 +251,7 @@ async def chat_endpoint(
 
         # Step 3.5: Daily call & token limit check (DB-backed)
         from rta_backend.db import check_and_update_daily_calls, update_token_usage
-        allowed, reason = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"], caps["tokens_day"])
+        allowed, reason = await check_and_update_daily_calls(user_id, user_tier, caps["calls_day"], caps["tokens_day"])
         if not allowed:
             raise HTTPException(
                 status_code=429,
@@ -330,7 +330,7 @@ async def chat_endpoint(
                         )
                         total_tokens = collected_usage.get("total_tokens", 0)
                         if total_tokens > 0:
-                            update_token_usage(user_id, total_tokens)
+                            await update_token_usage(user_id, total_tokens)
                         await log_telemetry_task(user_id, payload, pr)
                 except Exception as te:
                     import logging
@@ -357,7 +357,7 @@ async def chat_endpoint(
         if result and result.usage:
             total_tokens = result.usage.get("total_tokens", 0)
             if total_tokens > 0:
-                update_token_usage(user_id, total_tokens)
+                await update_token_usage(user_id, total_tokens)
 
         # Step 5: Enqueue background telemetry
         background_tasks.add_task(
@@ -410,11 +410,11 @@ async def chat_async_endpoint(
     
     # Check limits
     from rta_backend.db import check_and_update_daily_calls
-    allowed, reason = check_and_update_daily_calls(user_id, user_tier, caps["calls_day"], caps["tokens_day"])
+    allowed, reason = await check_and_update_daily_calls(user_id, user_tier, caps["calls_day"], caps["tokens_day"])
     if not allowed:
         raise HTTPException(status_code=429, detail=reason)
 
-    job_id = create_job()
+    job_id = create_job(user_id=user_id)
     background_tasks.add_task(run_chat_job, job_id, payload, user_id, user_tier)
     
     return {"job_id": job_id, "status": "pending"}
@@ -431,6 +431,9 @@ async def get_chat_job_status(
     job = get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+    
+    if job.get("user_id") and job["user_id"] != user_id:
+        raise HTTPException(status_code=403, detail="You do not have access to this job")
     
     # Only return chunks the client hasn't seen yet
     chunks = job.get("chunks", [])[after_index:]
@@ -600,10 +603,8 @@ async def dashboard_endpoint(
             "recent_calls": recent_res.data or [],
         }
     except Exception as e:
-        import traceback
-        print(f"DASHBOARD ERROR: {e}")
-        traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"DASHBOARD ERROR for user {user_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 import time

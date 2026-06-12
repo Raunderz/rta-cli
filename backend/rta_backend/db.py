@@ -53,10 +53,22 @@ def log_telemetry(user_id: str, data: dict):
     }).execute()
 
 import time
+import asyncio
+from typing import Dict
 # Tier Cache
 # key: user_id, value: (tier, expiry)
 _tier_cache = {}
 TIER_CACHE_TTL = 600  # 10 minutes
+
+# Per-user locks for atomic billing operations (prevents TOCTOU race conditions)
+_user_billing_locks: Dict[str, asyncio.Lock] = {}
+_billing_locks_lock = asyncio.Lock()
+
+async def _get_billing_lock(user_id: str) -> asyncio.Lock:
+    async with _billing_locks_lock:
+        if user_id not in _user_billing_locks:
+            _user_billing_locks[user_id] = asyncio.Lock()
+        return _user_billing_locks[user_id]
 
 def get_user_tier(user_id: str) -> str:
     """Fetch user subscription tier (with caching)."""
@@ -75,7 +87,7 @@ def get_user_tier(user_id: str) -> str:
     _tier_cache[user_id] = (tier, now + TIER_CACHE_TTL)
     return tier
 
-def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int, token_limit: int) -> tuple[bool, str]:
+async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int, token_limit: int) -> tuple[bool, str]:
     """
     Check if user has calls and tokens remaining for today. 
     Uses 'calls_used_today' for call count and 'credits' for tokens used today.
@@ -83,54 +95,62 @@ def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int, token
     """
     from datetime import datetime, timezone
     
-    client = get_supabase_client()
-    today = datetime.now(timezone.utc).date().isoformat()
-    
-    res = client.table("profiles").select("calls_used_today, credits, calls_reset_date").eq("id", user_id).execute()
-    
-    used_calls = 0
-    used_tokens = 0
-    
-    if res.data:
-        row = res.data[0]
-        reset_date = row.get("calls_reset_date")
-        used_calls = row.get("calls_used_today", 0) or 0
-        used_tokens = row.get("credits", 0) or 0
+    lock = await _get_billing_lock(user_id)
+    async with lock:
+        client = get_supabase_client()
+        today = datetime.now(timezone.utc).date().isoformat()
         
-        if reset_date != today:
-            used_calls = 0
-            used_tokens = 0
+        res = client.table("profiles").select("calls_used_today, credits, calls_reset_date").eq("id", user_id).execute()
+        
+        used_calls = 0
+        used_tokens = 0
+        
+        if res.data:
+            row = res.data[0]
+            reset_date = row.get("calls_reset_date")
+            used_calls = row.get("calls_used_today", 0) or 0
+            used_tokens = row.get("credits", 0) or 0
+            
+            if reset_date != today:
+                used_calls = 0
+                used_tokens = 0
 
-    if used_calls >= call_limit:
-        return False, f"Daily call limit reached ({call_limit}/day)."
-    
-    if used_tokens >= token_limit:
-        return False, f"Daily token limit reached ({token_limit}/day)."
-    
-    # Increment call count immediately
-    client.table("profiles").update({
-        "calls_used_today": used_calls + 1,
-        "credits": used_tokens,
-        "calls_reset_date": today
-    }).eq("id", user_id).execute()
-    
-    return True, ""
+        if used_calls >= call_limit:
+            return False, f"Daily call limit reached ({call_limit}/day)."
+        
+        if used_tokens >= token_limit:
+            return False, f"Daily token limit reached ({token_limit}/day)."
+        
+        # Atomic increment: the lock ensures no concurrent overwrites
+        client.table("profiles").update({
+            "calls_used_today": used_calls + 1,
+            "credits": used_tokens,
+            "calls_reset_date": today
+        }).eq("id", user_id).execute()
+        
+        return True, ""
 
-def update_token_usage(user_id: str, tokens_to_add: int):
+async def update_token_usage(user_id: str, tokens_to_add: int):
     """
     Bill the user for tokens used today (stored in 'credits').
     """
     from datetime import datetime, timezone
-    client = get_supabase_client()
-    today = datetime.now(timezone.utc).date().isoformat()
-    
-    res = client.table("profiles").select("credits, calls_reset_date").eq("id", user_id).execute()
-    
-    if res.data and res.data[0].get("calls_reset_date") == today:
-        used_tokens = res.data[0].get("credits", 0) or 0
-        client.table("profiles").update({
-            "credits": used_tokens + tokens_to_add
-        }).eq("id", user_id).execute()
+    lock = await _get_billing_lock(user_id)
+    async with lock:
+        client = get_supabase_client()
+        today = datetime.now(timezone.utc).date().isoformat()
+        
+        res = client.table("profiles").select("credits, calls_reset_date").eq("id", user_id).execute()
+        
+        if res.data:
+            if res.data[0].get("calls_reset_date") == today:
+                used_tokens = res.data[0].get("credits", 0) or 0
+            else:
+                used_tokens = 0
+            client.table("profiles").update({
+                "credits": used_tokens + tokens_to_add,
+                "calls_reset_date": today
+            }).eq("id", user_id).execute()
 
 def insert_telemetry(data: dict):
     """Direct insert into telemetry table."""

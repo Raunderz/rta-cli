@@ -17,11 +17,12 @@ class JobStatus(BaseModel):
 # but for the current architecture, we'll start with in-memory and see if heartbeat keeps it alive.
 _jobs: Dict[str, Dict[str, Any]] = {}
 
-def create_job() -> str:
+def create_job(user_id: str = "") -> str:
     job_id = str(uuid.uuid4())
     now = time.time()
     _jobs[job_id] = {
         "job_id": job_id,
+        "user_id": user_id,
         "status": "pending",
         "result": None,
         "error": None,

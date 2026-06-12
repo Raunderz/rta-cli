@@ -1,29 +1,46 @@
-# Project Journal - Debugging Rta Local Connectivity
+# Phase 1: Critical Security & Data Integrity
 
-## [2026-06-10] Initial Logging setup and URL fixes
-- Identified that CLI was using production URLs by default.
-- Updated CLI source and config to use `127.0.0.1:8000`.
-- Rebuilt CLI binary multiple times to fix dependency (pydantic) and data file (config.toml) issues.
-- Implemented file-based logging in backend with secret scrubbing.
-- Analyzed `rta_backend.log`:
-    - **Provider Errors:** Gemini and Groq consistently return `400 Bad Request`. OpenRouter hits `429` and `404` on specific models.
-    - **Performance Bottleneck:** Excessive Supabase calls (`GET /api_keys`) on every request/poll.
-    - **Reliability:** System eventually falls back to `openrouter/free` which works, explaining why "simple chat" succeeds after a long delay.
-- Next steps: Stabilize provider payloads and reduce DB spam.
-- **Fixed:** Implemented API key caching and user tier caching in `security.py` and `db.py`.
-- **Fixed:** Improved Gemini `translate_messages` to handle edge cases (no user message).
-- **Fixed:** Removed unsupported `stream_options` from Groq payload.
-- **Fixed:** Updated OpenRouter model IDs to stable versions (`qwen-2.5-coder`).
-- **Cleanup:** Deleted `rta_backend.log` after analysis to save space.
-- **Aim:** Verify that local polling is now fast and provider errors are gone.
-- **Update:** Implemented API key caching and user tier caching in `security.py` and `db.py`. DB spam should be eliminated.
-- **Model Discovery:** Verified valid Gemini IDs (e.g., `gemini-2.5-flash`, `gemini-3.5-flash`). URLs were correct, but payload content was causing `400 Bad Request`.
-- **Payload Audit:**
-    - Gemini: `translate_messages` might be producing invalid structures (e.g., system-only or non-alternating roles).
-    - Groq: `stream_options` is likely unsupported for the selected models.
-- Aiming for a clean "Hello" and "Coding" test without provider fallbacks.
+Following [PRODUCTION_READINESS.md](./PRODUCTION_READINESS.md) implementation priority order.
 
-## Aim: Performance & Reliability Stabilization
-1.  **Stop DB Spam:** Implement in-memory caching for API key -> UserID mapping to reduce Supabase latency.
-2.  **Fix 400 Errors:** Audit and clean up payloads for Gemini and Groq (remove incompatible fields).
-3.  **Refine Routing:** Correct model IDs for free OpenRouter models based on log 404s.
+## Items
+
+- [x] 1.1 Fix billing race conditions (atomic DB operations)
+- [x] 1.2 Add authorization on job polling
+- [x] 1.3 Add authorization on executor proxy
+- [x] 1.4 Remove `--api-key` CLI flag
+- [x] 1.5 Sanitize error responses (no exception leakage)
+- [x] 1.6 Fix OAuth token passing (no tokens in URLs)
+
+## Details
+
+### 1.1 Billing race conditions (`db.py`)
+- Added per-user `asyncio.Lock` to serialize `check_and_update_daily_calls` and `update_token_usage`
+- Both functions converted to async, all callers updated with `await`
+- Prevents TOCTOU: two concurrent requests can no longer both pass the limit check
+
+### 1.2 Job polling authorization (`main.py`, `jobs.py`)
+- `create_job()` now accepts and stores `user_id`
+- `get_chat_job_status` checks job ownership before returning data
+- Returns 403 if the requesting user doesn't own the job
+
+### 1.3 Executor proxy authorization (`executor_proxy.py`)
+- Added `validate_ws_api_key()` function that reuses the existing auth cache
+- WebSocket proxy now validates API key before connecting upstream
+- Returns 1008 close code with error if key is invalid
+
+### 1.4 Remove `--api-key` CLI flag (`cli.py`, `app.py`)
+- Removed `--api-key` / `-k` argument from parser
+- Removed `api_key=args.api_key` from both `run_headless()` and `run_tui()` calls
+- Users must use config file, env var, or credential store instead (prevents key leakage via `ps aux`)
+
+### 1.5 Sanitize error responses (`auth.py`, `main.py`, `executor_proxy.py`)
+- Login endpoint: `Invalid credentials: {e}` → generic "Invalid credentials", error logged server-side
+- Profile lookup: `Profile lookup failed: {e}` → generic "Profile lookup failed"
+- Dashboard: `detail=str(e)` → generic "Internal server error"
+- OAuth callback: `error={str(e)}` in redirect → "Authentication+failed"
+- WebSocket errors: removed exception details from upstream error messages
+
+### 1.6 OAuth token passing (`auth.py`)
+- Replaced URL hash tokens (`#access_token=...&refresh_token=...`) with HTTP-only cookies
+- Tokens set as `httponly`, `samesite=lax`, with configurable `secure` flag
+- Prevents leakage through browser history, Referer headers, and URL bar

@@ -1,4 +1,5 @@
 import os
+import time
 import logging
 import asyncio
 from typing import Optional
@@ -8,7 +9,8 @@ import websockets
 from fastapi import APIRouter, Depends, Request, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import Response
 
-from rta_backend.security import require_api_key
+from rta_backend.security import require_api_key, hash_key, _auth_cache, AUTH_CACHE_TTL
+from rta_backend.db import get_supabase_client
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +43,22 @@ async def shutdown_http_client():
         await _http_client.aclose()
         _http_client = None
 
+
+def validate_ws_api_key(api_key: str) -> str:
+    """Validate an API key for WebSocket connections. Returns user_id or raises."""
+    now = time.time()
+    hashed = hash_key(api_key)
+    if hashed in _auth_cache:
+        uid, expiry = _auth_cache[hashed]
+        if now < expiry:
+            return uid
+    supabase = get_supabase_client()
+    res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
+    if not res.data:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    user_id = res.data[0]["user_id"]
+    _auth_cache[hashed] = (user_id, now + AUTH_CACHE_TTL)
+    return user_id
 
 def sanitize_path(path: str) -> str:
     normalized = "/" + path.lstrip("/") if path else "/"
@@ -132,7 +150,7 @@ WS_GO_BASE = GO_BASE_URL.replace("http://", "ws://").replace("https://", "wss://
 async def proxy_websocket(websocket: WebSocket, path: str):
     safe_path = sanitize_path(path)
     
-    # Extract API key for authentication
+    # Extract and validate API key for authentication
     api_key = websocket.headers.get("X-API-KEY")
     if not api_key:
         api_key = websocket.query_params.get("api_key")
@@ -143,8 +161,16 @@ async def proxy_websocket(websocket: WebSocket, path: str):
         await websocket.close(code=1008)
         return
 
+    try:
+        user_id = validate_ws_api_key(api_key)
+    except HTTPException:
+        await websocket.accept()
+        await websocket.send_text("Error: Invalid API key")
+        await websocket.close(code=1008)
+        return
+
     await websocket.accept()
-    logger.info(f"WS proxy accepted: /v1/executor/ws/{safe_path}")
+    logger.info(f"WS proxy accepted for user {user_id}: /v1/executor/ws/{safe_path}")
 
     upstream_ws_url = f"{WS_GO_BASE}/ws/{safe_path}"
     if "?" in upstream_ws_url:
@@ -194,19 +220,19 @@ async def proxy_websocket(websocket: WebSocket, path: str):
     except websockets.exceptions.WebSocketException as e:
         logger.error(f"WS proxy upstream WebSocket error: {e}")
         try:
-            await websocket.send_text(f"Upstream WebSocket unavailable: {e}")
+            await websocket.send_text("Error: Upstream WebSocket unavailable")
         except Exception:
             pass
     except ConnectionRefusedError:
         logger.error("WS proxy: upstream connection refused — Go backend not running on localhost:8080?")
         try:
-            await websocket.send_text("Error: Go backend unavailable (connection refused)")
+            await websocket.send_text("Error: Backend unavailable")
         except Exception:
             pass
     except OSError as e:
         logger.error(f"WS proxy: upstream OS error: {e}")
         try:
-            await websocket.send_text(f"Error: upstream OS error: {e}")
+            await websocket.send_text("Error: Upstream service error")
         except Exception:
             pass
     except Exception as e:
