@@ -254,7 +254,8 @@ class InfoBar(Vertical):
                 if limit > 0:
                     result.append(f" ({calls}/{limit} calls)", style=config.ui.colors.dim)
 
-        result.append(f" • {self._thinking_level}")
+        if self._thinking_level and self._thinking_level != "none":
+            result.append(f" • {self._thinking_level}")
         return result
 
     def update_tokens(
