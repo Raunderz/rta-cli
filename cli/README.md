@@ -1,84 +1,91 @@
 <pre align="center">
-░█░█░█▀█░█▀█
-░█▀▄░█░█░█░█
-░▀░▀░▀▀▀░▀░▀
+ _  .-')   .-') _      ('-.     
+( \( -O ) (  OO) )    ( OO ).-. 
+ ,------.  /     '._   / . --. / 
+|  /\'. |'--...__)  | \-.  \  
+|  /  | |'--.  .--'.-'-'  |  | 
+|  |_.' |   |  |    \| |_.'  | 
+|  .  '.'   |  |     |  .-.  | 
+|  |\  \    |  |     |  | |  | 
+ \'--' '--'   \'--'     \'--' \'--'
 </pre>
-<p align="center">Minimal AI coding agent — fork of <a href="https://github.com/0xku/kon">Kon</a></p>
+<p align="center">AI-native coding agent for your terminal</p>
 <p align="center">
-  <a href="https://pypi.org/project/rta-cli/"><img alt="PyPI" src="https://img.shields.io/pypi/v/rta-cli?style=flat-square" /></a>
-  <a href="https://www.python.org/downloads/"><img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square" /></a>
   <a href="https://github.com/Raunderz/rta-cli/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/badge/license-MIT-green?style=flat-square" /></a>
+  <a href="https://www.python.org/downloads/"><img alt="Python" src="https://img.shields.io/badge/python-3.12%2B-blue?style=flat-square" /></a>
   <a href="https://rta-three.vercel.app"><img alt="Homepage" src="https://img.shields.io/badge/homepage-rta--three.vercel.app-orange?style=flat-square" /></a>
 </p>
 
 ---
 
-**Rta CLI** is a minimal, fast AI coding agent for your terminal. Built on top of [Kon](https://github.com/0xku/kon) — a clean, minimal agent harness — with extra tools, provider support, and a focus on being lightweight and hackable.
+**Rta CLI** is an AI-native coding agent that runs in your terminal. It uses the RTA backend for managed model access with tier-based rate limits — no API keys required. Bring your own key if you want, or just run `rta` and go.
 
 > **By [Rounders](https://github.com/Raunderz)**
 
-### Current Status
+---
 
-Right now, Rta CLI works with **your own API keys** — bring your own provider (OpenAI, Anthropic, DeepSeek, or any OpenAI-compatible endpoint). Full native provider support with built-in auth is planned for **v1.0.0**.
+## Install
+
+Download the source zip from the [releases page](https://github.com/Raunderz/rta-cli/releases) or clone the repo, then:
+
+```bash
+cd rta-cli
+uv sync
+uv run rta
+```
+
+That's it. No API key setup needed — Rta connects to the managed backend by default.
+
+### Use your own API keys
+
+If you prefer to use your own provider:
+
+```bash
+# Set your key
+export OPENAI_API_KEY="sk-..."
+
+# Run with your provider
+uv run rta --provider openai -m gpt-4o
+```
+
+Supported providers: `openai`, `anthropic`, `deepseek`, `github-copilot`, `ollama`, and any OpenAI-compatible endpoint.
 
 ---
 
-## Quick Start
-
-### Install
+## Quick examples
 
 ```bash
-pip install rta-cli
-```
-
-Or with [uv](https://github.com/astral-sh/uv):
-
-```bash
-uv tool install rta-cli
-```
-
-### Run
-
-```bash
-rta
-```
-
-### Common Examples
-
-```bash
-# Use your own API key
-rta --provider openai -m gpt-4o
-
-# Continue your latest session
-rta -c
-
-# Resume a specific session
-rta -r <session-id>
-
-# Enable extra tools
-rta --extra-tools web_search,web_fetch
-
-# Single prompt (headless)
-rta -p "fix the failing test"
+uv run rta                          # Start with managed backend
+uv run rta -c                       # Continue most recent session
+uv run rta -r <session-id>          # Resume a specific session
+uv run rta -p "fix the failing test" # Single prompt, then exit
+uv run rta --extra-tools web_search,web_fetch  # Enable extra tools
 ```
 
 ---
 
-## Why Rta CLI
+## What it does
 
-### Minimal by design
+Rta reads, searches, edits, and writes code. It runs shell commands, searches the web, and connects to external tools — all from a single prompt in your terminal.
 
-- **System prompt under 270 tokens** by default
-- **6 core tools** for everyday coding work
-- **11 extra tools** — web search, memory, LSP diagnostics, deep search, and more
-- **Project instructions via `AGENTS.md`** — no bloat in the default harness
-- **Lightweight TUI** with themes, session management, and slash commands
+### Core tools
 
-### Built on Kon
+Enabled by default:
 
-Rta CLI is a fork of [Kon](https://github.com/0xku/kon), a minimal coding agent with a clean architecture. We've extended it with:
+| Tool | What it does |
+| --- | --- |
+| `read` | Read file contents with pagination and image support |
+| `edit` | Exact text replacement for surgical code changes |
+| `write` | Create or fully overwrite files |
+| `bash` | Run shell commands |
+| `grep` | Regex search inside files |
+| `find` | Glob-based file discovery with `.gitignore` awareness |
 
-| Extra Tool | What it does |
+### Extra tools
+
+Enable with `--extra-tools` or in config:
+
+| Tool | What it does |
 | --- | --- |
 | `web_search` | Search the web with DuckDuckGo |
 | `web_fetch` | Fetch and extract clean page content |
@@ -98,35 +105,17 @@ Rta CLI is a fork of [Kon](https://github.com/0xku/kon), a minimal coding agent 
 
 ---
 
-## Core Tools
+## TUI
 
-Enabled by default:
+Rta runs a full terminal UI with:
 
-| Tool | What it does |
-| --- | --- |
-| `read` | Read file contents with pagination and image support |
-| `edit` | Exact text replacement for surgical code changes |
-| `write` | Create or fully overwrite files |
-| `bash` | Run shell commands |
-| `grep` | Regex search inside files |
-| `find` | Glob-based file discovery with `.gitignore` awareness |
+- **`@`** to fuzzy-search files and directories
+- **Tab** for path completion
+- **Enter** to queue prompts while the agent is running
+- **Alt+Enter** to queue a steer message
+- **Esc** to interrupt
 
----
-
-## Interactive TUI
-
-### Editor and Navigation
-
-| Feature | How it works |
-| --- | --- |
-| File reference | Type `@` to fuzzy-search files and folders |
-| Path completion | Press **Tab** to complete paths |
-| Queued prompts | Press **Enter** while the agent is running to queue a follow-up |
-| Steer queue | Press **Alt+Enter** to queue a steer message |
-| Model switching | Use `/model` to switch interactively |
-| Session browsing | Use `/resume` to browse prior sessions |
-
-### Slash Commands
+### Slash commands
 
 | Command | Description |
 | --- | --- |
@@ -144,9 +133,8 @@ Enabled by default:
 | `/login` | Authenticate with an OAuth provider |
 | `/logout` | Remove provider credentials |
 | `/help` | Show help and keybindings |
-| `/quit` | Quit Rta |
 
-### Shell Commands
+### Shell commands
 
 | Prefix | Behavior |
 | --- | --- |
@@ -157,12 +145,12 @@ Enabled by default:
 
 ## Configuration
 
-Config lives at `~/.config/kon/config.toml` and is created automatically on first run.
+Config lives at `~/.rta/config.toml` and is created automatically on first run.
 
 ```toml
 [llm]
-default_provider = "openai"
-default_model = "gpt-4o"
+default_provider = "rta"
+default_model = "rta-auto"
 
 [tools]
 extra = ["web_search", "web_fetch"]
@@ -174,44 +162,38 @@ theme = "gruvbox-dark"
 mode = "prompt"
 ```
 
-Full config reference: [`src/kon/defaults/config.toml`](src/kon/defaults/config.toml)
-
 ---
 
 ## Sessions
 
-Sessions are stored as append-only JSONL files in `~/.config/kon/sessions/`.
+Sessions are stored as append-only JSONL files in `~/.rta/sessions/`.
 
 ```bash
-rta --continue          # Resume most recent session
-rta --resume <id>       # Resume specific session
+uv run rta --continue          # Resume most recent session
+uv run rta --resume <id>       # Resume specific session
 ```
 
 ---
 
 ## Providers
 
-Right now, use your own API keys with any supported provider:
+**Managed backend (default):** No API key needed. Just run `rta`.
+
+**Bring your own key:**
 
 - **OpenAI** — `OPENAI_API_KEY`
 - **Anthropic** — `ANTHROPIC_API_KEY`
 - **DeepSeek** — `DEEPSEEK_API_KEY`
 - **GitHub Copilot** — OAuth via `/login`
-- **OpenAI-compatible** — any `/v1` endpoint (Ollama, LM Studio, etc.)
+- **Ollama** — local models, no key needed
+- **OpenAI-compatible** — any `/v1` endpoint (LM Studio, vLLM, etc.)
 
 ```bash
-rta --provider openai --model gpt-4o
-rta --provider anthropic --model claude-sonnet-4-20250514
-rta --base-url http://localhost:11434/v1 --model llama3
+uv run rta --provider openai --model gpt-4o
+uv run rta --provider anthropic --model claude-sonnet-4-20250514
+uv run rta --provider ollama --model llama3
+uv run rta --base-url http://localhost:11434/v1 --model llama3
 ```
-
-### v1.0.0 Roadmap
-
-Native provider support with built-in auth — no API keys needed:
-
-- RTA managed provider with fallback across multiple backends
-- Tier-based rate limiting
-- Built-in telemetry and usage tracking
 
 ---
 
@@ -222,16 +204,11 @@ Native provider support with built-in auth — no API keys needed:
 | `prompt` | Ask before mutating tool calls (default) |
 | `auto` | Skip approval prompts |
 
-```toml
-[permissions]
-mode = "prompt"
-```
-
 ---
 
-## Tool Binaries
+## Tool binaries
 
-Rta CLI depends on these for fast file discovery and search:
+Rta uses these for fast file discovery and search:
 
 - **[`fd`](https://github.com/sharkdp/fd)** — fast file discovery
 - **[`ripgrep`](https://github.com/BurntSushi/ripgrep)** — fast content search
@@ -240,7 +217,7 @@ If missing, Rta can download them automatically.
 
 ---
 
-## Building from Source
+## Building from source
 
 ```bash
 git clone https://github.com/Raunderz/rta-cli.git
@@ -249,7 +226,7 @@ uv sync
 uv run rta
 ```
 
-### Build Binary
+### Build binary
 
 ```bash
 uv run pyinstaller rta.spec
