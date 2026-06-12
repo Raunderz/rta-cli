@@ -85,10 +85,7 @@ LAST_RESORT_MODELS = [
 
 
 def truncate_messages(messages: List[Dict], max_chars: int = 120000) -> List[Dict]:
-    """
-    Truncate conversation history and large tool outputs to fit within a safety limit.
-    Prevents HTTP 413 Payload Too Large from providers.
-    """
+    """Truncate conversation history to fit within char limit. Deep-copies to avoid mutating input."""
     if not messages:
         return []
 
@@ -121,7 +118,7 @@ def truncate_messages(messages: List[Dict], max_chars: int = 120000) -> List[Dic
 def get_routing_sequence(
     provider_hint: str, requested_model: str
 ) -> List[Dict[str, str]]:
-    """Determine the exact sequence of (provider, model) to try."""
+    """Determine the ordered list of (provider, model) pairs to try for a request."""
     # User's specific high-speed chain for default "auto" case
     if provider_hint == "auto" and (
         requested_model in ("auto", "rta-auto", "gpt-oss-120b")
@@ -187,12 +184,12 @@ def get_routing_sequence(
 
 
 def get_last_resort_model(requested_model: str) -> List[str]:
-    """Get a last resort groq model when all other providers fail."""
+    """Return backup Groq models to try when all other providers fail."""
     return LAST_RESORT_MODELS
 
 
 def pick_model_for_provider(requested_model: str, provider_name: str) -> str:
-    """Map generic model names to provider-specific strings."""
+    """Map generic model names (e.g. 'gpt-oss-120b') to provider-specific model strings."""
     if requested_model == "auto":
         requested_model = "gpt-oss-120b"
     mapping = {
@@ -220,7 +217,7 @@ def pick_model_for_provider(requested_model: str, provider_name: str) -> str:
 
 
 def get_provider_keys() -> Dict[str, str]:
-    """Fetch API keys from env."""
+    """Fetch API keys for all configured providers from environment variables."""
     return {
         "groq": os.getenv("GROQ_API_KEY", ""),
         "cerebras": os.getenv("CEREBRAS_API_KEY", ""),
@@ -375,7 +372,7 @@ async def route_chat_request(
 
 
 async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tier: str):
-    """Streaming variant with automatic fallback. Yields normalized events."""
+    """Streaming variant of route_chat_request. Yields normalized events with automatic fallback and retry."""
     raw_messages = [{"role": "system", "content": SYSTEM_PROMPT}] + request.messages
     messages = truncate_messages(raw_messages)
 

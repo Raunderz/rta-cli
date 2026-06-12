@@ -94,6 +94,8 @@ class AgentConfig:
 
 
 class Agent:
+    """Core agent loop: orchestrates LLM calls, tool execution, and session management."""
+
     def __init__(
         self,
         provider: BaseProvider,
@@ -124,6 +126,7 @@ class Agent:
         return self._system_prompt
 
     def reload_context(self) -> None:
+        """Refresh the agent's context (AGENTS.md, skills, git) from disk."""
         self._context = Context.load(self._cwd)
         self._system_prompt = build_system_prompt(self._cwd, self._context, tools=self.tools)
 
@@ -145,6 +148,7 @@ class Agent:
         cancel_event: asyncio.Event | None = None,
         steer_event: asyncio.Event | None = None,
     ) -> AsyncIterator[Event]:
+        """Run the agent loop: send query, execute tools, yield events until done."""
         from .session import current_session_id
 
         token = current_session_id.set(self.session.id)

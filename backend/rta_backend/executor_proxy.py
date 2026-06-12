@@ -27,6 +27,7 @@ executor_router = APIRouter(prefix="/executor", tags=["executor"])
 
 
 def get_http_client() -> httpx.AsyncClient:
+    """Return a shared httpx client for the Go executor, creating it on first call."""
     global _http_client
     if _http_client is None:
         _http_client = httpx.AsyncClient(
@@ -38,6 +39,7 @@ def get_http_client() -> httpx.AsyncClient:
 
 
 async def shutdown_http_client():
+    """Close the shared executor httpx client on application shutdown."""
     global _http_client
     if _http_client is not None:
         await _http_client.aclose()
@@ -61,6 +63,7 @@ def validate_ws_api_key(api_key: str) -> str:
     return user_id
 
 def sanitize_path(path: str) -> str:
+    """Normalize a URL path and block directory traversal (..) attacks."""
     normalized = "/" + path.lstrip("/") if path else "/"
     if ".." in normalized.split("/"):
         raise HTTPException(status_code=400, detail="Invalid path: traversal denied")
@@ -68,10 +71,12 @@ def sanitize_path(path: str) -> str:
 
 
 def scrub_headers(headers: dict) -> dict:
+    """Remove sensitive headers (authorization, cookie) before forwarding to client."""
     return {k: v for k, v in headers.items() if k.lower() not in SENSITIVE_HEADERS}
 
 
 def get_timeout_for_path(path: str) -> httpx.Timeout:
+    """Return appropriate timeout settings based on the upstream path (longer for env/chat)."""
     stripped = path.lstrip("/")
     if stripped.startswith("env") and not stripped.startswith("env/chat"):
         return httpx.Timeout(connect=ENV_CONNECT_TIMEOUT, read=READ_TIMEOUT, write=READ_TIMEOUT, pool=5.0)

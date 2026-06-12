@@ -15,6 +15,7 @@ hcaptcha_secret_key = os.getenv("HCAPTCHA_SECRET_KEY")
 from rta_backend.utils import Sanitizer
 
 async def verify_hcaptcha(token: str) -> bool:
+    """Verify an hCaptcha token against the hCaptcha siteverify API."""
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
@@ -30,12 +31,15 @@ async def verify_hcaptcha(token: str) -> bool:
         return False
 
 def validate_password_strength(password: str) -> bool:
+    """Check password meets minimum requirements: 10+ chars, uppercase, digit, special char."""
     return bool(re.match(r'^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])\S{10,}$', password))
 
 def generate_api_key() -> str:
+    """Generate a random API key prefixed with 'rta_'."""
     return f"rta_{secrets.token_urlsafe(32)}"
 
 def hash_key(key:str)->str:
+    """Return SHA-256 hex digest of the given key string."""
     return hashlib.sha256(key.encode()).hexdigest()
 
 # API Key Security

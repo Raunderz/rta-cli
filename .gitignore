@@ -148,6 +148,5 @@ website/public/rta
 
 # Training data / imports
 scripts/*.csv
-scripts/import_*.py
 backend/gemini_sessions.csv
 backend/session_import_plan.md

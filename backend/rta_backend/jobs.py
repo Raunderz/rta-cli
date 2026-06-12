@@ -25,6 +25,7 @@ TABLE = "jobs"
 
 
 def create_job(user_id: str = "") -> str:
+    """Create a new job in Supabase and return its UUID. Status starts as 'pending'."""
     job_id = str(uuid.uuid4())
     now = time.time()
     client = get_supabase_client()
@@ -49,6 +50,7 @@ def update_job(
     error: str = None,
     chunk: Any = None,
 ):
+    """Update job fields. Appends chunk to the chunks JSONB array if provided."""
     client = get_supabase_client()
     updates: Dict[str, Any] = {"updated_at": time.time()}
 
@@ -74,6 +76,7 @@ def update_job(
 
 
 def get_job(job_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch a job by ID. Returns normalized dict or None if not found."""
     client = get_supabase_client()
     res = client.table(TABLE).select("*").eq("id", job_id).execute()
     if not res.data:
@@ -94,6 +97,7 @@ def get_job(job_id: str) -> Optional[Dict[str, Any]]:
 
 
 def cleanup_old_jobs(max_age: float = 3600):
+    """Delete jobs older than max_age seconds. Called periodically by the cleanup loop."""
     cutoff = time.time() - max_age
     client = get_supabase_client()
     client.table(TABLE).delete().lt("created_at", cutoff).execute()

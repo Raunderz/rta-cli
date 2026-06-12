@@ -250,6 +250,7 @@ async def run_single_turn(
     cancel_event: asyncio.Event | None = None,
     retry_delays: list[int] | None = None,
 ) -> AsyncIterator[StreamEvent]:
+    """Execute one LLM turn: stream response, run approved tools, yield events."""
     tool_defs = get_tool_definitions(tools) if tools else None
 
     if cancel_event and cancel_event.is_set():

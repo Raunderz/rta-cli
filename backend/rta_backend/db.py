@@ -14,6 +14,7 @@ load_dotenv()
 _supabase_client = None
 
 def get_supabase_client():
+    """Return a module-level singleton Supabase client, creating it on first call."""
     global _supabase_client
     if _supabase_client is not None:
         return _supabase_client
@@ -138,9 +139,7 @@ async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int,
         return True, ""
 
 async def update_token_usage(user_id: str, tokens_to_add: int):
-    """
-    Bill the user for tokens used today (stored in 'credits').
-    """
+    """Add tokens to the user's daily credit counter. Resets if date changed."""
     from datetime import datetime, timezone
     lock = await _get_billing_lock(user_id)
     async with lock:
