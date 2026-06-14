@@ -20,7 +20,13 @@ class WebSearchTool(BaseTool):
     tool_icon = "%"
     mutating = False
     params = WebSearchParams
-    prompt_guidelines = ("Use web_search/web_fetch instead of curl/wget via bash",)
+    prompt_guidelines = (
+        "Use web_search for any question about current/recent events, news, "
+        "sports scores, weather, stock prices, or anything beyond your "
+        "training data cutoff. Do NOT say you lack internet access — you "
+        "have web_search and web_fetch tools. Use web_fetch to read full "
+        "page content from a result URL.",
+    )
     description = (
         "Search the web using DuckDuckGo. Returns titles, URLs, and snippets for each result. "
         "Use web_fetch to read full page content from a result URL."
