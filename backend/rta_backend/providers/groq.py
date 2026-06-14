@@ -66,6 +66,7 @@ async def call_groq_stream(messages, model, tools, api_key, max_tokens):
         "model": model,
         "max_tokens": max_tokens,
         "stream": True,
+        "stream_options": {"include_usage": True},
     }
     if tools:
         payload["tools"] = tools

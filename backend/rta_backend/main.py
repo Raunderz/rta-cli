@@ -298,6 +298,13 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
                     collected_usage.get("total_tokens", 0)
                     or (collected_usage.get("prompt_tokens", 0) + collected_usage.get("completion_tokens", 0))
                 )
+                # Fallback: estimate tokens if provider didn't report usage
+                if total_tokens == 0 and collected_text:
+                    total_tokens = max(1, len(collected_text) // 4)
+                    logging.info(
+                        "No usage from provider, estimated %d tokens from %d chars",
+                        total_tokens, len(collected_text),
+                    )
                 if total_tokens > 0:
                     await update_token_usage(user_id, total_tokens)
                 await log_telemetry_task(user_id, payload, pr)
@@ -427,6 +434,8 @@ async def chat_endpoint(
                             collected_usage.get("total_tokens", 0)
                             or (collected_usage.get("prompt_tokens", 0) + collected_usage.get("completion_tokens", 0))
                         )
+                        if total_tokens == 0 and collected_text:
+                            total_tokens = max(1, len(collected_text) // 4)
                         if total_tokens > 0:
                             await update_token_usage(user_id, total_tokens)
                         await log_telemetry_task(user_id, payload, pr)
