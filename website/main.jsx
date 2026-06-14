@@ -41,7 +41,7 @@ const CloudIcon = ({ size = 24 }) => (
   </svg>
 );
 
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || "https://rta-tb0k.onrender.com";
 
 const Navbar = () => {
   const [location] = useLocation();
@@ -216,7 +216,7 @@ const TerminalDemo = () => {
 
       const scenario = scenarios[Math.floor(Math.random() * scenarios.length)];
 
-      await addInfoLine('Version', 'v0.4.0', 0);
+      await addInfoLine('Version', 'v0.6.0', 0);
       await addInfoLine('User', 'test@example.com', 100);
       await addInfoLine('Provider', 'rta', 100);
       await addInfoLine('Model', 'auto', 100);
@@ -506,7 +506,7 @@ const PrivacyPage = () => {
   useEffect(() => {
     fetch('/privacy.md')
       .then(res => res.text())
-      .then(text => setContent(marked(text)))
+      .then(text => setContent(marked.parse(text)))
       .catch(() => setContent("Error loading privacy policy."));
   }, []);
 
@@ -730,7 +730,7 @@ Add your Personal Access Token to the config to enable repository management, is
         <div style="flex: 1; max-width: 700px; width: 100%;">
           <div class="section-header" style="text-align: left; margin-bottom: 4rem;">
             <h2>Documentation</h2>
-            <p>System Operation Manual v0.4.0</p>
+            <p>System Operation Manual v0.6.0</p>
           </div>
 
           {sections.map(s => (
@@ -739,7 +739,7 @@ Add your Personal Access Token to the config to enable repository management, is
                 {s.title}
               </h3>
               <div class="markdown-body" style="font-size: 1rem; line-height: 1.8; color: var(--text-secondary);">
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked(s.content)) }} />
+                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(s.content)) }} />
               </div>
             </div>
           ))}
@@ -749,7 +749,7 @@ Add your Personal Access Token to the config to enable repository management, is
   );
 };
 
-const API_BASE = "https://rta-tb0k.onrender.com";
+const API_BASE = import.meta.env.VITE_BACKEND_URL || "https://rta-tb0k.onrender.com";
 
 const ApiPage = () => {
   const [copied, setCopied] = useState(null);

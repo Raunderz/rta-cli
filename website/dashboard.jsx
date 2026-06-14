@@ -2,7 +2,6 @@ import { render, h, Fragment } from 'preact';
 import { useState, useEffect } from 'preact/hooks';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-// forcing rebuild from vercel
 
 const API_BASE_URL = import.meta.env.VITE_BACKEND_URL ? import.meta.env.VITE_BACKEND_URL.replace(/\/?$/, "") : "";
 
@@ -245,7 +244,6 @@ const Dashboard = () => {
         }
 
         const fetchDashboard = async () => {
-            console.log("Fetching dashboard...");
             try {
                 const headers = {  };
                 if (user.api_key) {

@@ -1018,7 +1018,7 @@ To speed up operations, we implemented a dependency graph for tool execution. If
   }, [params?.slug]);
 
   if (selectedArticle) {
-    const htmlContent = marked(selectedArticle.body);
+    const htmlContent = marked.parse(selectedArticle.body);
 
     return (
       <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
