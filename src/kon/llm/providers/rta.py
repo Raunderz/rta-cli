@@ -1,5 +1,5 @@
 import asyncio
-import json
+import logging
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -29,6 +29,8 @@ from ...core.types import (
     UserMessage,
 )
 from ..base import BaseProvider, LLMStream, ProviderConfig
+
+logger = logging.getLogger(__name__)
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Heartbeat — keeps the RTA backend process alive on Render/HF Spaces
@@ -91,7 +93,7 @@ class RtaProvider(BaseProvider):
     async def get_metadata(self) -> dict[str, Any]:
         if not self.api_key:
             return {}
-        
+
         headers = {"X-API-KEY": self.api_key}
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -99,7 +101,7 @@ class RtaProvider(BaseProvider):
                 if resp.status_code == 200:
                     data = resp.json()
                     tier = data.get("tier", "free").lower()
-                    
+
                     # Context windows per tier (aligned with backend TIER_CAPS)
                     context_windows = {
                         "free": 2000,
@@ -107,9 +109,9 @@ class RtaProvider(BaseProvider):
                         "pro": 10000,
                         "enterprise": 32000
                     }
-                    
+
                     window = context_windows.get(tier, 2000)
-                    
+
                     return {
                         "context_window": window,
                         "tier": tier,
@@ -158,7 +160,7 @@ class RtaProvider(BaseProvider):
         try:
             # 1. Enqueue job
             async with httpx.AsyncClient(timeout=30.0) as client:
-                print(f"DEBUG: Connecting to {self.server_url}/v1/chat/async")
+                logger.debug("Connecting to %s/v1/chat/async", self.server_url)
                 response = await client.post(
                     f"{self.server_url}/v1/chat/async", json=payload, headers=headers
                 )
@@ -169,10 +171,10 @@ class RtaProvider(BaseProvider):
                         request=response.request,
                         response=response,
                     )
-                
+
                 job_data = response.json()
                 job_id = job_data["job_id"]
-                print(f"\n[~] Enqueued job: {job_id}")
+                logger.debug("Enqueued job: %s", job_id)
 
             # 2. Poll for chunks
             next_index = 0
@@ -180,23 +182,29 @@ class RtaProvider(BaseProvider):
             while True:
                 try:
                     async with httpx.AsyncClient(timeout=10.0) as client:
-                        poll_url = f"{self.server_url}/v1/chat/job/{job_id}?after_index={next_index}"
-                        # print(f"DEBUG: Polling {poll_url}")
+                        poll_url = (
+                            f"{self.server_url}/v1/chat/job/{job_id}"
+                            f"?after_index={next_index}"
+                        )
                         poll_resp = await client.get(poll_url, headers=headers)
-                        
+
                         if poll_resp.status_code != 200:
                             consecutive_errors += 1
                             err_body = await poll_resp.aread()
-                            print(f"DEBUG: Polling failed ({poll_resp.status_code}): {err_body.decode()}")
+                            logger.debug(
+                                "Polling failed (%d): %s",
+                                poll_resp.status_code,
+                                err_body.decode(),
+                            )
                             if consecutive_errors > 5:
                                 yield StreamError(error=f"Polling failed: {poll_resp.status_code}")
                                 return
                             await asyncio.sleep(1)
                             continue
-                        
+
                         consecutive_errors = 0
                         status_data = poll_resp.json()
-                        
+
                         # Process chunks
                         for event in status_data.get("chunks", []):
                             event_type = event.get("type", "")
@@ -224,7 +232,11 @@ class RtaProvider(BaseProvider):
                                     input_tokens=content.get("prompt_tokens", 0),
                                     output_tokens=content.get("completion_tokens", 0),
                                 )
-                            elif event_type == "meta" and isinstance(content, dict) and "id" in content:
+                            elif (
+                                event_type == "meta"
+                                and isinstance(content, dict)
+                                and "id" in content
+                            ):
                                 llm_stream._id = content["id"]
 
                         next_index = status_data.get("next_index", next_index)
@@ -233,7 +245,7 @@ class RtaProvider(BaseProvider):
                             if status_data.get("status") == "failed":
                                 yield StreamError(error=status_data.get("error", "Job failed"))
                             break
-                        
+
                         # Wait before next poll
                         await asyncio.sleep(0.5)
 
