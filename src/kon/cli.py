@@ -122,6 +122,7 @@ def main() -> None:
                         prompt_arg=args.prompt,
                         model=args.model,
                         provider=args.provider,
+                        api_key=None,
                         base_url=args.base_url,
                         openai_compat_auth_mode=args.openai_compat_auth,
                         anthropic_compat_auth_mode=args.anthropic_compat_auth,
