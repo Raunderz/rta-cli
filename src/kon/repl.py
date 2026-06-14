@@ -178,8 +178,12 @@ def _show_status(state: ReplState) -> None:
     """Show current usage stats from the backend."""
     try:
         from kon import auth
+        from kon import config as kon_config
 
-        api_key = auth.get_api_key()
+        api_key = (
+            kon_config.rta.api_key
+            or auth.load_credential("rta_api_key")
+        )
         if not api_key:
             print("Not logged in. Run `rta login` first.")
             return
