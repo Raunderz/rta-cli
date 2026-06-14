@@ -48,7 +48,7 @@ This means you can use any OpenAI-compatible SDK or client library:
 import openai
 
 client = openai.OpenAI(
-    base_url="https://rta-tb0k.onrender.com/v1",
+    base_url="https://schallten-a2xtbb49ws.hf.space/v1",
     api_key="your_rta_api_key"
 )
 
@@ -83,7 +83,7 @@ No API keys to manage on your end. One key, all providers.
 All requests require an API key via the \`X-API-KEY\` header. Generate yours from the [Dashboard](/dashboard).
 
 \`\`\`bash
-curl -X POST https://rta-tb0k.onrender.com/v1/chat \\
+curl -X POST https://schallten-a2xtbb49ws.hf.space/v1/chat \\
   -H "Content-Type: application/json" \\
   -H "X-API-KEY: your_key_here" \\
   -d '{"model": "rta-auto", "messages": [{"role": "user", "content": "Hello"}], "format": "openai"}'
@@ -791,8 +791,8 @@ To showcase the power of the Constellation, v0.4.0 ships with two powerful integ
 The goal of Rta has always been to build the fastest, most capable AI-native terminal. By opening the doors to the MCP ecosystem, we're making Rta infinitely extensible.
 
 Download the v0.4.0 binary:
-- [Linux/macOS](https://rta-three.vercel.app/rta)
-- [Windows](https://rta-three.vercel.app/rta.exe)
+- [Linux/macOS](/rta)
+- [Windows](/rta.exe)
 `
     },
     {

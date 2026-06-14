@@ -1051,6 +1051,8 @@ const AppFooter = () => (
           <Link href="/docs">Documentation</Link>
           <Link href="/api">API</Link>
           <Link href="/blog">Blog</Link>
+          <a href="https://github.com/Raunderz/Rta" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://discord.gg/ZpxUv9VyGP" target="_blank" rel="noopener noreferrer">Discord</a>
         </div>
         <div class="footer-col">
           <h4>Legal</h4>

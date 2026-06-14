@@ -185,19 +185,54 @@ const ChatInterface = ({ user: propUser }) => {
             { role: "system", content: "You are Rta, an expert coding assistant. Be concise, technical, and helpful." },
             ...updatedMessages,
           ],
-          model: "auto",
+          model: "rta-auto",
           provider: "auto",
+          stream: true,
           session_id: conv.sessionId,
           turn_index: conv.turnIndex,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.detail || "Chat failed");
 
-      const newTurnIndex = conv.turnIndex + 2;
-      const assistantMsg = { role: "assistant", content: data.choices[0].message.content };
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || `Chat failed (${res.status})`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      let buffer = "";
+
+      const assistantMsg = { role: "assistant", content: "" };
       updateConv(activeId, {
         messages: [...updatedMessages, assistantMsg],
+      });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const dataStr = line.slice(6).trim();
+          if (dataStr === "[DONE]") break;
+          try {
+            const data = JSON.parse(dataStr);
+            const delta = data.choices?.[0]?.delta?.content;
+            if (delta) {
+              assistantContent += delta;
+              updateConv(activeId, {
+                messages: [...updatedMessages, { role: "assistant", content: assistantContent }],
+              });
+            }
+          } catch {}
+        }
+      }
+
+      const newTurnIndex = conv.turnIndex + 2;
+      updateConv(activeId, {
         turnIndex: newTurnIndex,
       });
     } catch (e) {
