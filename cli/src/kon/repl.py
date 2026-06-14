@@ -3,10 +3,11 @@
 import asyncio
 import signal
 import sys
+from typing import Any
 
 from kon import config, get_config
 
-from .core.types import StopReason
+from .core.types import AssistantMessage, StopReason, TextContent, UserMessage
 from .events import (
     AgentEndEvent,
     CompactionEndEvent,
@@ -25,6 +26,7 @@ from .llm import get_model
 from .llm.base import AuthMode
 from .permissions import ApprovalResponse
 from .runtime import ConversationRuntime
+from .session import MessageEntry
 from .tools import DEFAULT_TOOLS, EXTRA_TOOLS, get_tools
 from .version import VERSION
 
@@ -50,6 +52,56 @@ def _print_exit(session_id: str) -> None:
     print(f"\nSession saved. Resume with: rta --resume {short_id}")
 
 
+def _show_resumed_history(session: Any) -> None:
+    """Show the last user/assistant exchange when resuming a session."""
+    entries = session.active_entries
+    if not entries:
+        return
+
+    # Find the last user message and last assistant message
+    last_user: str | None = None
+    last_assistant: str | None = None
+
+    for entry in reversed(entries):
+        if last_assistant is None and isinstance(entry, MessageEntry):
+            msg = entry.message
+            if isinstance(msg, AssistantMessage):
+                text = "".join(
+                    p.text for p in msg.content if isinstance(p, TextContent)
+                ).strip()
+                if text:
+                    last_assistant = text
+        if last_user is None and isinstance(entry, MessageEntry):
+            msg = entry.message
+            if isinstance(msg, UserMessage):
+                content = msg.content
+                if isinstance(content, str):
+                    last_user = content
+                elif isinstance(content, list):
+                    last_user = "".join(
+                        p.text for p in content if isinstance(p, TextContent)
+                    ).strip()
+        if last_user and last_assistant:
+            break
+
+    if last_user or last_assistant:
+        print("\x1b[2mresumed session, showing last exchange\x1b[0m")
+        if last_user:
+            preview = last_user[:240]
+            if len(last_user) > 240:
+                preview += "..."
+            print(f"  \033[1;36m>\033[0m {preview}")
+        if last_assistant:
+            lines = last_assistant.split("\n")
+            preview = "\n".join(lines[:3])
+            if len(lines) > 3:
+                preview += f"\n\x1b[2m... {len(lines) - 3} more lines ...\x1b[0m"
+            if len(preview) > 240:
+                preview = preview[:240] + "\x1b[2m... truncated ...\x1b[0m"
+            print(preview)
+        print()
+
+
 def _handle_slash(line: str, state: ReplState) -> bool:
     """Handle slash commands. Returns True if handled."""
     parts = line.split(None, 1)
@@ -59,11 +111,16 @@ def _handle_slash(line: str, state: ReplState) -> bool:
     if cmd == "/help":
         print("Commands:")
         print("  /help              Show this help")
+        print("  /status            Show usage (calls, tokens)")
         print("  /clear             Start a new session")
         print("  /model [name]      Show or switch model")
         print("  /compact           Compress context window")
         print("  /thinking [level]  Show or set thinking level")
         print("  /exit              Exit (same as Ctrl+D)")
+        return True
+
+    if cmd == "/status":
+        _show_status(state)
         return True
 
     if cmd == "/clear":
@@ -115,6 +172,46 @@ def _handle_slash(line: str, state: ReplState) -> bool:
     print(f"Unknown command: {cmd}")
     print("Type /help for available commands.")
     return True
+
+
+def _show_status(state: ReplState) -> None:
+    """Show current usage stats from the backend."""
+    try:
+        from kon import auth
+
+        api_key = auth.get_api_key()
+        if not api_key:
+            print("Not logged in. Run `rta login` first.")
+            return
+
+        import httpx
+
+        server_url = state.runtime.provider.config.base_url if state.runtime.provider else None
+        if not server_url:
+            print("No server URL configured.")
+            return
+
+        resp = httpx.get(
+            f"{server_url}/v1/usage",
+            headers={"X-API-KEY": api_key},
+            timeout=10.0,
+        )
+        if resp.status_code != 200:
+            print(f"Failed to fetch usage: {resp.status_code}")
+            return
+
+        data = resp.json()
+        tier = data.get("tier", "unknown")
+        calls_today = data.get("calls_today", 0)
+        calls_limit = data.get("calls_limit", "?")
+        tokens_today = data.get("tokens_today", 0)
+        tokens_limit = data.get("tokens_limit_day", "?")
+
+        print(f"Tier: {tier}")
+        print(f"Calls today: {calls_today}/{calls_limit}")
+        print(f"Tokens today: {tokens_today:,}/{tokens_limit:,}")
+    except Exception as e:
+        print(f"Error fetching status: {e}")
 
 
 async def _run_turn(
@@ -297,6 +394,10 @@ def run_repl(
 
     state = ReplState(runtime)
     _print_banner(runtime.model, os.getcwd(), runtime.session.id)
+
+    # Show last exchange when resuming
+    if (resume_session or continue_recent) and runtime.session.entries:
+        _show_resumed_history(runtime.session)
 
     try:
         asyncio.run(_repl_loop(state))

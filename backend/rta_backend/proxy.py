@@ -295,7 +295,6 @@ async def route_chat_request(
             continue
 
         logging.info(f"Attempting provider: {provider_name} with model: {model_to_use}")
-        print(f"DEBUG: Attempting provider: {provider_name} with model: {model_to_use}")
         try:
             # Call provider module
             result = await call_provider(
@@ -397,7 +396,6 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
             continue
 
         logging.info(f"Attempting stream provider: {provider_name} with model: {model_to_use}")
-        print(f"DEBUG: Attempting stream provider: {provider_name} with model: {model_to_use}")
         
         # Retry transient errors once per provider before falling through
         for attempt in range(2):

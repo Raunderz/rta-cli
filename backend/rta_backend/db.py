@@ -158,10 +158,17 @@ async def update_token_usage(user_id: str, tokens_to_add: int):
                 used_tokens = res.data[0].get("credits", 0) or 0
             else:
                 used_tokens = 0
+            new_total = used_tokens + tokens_to_add
+            logging.info(
+                "update_token_usage: user=%s adding=%d old=%d new=%d date=%s",
+                user_id[:8], tokens_to_add, used_tokens, new_total, today,
+            )
             client.table("profiles").update({
-                "credits": used_tokens + tokens_to_add,
+                "credits": new_total,
                 "calls_reset_date": today
             }).eq("id", user_id).execute()
+        else:
+            logging.warning("update_token_usage: no profile found for user %s", user_id[:8])
 
 def insert_telemetry(data: dict):
     """Direct insert into telemetry table."""
