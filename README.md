@@ -2,7 +2,7 @@
 
 **Notice:** The CLI component has been migrated from `cli/` to `kon/` — a cleaner, well‑tested foundation. See `kon/plan.md` for details.
 
-Rta is an AI-assisted development ecosystem spanning a Python CLI, a FastAPI backend, a Go container execution service, a Lite XL-based desktop IDE, a React Native mobile app, a Preact marketing website, a VS Code extension, and a PR review bot.
+Rta is an AI-assisted development ecosystem spanning a Python CLI, a FastAPI backend, a Go container execution service, a Lite XL-based desktop IDE, a React Native mobile app, a Preact marketing website, and a PR review bot.
 
 It is designed as a practical alternative to complex development setups — providing a "ready-to-use" environment for AI-assisted coding, quick edits, Git operations, code review, and lightweight development tasks across devices.
 
@@ -14,7 +14,6 @@ User
   ├── Desktop IDE (Lite XL)     rta-desktop/      — Native AI-powered IDE
   ├── Mobile App (Expo/RN)      app/              — IDE on your phone
   ├── Website (Preact)          website/          — Dashboard, docs, pricing
-  ├── VS Code Extension         extensions/       — RTA inside VS Code
   └── PR Bot                    rta-pr-bot/       — Automated PR review
               │
               ▼
@@ -61,17 +60,13 @@ React Native (Expo) mobile app with file browser, CodeMirror-based editor, Git i
 
 Preact + Vite SPA hosted on Vercel with auth, pricing tiers, release downloads, docs, blog, dashboard, and a standalone chat interface.
 
-### VS Code Extension (`extensions/`)
-
-Embeds the RTA CLI agent inside VS Code via a sidecar process with JSON-RPC communication. Planned features include chat webview, agentic editing, codebase indexing, and MCP tool integration.
-
 ### PR Bot (`rta-pr-bot/`)
 
 A standalone GitHub webhook bot that reviews pull requests using the RTA API. On PR open or update, it fetches the diff, sends it to the RTA backend for analysis, and posts review comments — summary + line-by-line findings for bugs, security, performance, and code quality issues.
 
 ## Status
 
-Active long-term project. The CLI and backend are the most mature components, with the desktop IDE, mobile app, VS Code extension, and PR bot under active development.
+Active long-term project. The CLI and backend are the most mature components, with the desktop IDE, mobile app, and PR bot under active development.
 
 ## Plan
 
@@ -81,8 +76,7 @@ Active long-term project. The CLI and backend are the most mature components, wi
 4. **Mobile App** — Expo/React Native client, under active development.
 5. **Container Service** — Go-based Docker execution environment (v1.0.0).
 6. **Website** — Preact SPA on Vercel (v1.0.0).
-7. **VS Code Extension** — Sidecar-based integration, early development.
-8. **PR Bot** — Webhook-based PR reviewer, planned.
+7. **PR Bot** — Webhook-based PR reviewer, planned.
 
 ## License
 

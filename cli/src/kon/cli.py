@@ -56,6 +56,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--extra-tools", help="Comma-separated extra tools to enable (e.g. web_search,web_fetch)"
     )
+    parser.add_argument(
+        "--repl",
+        action="store_true",
+        help="Minimal REPL mode: type messages and get responses without the full TUI",
+    )
     return parser
 
 
@@ -64,7 +69,7 @@ def setup_logging():
     log_dir = os.path.expanduser("~/.rta")
     os.makedirs(log_dir, exist_ok=True)
     log_file = os.path.join(log_dir, "kon.log")
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -82,6 +87,9 @@ def main() -> None:
 
     if args.prompt is not None and (args.continue_recent or args.resume_session):
         parser.error("-c/--continue and -r/--resume are not supported with -p/--prompt")
+
+    if args.repl and args.prompt is not None:
+        parser.error("--repl and -p/--prompt are mutually exclusive")
 
     if args.insecure_skip_verify:
         print("Warning: TLS verification disabled (--insecure-skip-verify)", file=sys.stderr)
@@ -123,6 +131,28 @@ def main() -> None:
             )
         except Exception as e:
             logging.getLogger("kon").error(f"Headless error: {e}", exc_info=True)
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.repl:
+        from .repl import run_repl
+
+        try:
+            raise SystemExit(
+                run_repl(
+                    model=args.model,
+                    provider=args.provider,
+                    api_key=None,
+                    base_url=args.base_url,
+                    openai_compat_auth_mode=args.openai_compat_auth,
+                    anthropic_compat_auth_mode=args.anthropic_compat_auth,
+                    extra_tools=extra_tools,
+                    resume_session=args.resume_session,
+                    continue_recent=args.continue_recent,
+                )
+            )
+        except Exception as e:
+            logging.getLogger("kon").error(f"REPL error: {e}", exc_info=True)
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
