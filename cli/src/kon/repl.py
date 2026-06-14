@@ -290,6 +290,7 @@ async def _run_turn(
 
             case AgentEndEvent(stop_reason=sr):
                 stop = sr
+                print()
 
     return stop
 
