@@ -112,6 +112,7 @@ async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int,
         
         used_calls = 0
         used_tokens = 0
+        reset_date = None
         
         if res.data:
             row = res.data[0]
@@ -130,11 +131,15 @@ async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int,
             return False, f"Daily token limit reached ({token_limit}/day)."
         
         # Atomic increment: the lock ensures no concurrent overwrites
-        client.table("profiles").update({
+        # Only update calls_used_today and calls_reset_date — credits are managed by update_token_usage()
+        update = {
             "calls_used_today": used_calls + 1,
-            "credits": used_tokens,
             "calls_reset_date": today
-        }).eq("id", user_id).execute()
+        }
+        # Reset credits if date changed (new day)
+        if reset_date != today:
+            update["credits"] = 0
+        client.table("profiles").update(update).eq("id", user_id).execute()
         
         return True, ""
 
