@@ -1051,7 +1051,7 @@ const AppFooter = () => (
           <Link href="/docs">Documentation</Link>
           <Link href="/api">API</Link>
           <Link href="/blog">Blog</Link>
-          <a href="https://github.com/Raunderz/Rta" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a href="https://raunderz.github.io/rta.html" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a href="https://discord.gg/ZpxUv9VyGP" target="_blank" rel="noopener noreferrer">Discord</a>
         </div>
         <div class="footer-col">
@@ -1061,7 +1061,7 @@ const AppFooter = () => (
         </div>
         </div>
         <div class="footer-bottom">
-        <span>&copy; 2026 Rta Software. All rights reserved.</span>
+        <a href="https://raunderz.github.io/rta.html" target="_blank" rel="noopener noreferrer" style="color: var(--text-secondary); text-decoration: none;">Rta — By Rounders (raunderz)</a>
         </div>
         </div>
         </footer>

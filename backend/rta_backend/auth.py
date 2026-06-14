@@ -95,9 +95,13 @@ async def auth_callback(request: Request):
         existing_key = supabase_client.table("api_keys").select("*").eq("user_id", user_id).execute()
         new_api_key = None
         if not existing_key.data:
-            new_api_key = generate_api_key()
-            hashed_key = hash_key(new_api_key)
-            save_api_key(user_id, hashed_key, new_api_key[:8]+"...")
+            try:
+                new_api_key = generate_api_key()
+                hashed_key = hash_key(new_api_key)
+                save_api_key(user_id, hashed_key, new_api_key[:8]+"...")
+            except Exception as key_err:
+                logger.warning(f"Could not create API key for user {user_id}: {key_err}")
+                new_api_key = None
         
         frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
         # Store tokens in HTTP-only cookies instead of URL hash
@@ -189,9 +193,13 @@ async def login(request: Request, data: LoginRequest):
         
         raw_key = None
         if not existing_key.data:
-            raw_key = generate_api_key()
-            hashed_key = hash_key(raw_key)
-            save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")
+            try:
+                raw_key = generate_api_key()
+                hashed_key = hash_key(raw_key)
+                save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")
+            except Exception as key_err:
+                logger.warning(f"Could not create API key for user {res.user.id}: {key_err}")
+                raw_key = None
         
         return {
             "access_token": res.session.access_token,
@@ -215,10 +223,14 @@ async def refresh_key(request: Request, data: RefreshKeyRequest):
             "email": data.email, 
             "password": data.password
         })
-        supabase_client.table("api_keys").delete().eq("user_id", res.user.id).execute()
-        raw_key = generate_api_key()
-        hashed_key = hash_key(raw_key)
-        save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")
+        try:
+            supabase_client.table("api_keys").delete().eq("user_id", res.user.id).execute()
+            raw_key = generate_api_key()
+            hashed_key = hash_key(raw_key)
+            save_api_key(res.user.id, hashed_key, raw_key[:8]+"...")
+        except Exception as key_err:
+            logger.warning(f"Could not refresh API key for user {res.user.id}: {key_err}")
+            raw_key = None
         
         return {
             "access_token": res.session.access_token,
