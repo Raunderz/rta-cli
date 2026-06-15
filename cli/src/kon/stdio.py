@@ -3,7 +3,7 @@
 import asyncio
 import json
 import logging
-import sys
+import os
 import threading
 from typing import Any
 
@@ -18,6 +18,7 @@ from .events import (
 )
 from .permissions import ApprovalResponse
 from .runtime import ConversationRuntime
+from .session import Session
 from .tools import DEFAULT_TOOLS, EXTRA_TOOLS, get_tools
 from .version import VERSION
 
@@ -26,8 +27,6 @@ logger = logging.getLogger("kon.stdio")
 
 def _write_response(obj: dict[str, Any]) -> None:
     """Write a single JSON line to stdout via raw fd and flush."""
-    import os
-
     line = json.dumps(obj, ensure_ascii=False) + "\n"
     try:
         os.write(1, line.encode("utf-8"))
@@ -37,8 +36,6 @@ def _write_response(obj: dict[str, Any]) -> None:
 
 def _stdin_reader(queue: asyncio.Queue[str | None], loop: asyncio.AbstractEventLoop) -> None:
     """Read lines from stdin via raw fd reads (bypasses pipe buffering)."""
-    import os
-
     buf = b""
     _dbg = open(os.path.expanduser("~/.rta/stdio_debug.log"), "a")
     _dbg.write("stdin reader thread started, fd=0\n")
@@ -80,8 +77,6 @@ async def run_stdio_mode(
     continue_recent: bool = False,
 ) -> int:
     """Entry point for stdio JSON-lines mode."""
-    import os
-    import sys
 
     _dbg = open(os.path.expanduser("~/.rta/stdio_debug.log"), "a")
     _dbg.write("stdio: run_stdio_mode entered\n")
@@ -192,12 +187,13 @@ async def run_stdio_mode(
                 message = request.get("message", "")
                 session_id = request.get("session_id")
 
-                _dbg.write(f"chat: session_id={session_id} runtime_session={runtime.session.id if runtime.session else None}\n")
+                _dbg.write(f"chat: session_id={session_id}\n")
                 _dbg.flush()
 
                 if session_id and runtime.session and session_id != runtime.session.id:
                     try:
-                        runtime.load_session(session_id)
+                        runtime.session = Session.continue_by_id(os.getcwd(), session_id)
+                        runtime._sync_provider_session_id()
                         agent = runtime.prepare_for_run()
                     except Exception as e:
                         _write_response({"type": "error", "message": f"Session error: {e}"})
