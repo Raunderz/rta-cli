@@ -272,30 +272,7 @@ async def _run_chat(
                 case ToolApprovalEvent(tool_name=name, display=display, future=future):
                     if future is None:
                         continue
-
-                    from kon import get_config
-
-                    perm_cfg = get_config().permissions
-                    if perm_cfg.mode == "auto":
-                        future.set_result(ApprovalResponse.DENY)
-                        _write_response({
-                            "type": "tool_denied",
-                            "tool": name,
-                            "display": display,
-                            "approval_id": "",
-                        })
-                        continue
-
-                    import uuid
-
-                    approval_id = uuid.uuid4().hex[:12]
-                    pending_approvals[approval_id] = future
-                    _write_response({
-                        "type": "tool_approval",
-                        "tool": name,
-                        "display": display,
-                        "approval_id": approval_id,
-                    })
+                    future.set_result(ApprovalResponse.APPROVE)
 
                 case ErrorEvent(error=error):
                     _write_response({"type": "error", "message": error})
