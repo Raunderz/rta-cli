@@ -13,7 +13,7 @@ export const BlogPage = ({ params }) => {
       title: "Back to Desktop: Why We Abandoned the VS Code Extension",
       date: "June 15, 2026",
       readTime: "4 min read",
-      excerpt: "We tried building a VS Code extension. The binary was too big, the experience was wrong. So we went back to the desktop app — and it's working.",
+      excerpt: "We tried building a VS Code extension. The binary was too big, the integration was too complex. So we went back to the desktop app — and it's working.",
       tags: ["Desktop", "VS Code", "Lite XL", "Strategy"],
       commit: "main",
       body: `
@@ -33,19 +33,21 @@ The \`rta\` binary is 60MB. That's the PyInstaller bundle — Python runtime, al
 
 We'd be shipping an extension larger than most VS Code themes, containing a full Python runtime that duplicates half of what VS Code already has. Users would download 60MB just to get a chat sidebar.
 
-## The Experience Problem
+VS Code has some of the best AI agents right now — Copilot, Cursor, Cline. They work because they're tightly integrated with the editor's internals. Our approach of bolting a Python binary onto the side was never going to compete with that level of integration.
 
-Even if we solved the size issue, the UX was wrong. VS Code extensions live in a panel — a狭窄 sidebar or a webview. Our chat interface needed:
+## The Integration Complexity
 
-- Streaming text display
-- Tool approval buttons
-- Session history
-- File tree integration
+Even if we solved the size issue, the integration was wrong. VS Code extensions live in a webview — a sandboxed iframe with limited access to the editor's rendering pipeline. Our agent needs:
+
+- Streaming text display with proper formatting
+- Tool approval buttons that feel native
+- Session history and file tree integration
 - Real-time diff previews
+- Direct access to editor events (file open, save, cursor position)
 
-Packing all of that into a VS Code webview meant fighting the extension API's limitations. No direct access to the editor's rendering pipeline. No native text controls. Everything through message passing and DOM manipulation in a sandboxed iframe.
+Packing all of that into a VS Code webview meant fighting the extension API's limitations. No direct access to the editor's text buffer. No native UI controls. Everything through message passing and DOM manipulation.
 
-We were building a bad version of something VS Code already does well.
+The VS Code extension API is powerful for what it's designed for — language servers, syntax highlighting, sidebar panels. But an AI agent that needs deep process integration, real-time streaming, and native UI controls is a different beast entirely.
 
 ## Why Desktop Won
 
@@ -59,13 +61,15 @@ When we [forked Kon](/blog/forking-kon-a-new-cli-foundation) and built the Pytho
 - **Tool approval**: Auto-approved in desktop context, inline approve/deny when needed
 - **Session history**: Reads JSONL files directly, no API calls needed
 
-The entire integration is 800 lines of Lua. No webview sandbox. No message passing. Direct process communication.
+The entire integration is 800 lines of Lua. No webview sandbox. No message passing. Direct process communication. No 50MB binary limit. No extension marketplace constraints.
 
 ## What We Learned
 
 The [desktop IDE evolution](/blog/desktop-ide-evolution) taught us that lightweight wins. The [CLI-first approach](/blog/cli-first-then-editor) taught us that the agent is the product. This iteration taught us that **the right container matters**.
 
-VS Code is a great editor. But it's not the right container for an AI agent that needs deep process integration, real-time streaming, and native UI controls. A Lua plugin in a C editor gives us all of that with 10x less overhead.
+VS Code is a fantastic editor with a mature extension ecosystem. But extending it with a 60MB Python binary creates more problems than it solves. A Lua plugin in a C editor gives us direct process access, native UI, and zero size overhead.
+
+We're not competing with VS Code's AI features. We're building something different — a lightweight, agent-native desktop environment where the CLI is the engine and the editor is just the cockpit.
 
 ## What's Next
 
@@ -76,9 +80,7 @@ The desktop app is functional. Chat works, streaming works, tool calls work, ses
 - **Keyboard shortcuts**: Navigate between chat and editor naturally
 - **Theme integration**: Match the editor's color scheme
 
-We're not abandoning the idea of IDE integration. We're just building it in the right place.
-
-The CLI is the engine. The desktop app is the cockpit. VS Code can keep its dashboard.
+We're not abandoning IDE integration. We're just building it where it makes sense — in a lightweight container that doesn't fight us at every step.
       `
     },
     {
