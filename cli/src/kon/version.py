@@ -1,3 +1,4 @@
+import sys
 import tomllib
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
@@ -27,8 +28,11 @@ def _get_version_from_pyproject() -> str | None:
 
 PACKAGE_NAME = _get_package_name()
 
-# Priority: installed metadata > pyproject.toml > hardcoded
-try:
-    VERSION = version(PACKAGE_NAME)
-except PackageNotFoundError:
-    VERSION = _get_version_from_pyproject() or "0.0.0"
+# Priority: bundled version file > installed metadata > pyproject.toml > hardcoded
+if getattr(sys, "frozen", False):
+    VERSION = "0.6.0"
+else:
+    try:
+        VERSION = version(PACKAGE_NAME)
+    except PackageNotFoundError:
+        VERSION = _get_version_from_pyproject() or "0.0.0"

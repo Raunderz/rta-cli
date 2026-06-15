@@ -1,6 +1,6 @@
 # Rta — Cloud IDE for Mobile (Expo + React Native)
 
-## Current Status (May 2026)
+## Current Status (June 2026)
 
 ### ✅ Achievements
 - **Restructuring**: App moved to `src/` hierarchy (`components/`, `App.js`, `index.js`).
@@ -12,15 +12,12 @@
 - **Infra (Server)**: `mobile_backend` Go service supports `upload`/`download` ZIP endpoints for workspace sync.
 
 ### ❌ Blockers / Stuck At
-- **Binary vs Text**: Potential mismatch in WebSocket frame encoding between WebView, Python Proxy, and Go Backend.
 - **Conflict Handling**: Need strategy for when local files change while cloud session active.
 
-### 💡 Potential Fixes (Next Steps)
+### 💡 Next Steps
 - **Implement Zip Sync**: Connect `App.js` to Go's `/upload` on start and `/download` on end.
 - **The "Native Input Bridge"**: Bypass the unreliable WebView hidden textarea by using a React Native `TextInput` to capture keystrokes. Forward them to the WebView via `postMessage`.
 - **Developer Accessory Bar**: Add a row of native buttons for `TAB`, `ESC`, `CTRL`, and arrows to improve mobile coding speed.
-- **Force Text Frames**: If the Python proxy is dropping binary frames, switch the WebSocket to handle purely string-based data on the frontend.
-- **Base64 Packaging**: (Requires Backend Change) Wrap all PTY bytes in a JSON Base64 package to ensure transparent proxying through all middleware layers.
 
 ---
 
@@ -159,78 +156,30 @@ rta/
 
 ## Build Plan: Phase by Phase
 
-### Phase 0: Foundation (Days 1–2)
-**Goal**: Running Expo shell with editor and chat UI.
-
-- [ ] Initialize Expo project with blank JavaScript template
-- [ ] Setup basic folder structure (`src/components`, `src/screens`, etc.)
-- [ ] Create React Context + useReducer for app state (session, files, chat)
-- [ ] Setup Expo Router for navigation:
-  - Editor screen (CodeMirror 6 in WebView)
-  - Chat screen (sidebar or bottom sheet)
-  - File tree screen
-- [ ] Integrate CodeMirror 6 in WebView with basic JS/TS support
-- [ ] Build chat UI components (message bubbles, input, streaming indicator)
-- [ ] Use FlatList for file tree rendering
-- [ ] Setup local file storage with `expo-file-system`
-- [ ] Create project structure and sample files for testing
-
-**Deliverable**: App opens, shows file tree, opens files in CodeMirror, chat UI functional (mock responses).
+### Phase 0: Foundation ✅
+**Done.** Expo shell with editor, chat, file tree, terminal, and session lifecycle all working.
 
 ---
 
-### Phase 1: Local-First Git & Auth (Days 3–4)
-**Goal**: Offline file versioning and real GitHub integration.
-
-- [ ] Install and configure isomorphic-git with Expo FileSystem shim.
-- [ ] Implement `init`, `add`, `commit`, `log`, `status` operations.
-- [ ] **GitHub OAuth Integration**:
-  - Add "Login with GitHub" button (WebView flow).
-  - Backend `/v1/auth/github` returns OAuth token.
-  - Store token securely in `expo-secure-store`.
-  - Use token in `isomorphic-git` for `push` / `pull` actions.
-- [ ] Build Git UI: commit history, diff viewer, branch indicator, and Remote Sync (Push/Pull).
-- [ ] Add "Initialize Repository" and "Commit" actions in UI.
-
-**Deliverable**: User can version files locally AND sync with real GitHub repos from mobile.
+### Phase 1: Local-First Git & Auth — PARTIAL ✅
+**isomorphic-git installed, GitUI.js component exists.** Remaining:
+- [ ] GitHub OAuth Integration (backend endpoint + WebView flow + secure token storage)
+- [ ] Push/Pull remote sync
+- [ ] Commit history, diff viewer in UI
 
 ---
 
-### Phase 2: Terminal + Session Management (Days 5–7)
-**Goal**: Mobile connects to Go service, gets a working terminal.
+### Phase 2: Terminal + Session Management — MOSTLY DONE ✅
+**Go service built, terminal works, session lifecycle works.** Remaining:
+- [ ] Connect `App.js` to Go's `/upload` on session start (zip local project → container)
+- [ ] Connect `App.js` to Go's `/download` on session end (container → local files)
 
-- [ ] Build Go service skeleton (`net/http`, health endpoint)
-- [ ] Implement Docker container lifecycle:
-  - Pull Ubuntu image
-  - Start container with resource limits (`--memory=512m --cpus=0.5`)
-  - Inject workspace
-  - Execute commands via Docker exec
-- [ ] Add WebSocket endpoint: mobile ↔ Go ↔ container PTY
-- [ ] Integrate xterm.js in WebView, connect to Go WebSocket
-- [ ] Build session management UI:
-  - "Start Session" button with loading state
-  - "End Session" button
-  - Connection status indicator
-- [ ] Implement zip upload: mobile project → Go → container `/workspace`
-- [ ] Add API key header validation (mock FastAPI response for now)
-
-**Deliverable**: User taps "Start Session", terminal opens, can run `ls`, `echo hello`, `python`.
+**Deliverable**: User taps "Start Session", terminal opens, can run commands.
 
 ---
 
-### Phase 3: AI Integration (Days 8–10)
-**Goal**: Chat connects to your existing AI Agent, streams responses.
-
-- [ ] Add EventSource (SSE) client in mobile app for AI streaming
-- [ ] Connect FastAPI backend to forward chat requests to AI Agent
-- [ ] Build CodeMirror diff view: highlight AI-proposed changes
-- [ ] Implement Accept/Reject actions for AI suggestions
-- [ ] On accept: patch local file, send command to container to sync
-- [ ] Add context gathering: send current file + project structure to AI
-- [ ] Handle AI commands (e.g., AI says "run `npm install`") — show "Run" button in chat
-- [ ] Add error handling: AI down, rate limited, invalid API key
-
-**Deliverable**: Full AI chat flow: ask → stream response → see diff → accept → file updates locally and in container.
+### Phase 3: AI Integration ✅
+**Done.** Chat routes to `/v1/executor/env/chat/{id}`, `rta ask` executes in container, streaming works.
 
 ---
 
@@ -248,21 +197,8 @@ rta/
 
 ---
 
-### Phase 5: Preview Tunneling (Days 13–14)
-**Goal**: Users can view running web servers from their phone.
-
-- [ ] Test SSH tunnel inside Ubuntu container:
-  ```bash
-  ssh -o StrictHostKeyChecking=no -R 80:localhost:8080 localhost.run
-  ```
-- [ ] Modify Go service to run SSH tunnel command inside container
-- [ ] Parse tunnel URL from SSH stdout
-- [ ] Send tunnel URL to mobile via WebSocket
-- [ ] Build preview UI: open in WebView or external browser
-- [ ] Handle tunnel cleanup on session end (SSH process dies with container)
-- [ ] Test with common servers: Python HTTP, Vite dev server, Node Express
-
-**Deliverable**: User runs `npm run dev` → gets `https://abc123.localhost.run` → opens preview.
+### Phase 5: Preview Tunneling ✅
+**Done.** Go `/expose/` endpoint runs cloudflared in container, parses tunnel URL, sends to mobile via WebSocket.
 
 ---
 

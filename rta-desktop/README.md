@@ -1,3 +1,4 @@
+
 # RTA Desktop (Lite XL)
 
 RTA Desktop is a lightweight, AI-powered IDE based on [Lite XL](https://github.com/lite-xl/lite-xl), powered by the RTA Python CLI.

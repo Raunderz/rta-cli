@@ -49,6 +49,10 @@ Packing all of that into a VS Code webview meant fighting the extension API's li
 
 The VS Code extension API is powerful for what it's designed for — language servers, syntax highlighting, sidebar panels. But an AI agent that needs deep process integration, real-time streaming, and native UI controls is a different beast entirely.
 
+We also looked at existing open-source VS Code AI extensions like Cline and Continue.dev for reference. Their repos were massive — hundreds of thousands of lines of TypeScript we'd need to understand and extend. And honestly? We didn't know TypeScript. The learning curve plus the codebase size made it clear we'd spend months just understanding the existing code before writing a single line of our own.
+
+Lua, on the other hand, we already knew. Lite XL's plugin system was familiar territory.
+
 ## Why Desktop Won
 
 We already had a desktop app. Lite XL — 11K lines of C, Lua plugins, instant startup. The problem was never the editor. The problem was the agent.
