@@ -94,16 +94,16 @@ export default function Editor({ file, onSave }) {
       <div id="editor"></div>
 
       <script type="module">
-        import { EditorView, basicSetup } from 'https://esm.sh/codemirror';
-        import { EditorState } from 'https://esm.sh/@codemirror/state';
-        import { keymap } from 'https://esm.sh/@codemirror/view';
-        import { indentWithTab } from 'https://esm.sh/@codemirror/commands';
+        import { EditorView, basicSetup } from 'https://esm.sh/codemirror@6.0.1';
+        import { EditorState } from 'https://esm.sh/@codemirror/state@6.0.1';
+        import { keymap } from 'https://esm.sh/@codemirror/view@6.0.1';
+        import { indentWithTab } from 'https://esm.sh/@codemirror/commands@6.0.1';
         
         // Languages
-        import { javascript } from 'https://esm.sh/@codemirror/lang-javascript';
-        import { python } from 'https://esm.sh/@codemirror/lang-python';
-        import { html } from 'https://esm.sh/@codemirror/lang-html';
-        import { css } from 'https://esm.sh/@codemirror/lang-css';
+        import { javascript } from 'https://esm.sh/@codemirror/lang-javascript@6.0.1';
+        import { python } from 'https://esm.sh/@codemirror/lang-python@6.0.1';
+        import { html } from 'https://esm.sh/@codemirror/lang-html@6.0.1';
+        import { css } from 'https://esm.sh/@codemirror/lang-css@6.0.1';
 
         let editor = null;
         let currentFilename = '';

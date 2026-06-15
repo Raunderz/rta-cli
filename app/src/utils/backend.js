@@ -1,5 +1,5 @@
-const PRIMARY_URL = 'https://schallten-a2xtbb49ws.hf.space';
-const BACKUP_URL = 'https://rta-tb0k.onrender.com';
+const PRIMARY_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const BACKUP_URL = process.env.EXPO_PUBLIC_MOBILE_BACKEND_URL || '';
 const FAILOVER_TIMEOUT = 5000;
 
 let _resolvedUrl = null;

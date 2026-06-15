@@ -194,7 +194,7 @@ export default function GitUI() {
         fs,
         dir: '',
         message: commitMsg.trim(),
-        author: { name: 'Rta Mobile', email: 'rta@mobile.app', timestamp: Math.floor(Date.now() / 1000), timezoneOffset: 0 },
+        author: { name: 'Rta Mobile', email: 'rta@rta-three.vercel.app', timestamp: Math.floor(Date.now() / 1000), timezoneOffset: 0 },
       });
       setCommitMsg('');
       await refreshStatus();

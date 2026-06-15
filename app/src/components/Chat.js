@@ -47,8 +47,8 @@ export default function Chat({ apiKey, session, onLogout }) {
       xhr.open('POST', chatUrl);
       xhr.setRequestHeader('Content-Type', 'application/json');
       xhr.setRequestHeader('X-API-KEY', apiKey);
-      xhr.setRequestHeader('X-Device-ID', 'mobile-app');
-      xhr.setRequestHeader('X-CLI-Version', '2.0.0');
+      xhr.setRequestHeader('X-Device-ID', 'rta-mobile');
+      xhr.setRequestHeader('X-CLI-Version', '1.0.0');
 
 
       let lastProcessedLength = 0;
@@ -82,7 +82,7 @@ export default function Chat({ apiKey, session, onLogout }) {
                     });
                   }
                 } catch (e) {
-                  // Ignore parse errors
+                  // Skip malformed SSE chunks
                 }
               }
             });
@@ -96,7 +96,7 @@ export default function Chat({ apiKey, session, onLogout }) {
 
       xhr.onerror = () => {
         setIsStreaming(false);
-        alert('Network error');
+        alert('Connection error — check your network');
       };
 
       if (isCloud) {

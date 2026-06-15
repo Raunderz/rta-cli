@@ -77,10 +77,9 @@ export default function App() {
         await FileSystem.makeDirectoryAsync(WORKSPACE_DIR, { intermediates: true });
         
         // Create initial default workspace files
-        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'main.py', 'import os\n\nprint("Hello from Rta Local Filesystem!")\n');
+        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'main.py', 'import os\n\nprint("Hello from Rta!")\n');
         await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'README.md', '# Rta Workspace\n\nThis is a real local project stored on your device.\n');
         await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'utils.py', 'def add(a, b):\n    return a + b\n');
-        await FileSystem.writeAsStringAsync(WORKSPACE_DIR + 'hello.bf', '++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.');
         
         const srcDir = WORKSPACE_DIR + 'src/';
         await FileSystem.makeDirectoryAsync(srcDir, { intermediates: true });

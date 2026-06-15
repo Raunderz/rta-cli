@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 
-const GO_URL = process.env.EXPO_PUBLIC_BACKEND_URL || process.env.EXPO_PUBLIC_MOBILE_BACKEND_URL || '';
+const GO_URL = process.env.EXPO_PUBLIC_MOBILE_BACKEND_URL || process.env.EXPO_PUBLIC_BACKEND_URL || '';
 
 const CTRL_KEYS = [
   { label: 'a', code: '\x01' },
@@ -61,8 +61,8 @@ export default function Terminal({ apiKey, session }) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <link rel="stylesheet" href="https://unpkg.com/xterm@5.1.0/css/xterm.css" />
-  <script src="https://unpkg.com/xterm@5.1.0/lib/xterm.js"><\/script>
+  <link rel="stylesheet" href="https://unpkg.com/xterm@5.5.0/css/xterm.css" />
+  <script src="https://unpkg.com/xterm@5.5.0/lib/xterm.js"><\/script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; width: 100%; overflow: auto; background: #0d1117; }
@@ -182,7 +182,9 @@ export default function Terminal({ apiKey, session }) {
       if (data.type === 'log') {
         setTerminalLogs(prev => [data.message, ...prev.slice(0, 5)]);
       }
-    } catch(e) {}
+    } catch(e) {
+      // WebView message parse error — ignore
+    }
   }, []);
 
   const sendToTerminal = useCallback((text) => {
