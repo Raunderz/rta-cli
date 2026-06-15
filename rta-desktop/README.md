@@ -1,21 +1,21 @@
 # RTA Desktop (Lite XL)
 
-RTA Desktop is a lightweight, AI-powered IDE based on [Lite XL](https://github.com/lite-xl/lite-xl) and powered by the [RTA Agent (Odin)](./agent-odin).
+RTA Desktop is a lightweight, AI-powered IDE based on [Lite XL](https://github.com/lite-xl/lite-xl), powered by the RTA Python CLI.
 
 ## Overview
 
 RTA Desktop pivots from the heavy Eclipse Theia architecture to Lite XL to provide a faster, more stable, and more responsive development experience.
 
 - **Frontend**: Lite XL (C/Lua)
-- **Engine**: RTA Agent (Odin)
-- **Integration**: Lua plugins connecting Lite XL to the Odin-based agent.
+- **Engine**: RTA Python CLI (`rta` binary)
+- **Integration**: Lua plugins connecting Lite XL to the CLI via JSON-lines pipe IPC.
 
 ## Project Structure
 
-- `agent-odin/`: Source code for the RTA Agent in Odin.
+- `bin/`: RTA CLI binary (gitignored, built from `cli/` source)
 - `src/`: Lite XL core C source code.
 - `data/`: Lite XL Lua core and plugins.
-- `migration_plan.md`: The roadmap for the transition from Theia to Lite XL.
+- `data/plugins/rta_chat.lua`: Chat plugin for RTA CLI integration.
 
 ## Quick Start
 
@@ -30,7 +30,7 @@ You will need the following tools installed:
 - FreeType2
 - Lua 5.4
 - A working C compiler (GCC / Clang)
-- Odin (for the agent)
+- RTA CLI (`rta` binary, built from `cli/` source)
 
 ### Building RTA Desktop (Lite XL)
 
@@ -49,23 +49,22 @@ You will need the following tools installed:
    ./build/src/rta-desktop
    ```
 
-### Building the RTA Agent (Odin)
+### Building the RTA CLI
 
-The agent is located in the `agent-odin` directory.
+The CLI is a Python binary built from the `cli/` source directory.
 
-1. **Install Odin**: Ensure the [Odin compiler](https://odin-lang.org/) is installed.
-2. **Build**:
+1. **Build**: From the `cli/` directory:
    ```bash
-   cd agent-odin
-   odin build src -out:rta-agent -o:speed
+   cd ../cli
+   uv run python -m PyInstaller --clean --noconfirm rta.spec
+   cp dist/rta ../rta-desktop/bin/rta
    ```
-   *Note: The agent is currently a standalone binary that will be integrated into the IDE via Lua plugins.*
+2. The binary is placed at `bin/rta` (gitignored).
 
 ## Proceeding Further
 
-- **Lua Plugins**: The core integration logic should be placed in `data/plugins/rta_agent.lua`.
+- **Lua Plugins**: The chat integration logic is in `data/plugins/rta_chat.lua`.
 - **UI Customization**: Use `data/core/style.lua` to adjust colors and fonts to match RTA branding.
-- **Odin Development**: Follow the `agent-odin/after_migration.md` plan to implement the agent's core loop and tools.
 
 ## License
 

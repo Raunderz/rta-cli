@@ -61,6 +61,11 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Minimal REPL mode: type messages and get responses without the full TUI",
     )
+    parser.add_argument(
+        "--stdio",
+        action="store_true",
+        help="JSON-lines pipe mode for IDE integration",
+    )
     return parser
 
 
@@ -90,6 +95,9 @@ def main() -> None:
 
     if args.repl and args.prompt is not None:
         parser.error("--repl and -p/--prompt are mutually exclusive")
+
+    if args.stdio and (args.repl or args.prompt is not None):
+        parser.error("--stdio is mutually exclusive with --repl and -p/--prompt")
 
     if args.insecure_skip_verify:
         print("Warning: TLS verification disabled (--insecure-skip-verify)", file=sys.stderr)
@@ -154,6 +162,30 @@ def main() -> None:
             )
         except Exception as e:
             logging.getLogger("kon").error(f"REPL error: {e}", exc_info=True)
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    if args.stdio:
+        from .stdio import run_stdio_mode
+
+        try:
+            raise SystemExit(
+                asyncio.run(
+                    run_stdio_mode(
+                        model=args.model,
+                        provider=args.provider,
+                        api_key=None,
+                        base_url=args.base_url,
+                        openai_compat_auth_mode=args.openai_compat_auth,
+                        anthropic_compat_auth_mode=args.anthropic_compat_auth,
+                        extra_tools=extra_tools,
+                        resume_session=args.resume_session,
+                        continue_recent=args.continue_recent,
+                    )
+                )
+            )
+        except Exception as e:
+            logging.getLogger("kon").error(f"stdio error: {e}", exc_info=True)
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 

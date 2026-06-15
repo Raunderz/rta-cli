@@ -11,45 +11,12 @@ local process = require "core.process"
 config.plugins.rta_chat = common.merge({
   size = 340 * SCALE,
   visible = true,
-  server_url = "https://rta-tb0k.onrender.com",
 }, config.plugins.rta_chat)
 
 
-local b64chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-
-local function b64_decode(data)
-  data = data:gsub("[^" .. b64chars .. "=]", "")
-
-  return (data:gsub(".", function(x)
-    if x == "=" then
-      return ""
-    end
-
-    local r, f = "", (b64chars:find(x, 1, true) or 1) - 1
-
-    for i = 6, 1, -1 do
-      r = r .. ((f % 2^i - f % 2^(i - 1) > 0) and "1" or "0")
-    end
-
-    return r
-  end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
-    if #x ~= 8 then
-      return ""
-    end
-
-    local c = 0
-    for i = 1, 8 do
-      if x:sub(i, i) == "1" then
-        c = c + 2^(8 - i)
-      end
-    end
-
-    return string.char(c)
-  end))
-end
-
-
 local LogView = require "core.logview"
+local json = require "core.json"
+
 
 local function stderr(...)
   local parts = {}
@@ -61,60 +28,54 @@ local function stderr(...)
 end
 
 
-local json = require "core.json"
-
 local function log(msg, ...)
   if ... then msg = string.format(msg, ...) end
   core.log("RTA Chat: %s", msg)
 end
 
-local function load_api_key()
+
+--- Find the rta binary path.
+--- Checks: ~/.rta/cli_path → PATH
+local function find_rta_binary()
   local home = os.getenv("HOME") or ""
-  local path = home .. "/.rta/credentials"
 
-  local f, err = io.open(path, "r")
-  if not f then
-    log("Failed to open credentials file: %s", err or "unknown error")
-    return nil
-  end
-
-  for line in f:lines() do
-    local val = line:match("^rta_api_key%s*=%s*(.+)$")
-
-    if val and #val > 0 then
-      f:close()
-
-      local ok, decoded = pcall(b64_decode, val)
-
-      if not ok then
-        log("Failed to decode API key")
-        return nil
+  local saved = home .. "/.rta/cli_path"
+  local f = io.open(saved, "r")
+  if f then
+    local path = f:read("*l")
+    f:close()
+    if path and #path > 0 then
+      local check = io.open(path, "r")
+      if check then
+        check:close()
+        return path
       end
-
-      if type(decoded) ~= "string" or #decoded == 0 then
-        log("Invalid decoded API key")
-        return nil
-      end
-
-      return decoded
     end
   end
 
-  f:close()
-  log("rta_api_key not found in credentials file")
+  local handle = io.popen("which rta 2>/dev/null")
+  if handle then
+    local path = handle:read("*l")
+    handle:close()
+    if path and #path > 0 then
+      return path
+    end
+  end
+
   return nil
 end
 
 
-local function get_device_id()
+--- Persist the rta binary path.
+local function save_rta_path(path)
   local home = os.getenv("HOME") or ""
-  local f = io.open(home .. "/.rta/.device_id", "r")
+  local dir = home .. "/.rta"
+  os.execute("mkdir -p " .. dir)
+  local f = io.open(dir .. "/cli_path", "w")
   if f then
-    local id = f:read("*l")
+    f:write(path)
     f:close()
-    return id
   end
-  return "00000000-0000-0000-0000-000000000000"
 end
 
 
@@ -129,24 +90,28 @@ function RtaChat:new()
   self.scrollable = true
   self.visible = config.plugins.rta_chat.visible
   self.input_buffer = ""
-  self.sending = false
   self.messages = {}
   self.input_focused = false
-  self.api_key = load_api_key()
-  self.device_id = get_device_id()
-  self.server_url = config.plugins.rta_chat.server_url
-  self.system_prompt = "You are Rta, a helpful coding assistant. Be concise and direct."
+  self.rta_path = find_rta_binary()
+  self.proc = nil
+  self.reader_thread = nil
+  self.streaming = false
+  self.current_stream = nil
+  self.current_tool = nil
+  self.pending_approvals = {}
+  self.session_id = nil
 
-  if self.api_key then
+  if self.rta_path then
     table.insert(self.messages, {
       role = "system",
-      text = "Connected as Rta User. Type a message to start.",
+      text = "Connected to RTA CLI.",
       time = os.date("%H:%M"),
     })
+    self:start_process()
   else
     table.insert(self.messages, {
       role = "system",
-      text = "API key not found. Run 'rta login' in the terminal first.",
+      text = "RTA CLI not found.\nPlace rta in your PATH\nor set ~/.rta/cli_path\nthen restart.",
       time = os.date("%H:%M"),
     })
   end
@@ -161,12 +126,15 @@ function RtaChat:supports_text_input()
 end
 
 function RtaChat:get_input_height()
-  return style.font:get_height() + style.padding.y * 2 + style.divider_size
-end
-
-function RtaChat:get_scrollable_size()
-  local lh = self:get_line_height()
-  return #self.messages * lh
+  local lines = 1
+  if #self.input_buffer > 0 then
+    local max_w = self.size.x - style.padding.x * 2 - 70 * SCALE
+    if max_w > 0 then
+      local text_w = style.font:get_width(self.input_buffer)
+      lines = math.max(1, math.min(3, math.ceil(text_w / max_w)))
+    end
+  end
+  return lines * (style.font:get_height() + style.padding.y) + style.padding.y * 2 + style.divider_size
 end
 
 function RtaChat:get_line_height()
@@ -203,6 +171,7 @@ function RtaChat:on_mouse_pressed(button, x, y, clicks)
   end
   local input_y = self.position.y + self.size.y - self:get_input_height()
   local input_h = self:get_input_height()
+
   if y >= input_y + style.divider_size and y <= input_y + input_h then
     if not self.input_focused then
       self.input_focused = true
@@ -211,12 +180,38 @@ function RtaChat:on_mouse_pressed(button, x, y, clicks)
     end
     return true
   end
-  if x >= self.position.x + self.size.x - 70 * SCALE and x <= self.position.x + self.size.x - style.padding.x then
+
+  local btn_x = self.position.x + self.size.x - 65 * SCALE
+  local btn_w = 60 * SCALE
+  if x >= btn_x and x <= btn_x + btn_w then
     if y >= input_y and y <= input_y + input_h then
       self:send_message()
       return true
     end
   end
+
+  for i, approval in ipairs(self.pending_approvals) do
+    local ay = approval.y
+    local ah = style.font:get_height() + style.padding.y * 2
+    if y >= ay and y <= ay + ah then
+      local approve_x = approval.approve_x
+      local deny_x = approval.deny_x
+      local bw = 50 * SCALE
+      if x >= approve_x and x <= approve_x + bw then
+        self:respond_approval(approval.id, true)
+        table.remove(self.pending_approvals, i)
+        core.redraw = true
+        return true
+      end
+      if x >= deny_x and x <= deny_x + bw then
+        self:respond_approval(approval.id, false)
+        table.remove(self.pending_approvals, i)
+        core.redraw = true
+        return true
+      end
+    end
+  end
+
   self.input_focused = false
   return true
 end
@@ -231,8 +226,146 @@ function RtaChat:delete_backward()
   core.redraw = true
 end
 
+
+--- Start the rta --stdio process.
+function RtaChat:start_process()
+  if self.proc then return end
+  if not self.rta_path then return end
+
+  local proc = process.start({self.rta_path, "--stdio"})
+  if not proc then
+    log("Failed to start rta process")
+    return
+  end
+
+  self.proc = proc
+  self:start_reader()
+end
+
+
+--- Start the stdout reader coroutine.
+function RtaChat:start_reader()
+  if self.reader_thread then return end
+
+  local self_ref = self
+  self.reader_thread = core.add_thread(function()
+    while self_ref.proc and self_ref.proc:running() do
+      local line = self_ref.proc.stdout:read("line")
+      if line then
+        self_ref:handle_line(line)
+      end
+    end
+    log("rta process exited")
+    self_ref.proc = nil
+    self_ref.reader_thread = nil
+  end)
+end
+
+
+--- Handle a single JSON line from stdout.
+function RtaChat:handle_line(line)
+  if not line or #line == 0 then return end
+
+  local ok, obj = pcall(json.decode, line)
+  if not ok then
+    stderr("JSON decode error:", obj)
+    return
+  end
+
+  local t = obj.type
+  if t == "status_response" then
+    self.session_id = obj.session_id
+    log("CLI session: %s, model: %s", obj.session_id or "?", obj.model or "?")
+
+  elseif t == "text_delta" then
+    if not self.streaming then
+      self.streaming = true
+      self.current_stream = {
+        role = "assistant",
+        text = "",
+        time = os.date("%H:%M"),
+        tools = {},
+      }
+      table.insert(self.messages, self.current_stream)
+    end
+    if self.current_stream then
+      self.current_stream.text = self.current_stream.text .. (obj.content or "")
+    end
+    self.scroll.to.y = self:get_scrollable_size()
+    core.redraw = true
+
+  elseif t == "text_done" then
+    self.streaming = false
+    self.current_stream = nil
+    self.session_id = obj.session_id or self.session_id
+    core.redraw = true
+
+  elseif t == "tool_start" then
+    if self.current_stream then
+      table.insert(self.current_stream.tools, {
+        name = obj.tool or "unknown",
+        status = "running",
+      })
+    end
+    self.current_tool = obj.tool
+    core.redraw = true
+
+  elseif t == "tool_end" then
+    if self.current_stream then
+      for _, tool in ipairs(self.current_stream.tools) do
+        if tool.name == obj.tool and tool.status == "running" then
+          tool.status = "done"
+          tool.display = obj.display or ""
+          break
+        end
+      end
+    end
+    self.current_tool = nil
+    core.redraw = true
+
+  elseif t == "tool_approval" then
+    local approval = {
+      id = obj.approval_id,
+      tool = obj.tool or "unknown",
+      display = obj.display or "",
+      y = 0,
+      approve_x = 0,
+      deny_x = 0,
+    }
+    table.insert(self.pending_approvals, approval)
+    self.scroll.to.y = self:get_scrollable_size()
+    core.redraw = true
+
+  elseif t == "error" then
+    table.insert(self.messages, {
+      role = "system",
+      text = "Error: " .. (obj.message or "Unknown error"),
+      time = os.date("%H:%M"),
+    })
+    self.streaming = false
+    self.current_stream = nil
+    core.redraw = true
+  end
+end
+
+
+--- Send a chat message to the rta process.
 function RtaChat:send_message()
-  if self.sending or #self.input_buffer == 0 or not self.api_key then return end
+  if self.streaming or #self.input_buffer == 0 then return end
+
+  if not self.proc or not self.proc:running() then
+    self:start_process()
+    if not self.proc or not self.proc:running() then
+      table.insert(self.messages, {
+        role = "system",
+        text = "RTA CLI not running.\nCheck ~/.rta/cli_path.",
+        time = os.date("%H:%M"),
+      })
+      self.streaming = false
+      core.redraw = true
+      return
+    end
+  end
 
   local user_msg = self.input_buffer
   table.insert(self.messages, {
@@ -241,112 +374,41 @@ function RtaChat:send_message()
     time = os.date("%H:%M"),
   })
   self.input_buffer = ""
-  self.sending = true
+  self.streaming = true
   core.redraw = true
 
-  local messages_for_api = {}
-  table.insert(messages_for_api, { role = "system", content = self.system_prompt })
-  for _, msg in ipairs(self.messages) do
-    if msg.role ~= "system" then
-      table.insert(messages_for_api, { role = msg.role, content = msg.text })
-    end
-  end
-
-  local body = json.encode({
-    messages = messages_for_api,
-    model = "auto",
-    provider = "auto",
-    stream = false,
-    max_tokens = 2000,
+  local request = json.encode({
+    type = "chat",
+    message = user_msg,
+    session_id = self.session_id,
   })
 
-  stderr("Sending request to", self.server_url, "body size:", #body)
-  stderr("API key (first 8):", self.api_key and self.api_key:sub(1, 8) or "nil")
-
-  local url = self.server_url .. "/v1/chat"
-  local args = {
-    "curl", "-s", "--max-time", "30", "-X", "POST", url,
-    "-H", "Content-Type: application/json",
-    "-H", "X-API-KEY: " .. self.api_key,
-    "-H", "X-Device-ID: " .. self.device_id,
-    "-H", "X-CLI-Version: 0.4.0",
-    "-H", "User-Agent: rta-cli/1.0",
-    "-d", body,
-  }
-
-  core.add_thread(function()
-    stderr(">> thread started, calling process.start")
-    local proc = process.start(args)
-    stderr(">> process.start returned, pid:", proc and proc:pid() or "nil")
-    stderr(">> reading stdout...")
-    local result = proc.stdout:read("a")
-    stderr(">> read returned, result size:", result and #result or 0, "type:", type(result))
-    local ok = proc:wait()
-
-    stderr("curl exit code:", ok, "response size:", result and #result or 0)
-
-    if ok == 0 and result and #result > 0 then
-      stderr("Raw response (first 500):", result:sub(1, 500))
-      local ok, data = pcall(json.decode, result)
-      if not ok then
-        stderr("JSON decode error:", data)
-        log("JSON parse error: %s", tostring(data))
-        table.insert(self.messages, {
-          role = "system",
-          text = "Error: Failed to parse API response.",
-          time = os.date("%H:%M"),
-        })
-      else
-        stderr("Parsed data keys:", data and table.concat(table.keys(data), ", ") or "nil")
-        local content
-        if data.choices and data.choices[1] then
-          local choice = data.choices[1]
-          if choice.message then
-            content = choice.message.content
-            stderr("Found content in choices[1].message.content, length:", #content)
-          end
-        end
-        if not content and data.message and data.message.content then
-          content = data.message.content
-          stderr("Found content in data.message.content, length:", #content)
-        end
-        if not content and data.content then
-          content = data.content
-          stderr("Found content in data.content, length:", #content)
-        end
-        if content then
-          table.insert(self.messages, {
-            role = "assistant",
-            text = content,
-            time = os.date("%H:%M"),
-          })
-          self.scroll.to.y = self:get_scrollable_size()
-        else
-          stderr("No content found in response, full dump:", result)
-          log("No content in API response")
-          table.insert(self.messages, {
-            role = "system",
-            text = "Error: Unexpected response format.",
-            time = os.date("%H:%M"),
-          })
-        end
-      end
-    else
-      local err = "Error: Request failed"
-      if result and #result > 0 then
-        err = err .. " - " .. result:sub(1, 200)
-      end
-      stderr("Request failed:", err)
-      table.insert(self.messages, {
-        role = "system",
-        text = err,
-        time = os.date("%H:%M"),
-      })
-    end
-    self.sending = false
-    core.redraw = true
-  end)
+  self.proc.stdin:write(request .. "\n")
+  self.scroll.to.y = self:get_scrollable_size()
+  core.redraw = true
 end
+
+
+--- Respond to a tool approval request.
+function RtaChat:respond_approval(approval_id, approved)
+  if not self.proc or not self.proc:running() then return end
+
+  local req_type = approved and "tool_approved" or "tool_denied"
+  local request = json.encode({
+    type = req_type,
+    approval_id = approval_id,
+  })
+
+  self.proc.stdin:write(request .. "\n")
+end
+
+
+--- Cancel the current operation.
+function RtaChat:cancel_operation()
+  if not self.proc or not self.proc:running() then return end
+  self.proc.stdin:write(json.encode({type = "cancel"}) .. "\n")
+end
+
 
 function RtaChat:update()
   local dest = self.visible and config.plugins.rta_chat.size or 0
@@ -367,6 +429,7 @@ function RtaChat:draw()
   -- Messages
   local y = msg_start_y - self.scroll.y
   core.push_clip_rect(self.position.x, self.position.y, w, self.size.y - input_h)
+
   for _, msg in ipairs(self.messages) do
     local mlh = self:get_line_height_msg(msg)
     local msg_top = y
@@ -384,12 +447,58 @@ function RtaChat:draw()
 
       common.draw_text(style.font, text_color, msg.text, nil,
         self.position.x + pad, msg_top + style.padding.y * 0.5, text_w, mlh)
+
+      -- Draw tool indicators
+      if msg.tools and #msg.tools > 0 then
+        local ty = msg_top + style.font:get_height() + style.padding.y
+        for _, tool in ipairs(msg.tools) do
+          local icon = tool.status == "running" and "~" or "+"
+          local color = tool.status == "running" and style.warn or style.dim
+          local label = string.format("[%s %s]", icon, tool.name)
+          if tool.display and #tool.display > 0 then
+            label = label .. " " .. tool.display:sub(1, 40)
+          end
+          common.draw_text(style.font, color, label, nil,
+            self.position.x + pad + style.padding.x, ty, text_w - style.padding.x, lh)
+          ty = ty + lh
+        end
+        mlh = mlh + #msg.tools * lh
+      end
     end
     y = y + mlh
   end
 
-  -- Loading indicator
-  if self.sending then
+  -- Tool approval buttons
+  for _, approval in ipairs(self.pending_approvals) do
+    local ay = y - self.scroll.y
+    local ah = style.font:get_height() + style.padding.y * 2
+    approval.y = ay + self.position.y
+
+    local pad = style.padding.x
+    local label = string.format("[%s] %s", approval.tool, approval.display:sub(1, 50))
+    common.draw_text(style.font, style.warn, label, nil,
+      self.position.x + pad, ay + style.padding.y * 0.5, w - pad * 2, ah)
+
+    local bw = 50 * SCALE
+    local btn_y = ay + style.padding.y * 0.5
+    local btn_h = style.font:get_height() + style.padding.y
+
+    local approve_x = self.position.x + w - bw * 2 - style.padding.x * 2
+    local deny_x = self.position.x + w - bw - style.padding.x
+    approval.approve_x = approve_x
+    approval.deny_x = deny_x
+
+    renderer.draw_rect(approve_x, btn_y, bw, btn_h, style.background3)
+    common.draw_text(style.font, style.accent, "Yes", "center", approve_x, btn_y, bw, btn_h)
+
+    renderer.draw_rect(deny_x, btn_y, bw, btn_h, style.background3)
+    common.draw_text(style.font, style.warn, "No", "center", deny_x, btn_y, bw, btn_h)
+
+    y = y + ah
+  end
+
+  -- Streaming indicator
+  if self.streaming then
     local dots = (os.clock() * 2) % 4
     local text = "Thinking" .. string.rep(".", math.floor(dots))
     common.draw_text(style.font, style.dim, text, nil,
@@ -413,12 +522,41 @@ function RtaChat:draw()
   local placeholder = self.input_focused and "" or "Type a message..."
   local display_text = #self.input_buffer > 0 and self.input_buffer or placeholder
   local text_col = #self.input_buffer > 0 and style.text or style.dim
-  common.draw_text(style.font, text_col, display_text, nil, input_text_x, input_text_y, input_text_w, style.font:get_height())
+  if input_text_w > 0 then
+    local remaining = display_text
+    local ty = input_text_y
+    while #remaining > 0 do
+      local cut = remaining
+      while #cut > 0 and style.font:get_width(cut) > input_text_w do
+        cut = cut:sub(1, -2)
+      end
+      if #cut == 0 then cut = remaining:sub(1, 1); remaining = remaining:sub(2)
+      else remaining = remaining:sub(#cut + 1) end
+      common.draw_text(style.font, text_col, cut, nil, input_text_x, ty, input_text_w, style.font:get_height())
+      ty = ty + style.font:get_height() + style.padding.y
+    end
+  end
 
   -- Cursor
   if self.input_focused and os.clock() % 1 < 0.5 then
-    local cursor_x = input_text_x + style.font:get_width(self.input_buffer)
-    renderer.draw_rect(cursor_x, input_text_y, style.caret_width, style.font:get_height(), style.caret)
+    local cursor_x = input_text_x
+    local cursor_y = input_text_y
+    if #self.input_buffer > 0 and input_text_w > 0 then
+      local remaining = self.input_buffer
+      while #remaining > 0 do
+        local cut = remaining
+        while #cut > 0 and style.font:get_width(cut) > input_text_w do
+          cut = cut:sub(1, -2)
+        end
+        if #cut == 0 then cut = remaining:sub(1, 1); remaining = remaining:sub(2)
+        else remaining = remaining:sub(#cut + 1) end
+        cursor_x = input_text_x + style.font:get_width(cut)
+        if #remaining > 0 then
+          cursor_y = cursor_y + style.font:get_height() + style.padding.y
+        end
+      end
+    end
+    renderer.draw_rect(cursor_x, cursor_y, style.caret_width, style.font:get_height(), style.caret)
   end
 
   -- Send button
@@ -426,7 +564,7 @@ function RtaChat:draw()
   local btn_y = input_area_y + style.padding.y * 0.5
   local btn_w = 60 * SCALE
   local btn_h = input_h - style.divider_size - style.padding.y
-  local can_send = #self.input_buffer > 0 and not self.sending and self.api_key
+  local can_send = #self.input_buffer > 0 and not self.streaming
   local btn_color = can_send and style.accent or style.dim
   renderer.draw_rect(btn_x, btn_y, btn_w, btn_h, style.background3)
   common.draw_text(style.font, btn_color, "Send", "center", btn_x, btn_y, btn_w, btn_h)
@@ -475,11 +613,24 @@ command.add(RtaChat, {
     if v.input_focused then core.set_active_view(v) end
     core.redraw = true
   end,
+  ["rta-chat:cancel"] = function(v)
+    v:cancel_operation()
+  end,
 })
 
 command.add(nil, {
   ["rta-chat:toggle"] = function()
     chat_view.visible = not chat_view.visible
+    core.redraw = true
+  end,
+  ["rta-chat:restart"] = function()
+    if chat_view.proc and chat_view.proc:running() then
+      chat_view.proc:wait(0)
+    end
+    chat_view.proc = nil
+    chat_view.reader_thread = nil
+    chat_view.rta_path = find_rta_binary()
+    chat_view:start_process()
     core.redraw = true
   end,
   ["log-view:toggle"] = toggle_log_view,
@@ -490,6 +641,7 @@ keymap.add {
   ["backspace"] = "rta-chat:backspace",
   ["ctrl+shift+c"] = "rta-chat:toggle",
   ["ctrl+shift+l"] = "log-view:toggle",
+  ["escape"] = "rta-chat:cancel",
 }
 
 return chat_view
