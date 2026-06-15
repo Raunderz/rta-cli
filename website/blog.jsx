@@ -9,6 +9,79 @@ export const BlogPage = ({ params }) => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const articles = [
     {
+      slug: "back-to-desktop-abandoning-vscode-extension",
+      title: "Back to Desktop: Why We Abandoned the VS Code Extension",
+      date: "June 15, 2026",
+      readTime: "4 min read",
+      excerpt: "We tried building a VS Code extension. The binary was too big, the experience was wrong. So we went back to the desktop app — and it's working.",
+      tags: ["Desktop", "VS Code", "Lite XL", "Strategy"],
+      commit: "main",
+      body: `
+# Back to Desktop: Why We Abandoned the VS Code Extension
+
+Two weeks ago, we wrote about [building a VS Code extension](/blog/cli-first-then-editor) that wraps the \`rta\` CLI as a sidecar. The plan was clean: let VS Code handle the editor, let the CLI handle the AI.
+
+We're abandoning that plan.
+
+## The Size Problem
+
+The \`rta\` binary is 60MB. That's the PyInstaller bundle — Python runtime, all dependencies, the entire agent. When we tried packaging it as a VS Code extension sidecar, the math didn't work:
+
+- VS Code extension market limit: **50MB** (recommended)
+- Our binary: **60MB**
+- VS Code itself: **300MB+**
+
+We'd be shipping an extension larger than most VS Code themes, containing a full Python runtime that duplicates half of what VS Code already has. Users would download 60MB just to get a chat sidebar.
+
+## The Experience Problem
+
+Even if we solved the size issue, the UX was wrong. VS Code extensions live in a panel — a狭窄 sidebar or a webview. Our chat interface needed:
+
+- Streaming text display
+- Tool approval buttons
+- Session history
+- File tree integration
+- Real-time diff previews
+
+Packing all of that into a VS Code webview meant fighting the extension API's limitations. No direct access to the editor's rendering pipeline. No native text controls. Everything through message passing and DOM manipulation in a sandboxed iframe.
+
+We were building a bad version of something VS Code already does well.
+
+## Why Desktop Won
+
+We already had a desktop app. Lite XL — 11K lines of C, Lua plugins, instant startup. The problem was never the editor. The problem was the agent.
+
+When we [forked Kon](/blog/forking-kon-a-new-cli-foundation) and built the Python CLI with \`--stdio\` pipe mode, everything clicked:
+
+- **Binary detection**: The desktop app finds \`rta\` on PATH or in \`~/.rta/cli_path\`
+- **Pipe IPC**: JSON-lines over stdin/stdout — simple, debuggable, no HTTP overhead
+- **Streaming**: Text deltas flow directly from the CLI process to the Lua renderer
+- **Tool approval**: Auto-approved in desktop context, inline approve/deny when needed
+- **Session history**: Reads JSONL files directly, no API calls needed
+
+The entire integration is 800 lines of Lua. No webview sandbox. No message passing. Direct process communication.
+
+## What We Learned
+
+The [desktop IDE evolution](/blog/desktop-ide-evolution) taught us that lightweight wins. The [CLI-first approach](/blog/cli-first-then-editor) taught us that the agent is the product. This iteration taught us that **the right container matters**.
+
+VS Code is a great editor. But it's not the right container for an AI agent that needs deep process integration, real-time streaming, and native UI controls. A Lua plugin in a C editor gives us all of that with 10x less overhead.
+
+## What's Next
+
+The desktop app is functional. Chat works, streaming works, tool calls work, session history works. What's left:
+
+- **Diff previews**: Show file changes inline before applying
+- **File tree integration**: Browse and open files from the chat
+- **Keyboard shortcuts**: Navigate between chat and editor naturally
+- **Theme integration**: Match the editor's color scheme
+
+We're not abandoning the idea of IDE integration. We're just building it in the right place.
+
+The CLI is the engine. The desktop app is the cockpit. VS Code can keep its dashboard.
+      `
+    },
+    {
       slug: "rta-api-openai-compatible",
       title: "Rta API: OpenAI-Compatible Endpoints for AI-Powered Development",
       date: "June 5, 2026",

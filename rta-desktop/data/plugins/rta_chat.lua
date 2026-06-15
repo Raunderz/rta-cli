@@ -179,7 +179,17 @@ function RtaChat:get_line_height_msg(msg)
   local text_h = lines * (style.font:get_height() + style.padding.y)
   local tools_h = 0
   if msg.tools and #msg.tools > 0 then
-    tools_h = #msg.tools * (style.font:get_height() + style.padding.y * 1.5) + style.padding.y
+    for _, tool in ipairs(msg.tools) do
+      local label = string.format("[%s %s]", tool.status == "running" and "~" or "+", tool.name)
+      if tool.display and #tool.display > 0 then
+        label = label .. " " .. tool.display
+      end
+      local tool_lines = 1
+      if #label > 0 and max_w > 0 then
+        tool_lines = math.max(1, math.ceil(style.font:get_width(label) / max_w))
+      end
+      tools_h = tools_h + tool_lines * (style.font:get_height() + style.padding.y) + style.padding.y * 0.5
+    end
   end
   return text_h + tools_h + style.padding.y * 2
 end
@@ -218,8 +228,8 @@ function RtaChat:on_mouse_pressed(button, x, y, clicks)
   -- History panel click (intercepts all clicks when open)
   if self.show_history then
     local title_h = style.font:get_height() + style.padding.y * 2
+    local item_h = style.font:get_height() + style.padding.y * 2
     local item_y = self.position.y + title_h + style.padding.y
-    local item_h = style.font:get_height() + style.padding.y
     for i, sess in ipairs(self.history_sessions) do
       if y >= item_y and y < item_y + item_h then
         self:resume_session(sess.id)
@@ -746,12 +756,19 @@ function RtaChat:draw()
           local color = tool.status == "running" and style.warn or style.good
           local label = string.format("[%s %s]", icon, tool.name)
           if tool.display and #tool.display > 0 then
-            label = label .. " " .. tool.display:sub(1, 40)
+            label = label .. " " .. tool.display
           end
-          renderer.draw_rect(self.position.x + pad, ty, text_w, lh, style.background3)
-          common.draw_text(style.font, color, label, nil,
-            self.position.x + pad + style.padding.x * 0.5, ty, text_w - style.padding.x, lh)
-          ty = ty + lh
+          -- Calculate wrapped tool height
+          local tool_lines = 1
+          if #label > 0 and text_w > 0 then
+            local tw = style.font:get_width(label)
+            tool_lines = math.max(1, math.ceil(tw / text_w))
+          end
+          local tool_h = tool_lines * (style.font:get_height() + style.padding.y) + style.padding.y * 0.5
+          renderer.draw_rect(self.position.x + pad, ty, text_w, tool_h, style.background3)
+          draw_wrapped_text(style.font, color, label,
+            self.position.x + pad + style.padding.x * 0.5, ty + style.padding.y * 0.25, text_w - style.padding.x, style.font:get_height() + style.padding.y)
+          ty = ty + tool_h
         end
       end
     end
@@ -810,7 +827,8 @@ function RtaChat:draw()
 
     self.history_hover = -1
     local item_y = self.position.y + title_h + style.padding.y
-    local item_h = style.font:get_height() + style.padding.y
+    local item_h = style.font:get_height() + style.padding.y * 2
+    local max_label_w = w - style.padding.x * 4
     if #self.history_sessions == 0 then
       common.draw_text(style.font, style.dim, "No sessions found.", nil,
         self.position.x + style.padding.x, item_y, w - style.padding.x * 2, item_h)
@@ -826,8 +844,15 @@ function RtaChat:draw()
         if sess.preview and #sess.preview > 0 then
           label = label .. "  " .. sess.preview
         end
+        -- Truncate label to fit width
+        while #label > 0 and style.font:get_width(label) > max_label_w do
+          label = label:sub(1, -2)
+        end
+        if #label < (sess.display .. "  " .. (sess.preview or "")) then
+          label = label .. ".."
+        end
         common.draw_text(style.font, col, label, nil,
-          self.position.x + style.padding.x, item_y, w - style.padding.x * 2, item_h)
+          self.position.x + style.padding.x * 2, item_y + style.padding.y * 0.5, max_label_w, style.font:get_height())
         item_y = item_y + item_h
       end
     end
