@@ -12,11 +12,9 @@
 - **Infra (Server)**: `mobile_backend` Go service supports `upload`/`download` ZIP endpoints for workspace sync.
 
 ### ❌ Blockers / Stuck At
-- **Conflict Handling**: Need strategy for when local files change while cloud session active.
+(none)
 
 ### 💡 Next Steps
-- **Implement Zip Sync**: Connect `App.js` to Go's `/upload` on start and `/download` on end.
-- **The "Native Input Bridge"**: Bypass the unreliable WebView hidden textarea by using a React Native `TextInput` to capture keystrokes. Forward them to the WebView via `postMessage`.
 - **Developer Accessory Bar**: Add a row of native buttons for `TAB`, `ESC`, `CTRL`, and arrows to improve mobile coding speed.
 
 ---
@@ -161,18 +159,15 @@ rta/
 
 ---
 
-### Phase 1: Local-First Git & Auth — PARTIAL ✅
-**isomorphic-git installed, GitUI.js component exists.** Remaining:
+### Phase 1: Local-First Git & Auth — MOSTLY DONE ✅
+**isomorphic-git wired up, GitUI.js fully functional with init, status, add, commit, log.** Remaining:
 - [ ] GitHub OAuth Integration (backend endpoint + WebView flow + secure token storage)
 - [ ] Push/Pull remote sync
-- [ ] Commit history, diff viewer in UI
 
 ---
 
 ### Phase 2: Terminal + Session Management — MOSTLY DONE ✅
-**Go service built, terminal works, session lifecycle works.** Remaining:
-- [ ] Connect `App.js` to Go's `/upload` on session start (zip local project → container)
-- [ ] Connect `App.js` to Go's `/download` on session end (container → local files)
+**Go service built, terminal works, session lifecycle works. Zip sync implemented.**
 
 **Deliverable**: User taps "Start Session", terminal opens, can run commands.
 

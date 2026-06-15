@@ -24,6 +24,8 @@ import GitUI from './components/GitUI';
 const STORAGE_KEY = 'rta_api_key';
 const WORKSPACE_DIR = `${FileSystem.documentDirectory}workspace/`;
 import { resolveBackendUrl } from './utils/backend';
+import { uploadWorkspace, downloadWorkspace, applyDownload, deleteRemovedFiles, clearSnapshot } from './utils/workspaceSync';
+import ConflictResolver from './components/ConflictResolver';
 
 export default function App() {
   const [apiKey, setApiKey] = useState('');
@@ -37,6 +39,9 @@ export default function App() {
   // Session state
   const [session, setSession] = useState({ id: null, status: 'off', ws_url: null });
   const [isStartingSession, setIsStartingSession] = useState(false);
+  const [syncStatus, setSyncStatus] = useState('');
+  const [conflicts, setConflicts] = useState(null);
+  const [pendingDownload, setPendingDownload] = useState(null);
 
   // Local project workspace state
   const [files, setFiles] = useState([]);
@@ -236,6 +241,15 @@ export default function App() {
         status: 'on',
         ws_url: data.ws_url
       });
+
+      try {
+        setSyncStatus('Uploading project...');
+        await uploadWorkspace(apiKey.trim(), data.id, backendUrl);
+        setSyncStatus('');
+      } catch (uploadErr) {
+        console.error('Workspace upload failed:', uploadErr);
+        setSyncStatus('Upload failed');
+      }
     } catch (e) {
       alert('Session Error: ' + e.message);
     } finally {
@@ -247,6 +261,25 @@ export default function App() {
     if (!session.id) return;
     try {
       const backendUrl = await resolveBackendUrl();
+
+      try {
+        setSyncStatus('Downloading project...');
+        const result = await downloadWorkspace(apiKey.trim(), session.id, backendUrl);
+
+        if (result.conflicts && result.conflicts.length > 0) {
+          setPendingDownload(result);
+          setConflicts(result.conflicts);
+          setSyncStatus('');
+          return;
+        }
+
+        await reloadFiles();
+        setSyncStatus('');
+      } catch (downloadErr) {
+        console.error('Workspace download failed:', downloadErr);
+        setSyncStatus('Download failed');
+      }
+
       await fetch(`${backendUrl}/v1/executor/env/${session.id}`, {
         method: 'DELETE',
         headers: { 
@@ -256,7 +289,49 @@ export default function App() {
       setSession({ id: null, status: 'off', ws_url: null });
     } catch (e) {
       console.error('Failed to end session', e);
-      // Still clear local state
+      setSession({ id: null, status: 'off', ws_url: null });
+    }
+  };
+
+  const handleConflictResolve = async ({ remotePaths, localPaths }) => {
+    if (!pendingDownload) return;
+
+    const skipPaths = localPaths;
+    await applyDownload(pendingDownload.zip, skipPaths);
+
+    const remoteHashes = {};
+    for (const [path, entry] of Object.entries(pendingDownload.zip.files)) {
+      if (!entry.dir) remoteHashes[path] = true;
+    }
+    await deleteRemovedFiles(remoteHashes);
+    await clearSnapshot();
+
+    setConflicts(null);
+    setPendingDownload(null);
+
+    await reloadFiles();
+
+    const backendUrl = await resolveBackendUrl();
+    if (session.id) {
+      await fetch(`${backendUrl}/v1/executor/env/${session.id}`, {
+        method: 'DELETE',
+        headers: { 'X-API-KEY': apiKey.trim() },
+      });
+      setSession({ id: null, status: 'off', ws_url: null });
+    }
+  };
+
+  const handleConflictCancel = async () => {
+    setConflicts(null);
+    setPendingDownload(null);
+    setSyncStatus('');
+
+    const backendUrl = await resolveBackendUrl();
+    if (session.id) {
+      await fetch(`${backendUrl}/v1/executor/env/${session.id}`, {
+        method: 'DELETE',
+        headers: { 'X-API-KEY': apiKey.trim() },
+      });
       setSession({ id: null, status: 'off', ws_url: null });
     }
   };
@@ -272,6 +347,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar barStyle="dark-content" />
+      {conflicts && (
+        <ConflictResolver
+          conflicts={conflicts}
+          onResolve={handleConflictResolve}
+          onCancel={handleConflictCancel}
+        />
+      )}
       {hasKey ? (
         <MainApp 
           apiKey={apiKey}
@@ -287,6 +369,7 @@ export default function App() {
           reloadFiles={reloadFiles}
           files={files}
           session={session}
+          syncStatus={syncStatus}
           isStartingSession={isStartingSession}
           onStartSession={handleStartSession}
           onEndSession={handleEndSession}
@@ -363,6 +446,7 @@ function MainApp({
   reloadFiles,
   files,
   session,
+  syncStatus,
   isStartingSession,
   onStartSession,
   onEndSession
@@ -402,7 +486,7 @@ function MainApp({
         <View style={styles.sessionInfo}>
           <View style={[styles.statusDot, session.status === 'on' ? styles.statusDotOn : styles.statusDotOff]} />
           <Text style={styles.sessionText}>
-            {session.status === 'on' ? `Cloud Active: ${session.id}` : 'Local Mode'}
+            {syncStatus || (session.status === 'on' ? `Cloud Active: ${session.id}` : 'Local Mode')}
           </Text>
         </View>
         
