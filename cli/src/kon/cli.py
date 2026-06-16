@@ -25,9 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--base-url", "-u", help="Base URL for API")
     parser.add_argument(
-        "--openai-compat-auth",
-        choices=("auto", "required", "none"),
-        help="Auth mode for OpenAI-compatible endpoints",
+        "--openai-compat-auth", choices=("auto", "required", "none"), help="Auth mode for OpenAI-compatible endpoints"
     )
     parser.add_argument(
         "--anthropic-compat-auth",
@@ -40,33 +38,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Skip TLS verification (e.g. self-signed certs on local providers)",
     )
     parser.add_argument(
-        "--continue",
-        "-c",
-        action="store_true",
-        dest="continue_recent",
-        help="Resume the most recent session",
+        "--continue", "-c", action="store_true", dest="continue_recent", help="Resume the most recent session"
     )
     parser.add_argument(
-        "--resume",
-        "-r",
-        dest="resume_session",
-        help="Resume a specific session by ID (full or unique prefix)",
+        "--resume", "-r", dest="resume_session", help="Resume a specific session by ID (full or unique prefix)"
     )
     parser.add_argument("--version", action="version", version=f"rta {VERSION}")
     parser.add_argument(
-        "--extra-tools", nargs="?", const="__list__",
-        help="Comma-separated extra tools to enable. Run with no value to list available tools."
+        "--extra-tools",
+        nargs="?",
+        const="__list__",
+        help="Comma-separated extra tools to enable. Run with no value to list available tools.",
     )
     parser.add_argument(
-        "--repl",
-        action="store_true",
-        help="Minimal REPL mode: type messages and get responses without the full TUI",
+        "--repl", action="store_true", help="Minimal REPL mode: type messages and get responses without the full TUI"
     )
-    parser.add_argument(
-        "--stdio",
-        action="store_true",
-        help="JSON-lines pipe mode for IDE integration",
-    )
+    parser.add_argument("--stdio", action="store_true", help="JSON-lines pipe mode for IDE integration")
     return parser
 
 
@@ -79,12 +66,11 @@ def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-        handlers=[
-            logging.FileHandler(log_file, encoding="utf-8")
-        ]
+        handlers=[logging.FileHandler(log_file, encoding="utf-8")],
     )
     logger = logging.getLogger("kon")
     logger.info(f"--- Rta {VERSION} starting ---")
+
 
 def main() -> None:
     setup_logging()
@@ -104,16 +90,15 @@ def main() -> None:
         print("Warning: TLS verification disabled (--insecure-skip-verify)", file=sys.stderr)
         config.llm.tls.insecure_skip_verify = True
 
-    extra_tools = (
-        [t.strip() for t in args.extra_tools.split(",") if t.strip()] if args.extra_tools else None
-    )
+    extra_tools = [t.strip() for t in args.extra_tools.split(",") if t.strip()] if args.extra_tools else None
 
     if args.extra_tools == "__list__":
         from .tools import EXTRA_TOOLS
+
         print("Available extra tools:")
         for t in sorted(EXTRA_TOOLS):
             print(f"  {t}")
-        print(f"\nUsage: rta --extra-tools web_search,web_fetch,memory")
+        print("\nUsage: rta --extra-tools web_search,web_fetch,memory")
         sys.exit(0)
 
     if extra_tools:
@@ -123,8 +108,7 @@ def main() -> None:
         unknown = [t for t in extra_tools if t not in known]
         if unknown:
             print(
-                f"Warning: unknown tool(s) ignored: {', '.join(unknown)}\n"
-                f"Available: {', '.join(sorted(known))}",
+                f"Warning: unknown tool(s) ignored: {', '.join(unknown)}\nAvailable: {', '.join(sorted(known))}",
                 file=sys.stderr,
             )
             extra_tools = [t for t in extra_tools if t in known] or None

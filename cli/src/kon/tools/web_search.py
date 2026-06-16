@@ -10,9 +10,7 @@ from .base import BaseTool
 
 class WebSearchParams(BaseModel):
     query: str = Field(description="Search query")
-    max_results: int = Field(
-        description="Number of results to return (default 10)", default=10, ge=1, le=10
-    )
+    max_results: int = Field(description="Number of results to return (default 10)", default=10, ge=1, le=10)
 
 
 class WebSearchTool(BaseTool):
@@ -36,9 +34,7 @@ class WebSearchTool(BaseTool):
         query = params.query.replace('"', '\\"')
         return f'"{query}"'
 
-    async def execute(
-        self, params: WebSearchParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: WebSearchParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         def _search() -> list[dict]:
             return list(DDGS().text(params.query, max_results=params.max_results))
 
@@ -51,9 +47,7 @@ class WebSearchTool(BaseTool):
             return ToolResult(success=False, ui_summary=f"[red]Search failed: {e}[/red]")
 
         if not results:
-            return ToolResult(
-                success=True, result="No results found", ui_summary="[dim]No results found[/dim]"
-            )
+            return ToolResult(success=True, result="No results found", ui_summary="[dim]No results found[/dim]")
 
         lines = []
         for i, r in enumerate(results, 1):
@@ -70,12 +64,8 @@ class WebSearchTool(BaseTool):
 
 class DeepSearchParams(BaseModel):
     query: str = Field(..., description="The research query or topic to explore")
-    max_results: int = Field(
-        8, description="Maximum results to return after deduplication (default: 8)"
-    )
-    num_queries: int = Field(
-        3, description="Number of sub-queries to generate (default: 3, max: 5)"
-    )
+    max_results: int = Field(8, description="Maximum results to return after deduplication (default: 8)")
+    num_queries: int = Field(3, description="Number of sub-queries to generate (default: 3, max: 5)")
 
 
 class DeepSearchTool(BaseTool[DeepSearchParams]):
@@ -85,9 +75,7 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
     mutating = False
     tool_icon = "🔎"
 
-    async def execute(
-        self, params: DeepSearchParams, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: DeepSearchParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
         sub_queries = self._expand_queries(params.query, params.num_queries)
         seen_urls = set()
         all_results = []
@@ -115,9 +103,7 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
         if not all_results:
             return ToolResult(success=True, result=f"No results found for: {params.query}")
 
-        output = (
-            f"Deep search results for: {params.query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
-        )
+        output = f"Deep search results for: {params.query}\n(Sub-queries: {', '.join(sub_queries)})\n\n"
         for i, r in enumerate(all_results, 1):
             output += f"{i}. **{r.get('title', '(no title)')}**\n   {r.get('body', '')}\n   {r.get('href', '')}\n\n"
 

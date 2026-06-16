@@ -51,9 +51,7 @@ class CopilotProvider(OpenAICompletionsProvider):
             self._current_token = token
             creds = load_credentials()
             base_url = get_base_url_from_token(token, creds.enterprise_domain if creds else None)
-            self._client = AsyncOpenAI(
-                api_key=token, base_url=base_url, default_headers=COPILOT_HEADERS
-            )
+            self._client = AsyncOpenAI(api_key=token, base_url=base_url, default_headers=COPILOT_HEADERS)
 
         return self._client
 
@@ -74,11 +72,7 @@ class CopilotProvider(OpenAICompletionsProvider):
             default_headers={**COPILOT_HEADERS, **dynamic_headers},
         )
         return await super()._stream_impl(
-            messages,
-            system_prompt=system_prompt,
-            tools=tools,
-            temperature=temperature,
-            max_tokens=max_tokens,
+            messages, system_prompt=system_prompt, tools=tools, temperature=temperature, max_tokens=max_tokens
         )
 
 
@@ -108,9 +102,7 @@ class CopilotResponsesProvider(OpenAIResponsesProvider):
             self._current_token = token
             creds = load_credentials()
             base_url = get_base_url_from_token(token, creds.enterprise_domain if creds else None)
-            self._client = AsyncOpenAI(
-                api_key=token, base_url=base_url, default_headers=self._headers
-            )
+            self._client = AsyncOpenAI(api_key=token, base_url=base_url, default_headers=self._headers)
 
         return self._client
 
@@ -136,9 +128,5 @@ class CopilotResponsesProvider(OpenAIResponsesProvider):
             default_headers={**COPILOT_HEADERS, **dynamic_headers},
         )
         return await super()._stream_impl(
-            messages,
-            system_prompt=system_prompt,
-            tools=tools,
-            temperature=temperature,
-            max_tokens=max_tokens,
+            messages, system_prompt=system_prompt, tools=tools, temperature=temperature, max_tokens=max_tokens
         )

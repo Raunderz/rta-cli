@@ -36,8 +36,7 @@ class LSPClient:
 
             # Initialize
             res = self.send_request(
-                "initialize",
-                {"processId": os.getpid(), "rootUri": self.root_uri, "capabilities": {}},
+                "initialize", {"processId": os.getpid(), "rootUri": self.root_uri, "capabilities": {}}
             )
             if res:
                 self.send_notification("initialized", {})

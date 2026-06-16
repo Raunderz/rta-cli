@@ -71,21 +71,14 @@ class _StreamingMarkdownMixin:
 
     def _render_streaming_display(self) -> Text:
         display = self._completed_display.copy()
-        completed_needs_separator = self._completed.endswith("\n") or self._completed.endswith(
-            "\r"
-        )
+        completed_needs_separator = self._completed.endswith("\n") or self._completed.endswith("\r")
 
         if self._pending:
             if completed_needs_separator and display.plain:
                 display.append("\n")
             display.append(self._pending, style=self._streaming_pending_style())
 
-        if (
-            not self._stream_finalized
-            and completed_needs_separator
-            and not self._pending
-            and display.plain
-        ):
+        if not self._stream_finalized and completed_needs_separator and not self._pending and display.plain:
             display.append("\n")
 
         return display
@@ -274,12 +267,7 @@ class ToolBlock(Static):
     MAX_HEADER_LINES = 2
 
     def __init__(
-        self,
-        name: str = "",
-        call_msg: str | None = None,
-        icon: str = "→",
-        expanded: bool = False,
-        **kwargs,
+        self, name: str = "", call_msg: str | None = None, icon: str = "→", expanded: bool = False, **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self._name = name
@@ -322,10 +310,7 @@ class ToolBlock(Static):
             name_style = badge_style
 
         if self._awaiting_approval:
-            result.append(
-                " △ Permission required ",
-                style=Style(bgcolor=colors.notice, color=colors.bg, bold=True),
-            )
+            result.append(" △ Permission required ", style=Style(bgcolor=colors.notice, color=colors.bg, bold=True))
             result.append("\n\n")
 
         result.append(f"{self._icon} ", style=icon_style)
@@ -395,11 +380,7 @@ class ToolBlock(Static):
                 marker_spans = [span for span in line.spans if span.start <= marker_pos < span.end]
                 marker_style = marker_spans[0].style if marker_spans else None
                 line.plain = line.plain[:marker_pos] + line.plain[marker_end:]
-                line.spans = [
-                    span
-                    for span in line.spans
-                    if not (span.start >= marker_pos and span.end <= marker_end)
-                ]
+                line.spans = [span for span in line.spans if not (span.start >= marker_pos and span.end <= marker_end)]
                 padding = max(0, width - len(line.plain))
                 if padding:
                     line.append(" " * padding, style=marker_style)
@@ -420,9 +401,7 @@ class ToolBlock(Static):
         else:
             self.add_class("-error")
 
-    def show_approval(
-        self, preview: str | None = None, selected: ApprovalResponse | None = None
-    ) -> None:
+    def show_approval(self, preview: str | None = None, selected: ApprovalResponse | None = None) -> None:
         self._awaiting_approval = True
         self._approval_preview = preview
         if selected is not None:
@@ -462,9 +441,7 @@ class ToolBlock(Static):
         output.add_class("-hidden")
         output.update(Text(""))
 
-    def _format_approval_controls(
-        self, selected: ApprovalResponse = ApprovalResponse.APPROVE
-    ) -> Text:
+    def _format_approval_controls(self, selected: ApprovalResponse = ApprovalResponse.APPROVE) -> Text:
         colors = config.ui.colors
         text = Text()
         # The non-selected button uses the dim panel_alt background; the
@@ -525,13 +502,9 @@ class ToolBlock(Static):
 
     def _render_result_output(self) -> None:
         output = self.query_one("#tool-output", Label)
-        ui_details = (
-            self._ui_details_full if self._expanded and self._ui_details_full else self._ui_details
-        )
+        ui_details = self._ui_details_full if self._expanded and self._ui_details_full else self._ui_details
         if ui_details:
-            rendered = (
-                self._render_markup_safe(ui_details) if self._result_markup else Text(ui_details)
-            )
+            rendered = self._render_markup_safe(ui_details) if self._result_markup else Text(ui_details)
             is_diff_output = DIFF_BG_PAD_MARKER in rendered.plain
             rendered = self._pad_diff_backgrounds(rendered, output.size.width or self.size.width)
             # Detail blocks need a 1-line gap; drop compact spacing that was
@@ -591,12 +564,7 @@ class HandoffLinkBlock(Static):
     can_focus = False
 
     def __init__(
-        self,
-        label: str,
-        target_session_id: str,
-        query: str,
-        direction: Literal["back", "forward"],
-        **kwargs,
+        self, label: str, target_session_id: str, query: str, direction: Literal["back", "forward"], **kwargs
     ) -> None:
         super().__init__(**kwargs)
         self._label = label
@@ -613,9 +581,7 @@ class HandoffLinkBlock(Static):
 
         link_start = text.plain.find(link_text)
         if link_start != -1:
-            text.stylize(
-                f"{config.ui.colors.notice} underline", link_start, link_start + len(link_text)
-            )
+            text.stylize(f"{config.ui.colors.notice} underline", link_start, link_start + len(link_text))
 
         yield Label(text)
 
@@ -623,17 +589,11 @@ class HandoffLinkBlock(Static):
         event.stop()
         if not self._target_session_id:
             return
-        self.post_message(
-            self.LinkSelected(self, self._target_session_id, self._query, self._direction)
-        )
+        self.post_message(self.LinkSelected(self, self._target_session_id, self._query, self._direction))
 
     class LinkSelected(Message):
         def __init__(
-            self,
-            block: "HandoffLinkBlock",
-            target_session_id: str,
-            query: str,
-            direction: Literal["back", "forward"],
+            self, block: "HandoffLinkBlock", target_session_id: str, query: str, direction: Literal["back", "forward"]
         ) -> None:
             super().__init__()
             self.block = block

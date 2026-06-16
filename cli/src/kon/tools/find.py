@@ -19,12 +19,8 @@ MAX_OUTPUT_BYTES = 20 * 1024
 
 
 class FindParams(BaseModel):
-    pattern: str = Field(
-        description="Glob pattern to match files, e.g. '*.py', '**/*.json', or 'src/**/*.spec.ts'"
-    )
-    path: str | None = Field(
-        description="Directory to search in (default: current directory)", default=None
-    )
+    pattern: str = Field(description="Glob pattern to match files, e.g. '*.py', '**/*.json', or 'src/**/*.spec.ts'")
+    path: str | None = Field(description="Directory to search in (default: current directory)", default=None)
 
 
 class FindTool(BaseTool):
@@ -47,9 +43,7 @@ class FindTool(BaseTool):
             parts.append(f"in {shorten_path(params.path)}")
         return " ".join(parts)
 
-    async def execute(
-        self, params: FindParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: FindParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         if params.path:
             verify_path_sandbox(params.path, cwd)
 
@@ -96,9 +90,7 @@ class FindTool(BaseTool):
 
         if not output:
             return ToolResult(
-                success=True,
-                result="No files found matching pattern",
-                ui_summary="[dim]No files found[/dim]",
+                success=True, result="No files found matching pattern", ui_summary="[dim]No files found[/dim]"
             )
 
         lines = [line.strip() for line in output.split("\n") if line.strip()]
@@ -126,8 +118,7 @@ class FindTool(BaseTool):
 
         if truncated:
             result_text += (
-                f"\n\n[{MAX_RESULTS} results limit reached; "
-                "refine the pattern or path for more specific results]"
+                f"\n\n[{MAX_RESULTS} results limit reached; refine the pattern or path for more specific results]"
             )
 
         count = len(relativized)

@@ -44,9 +44,7 @@ warning = "#123456"
     assert any("Migrated config" in warning for warning in warnings)
 
 
-def test_v4_config_migrates_notification_volume_without_overwriting_existing_value(
-    tmp_path, monkeypatch
-):
+def test_v4_config_migrates_notification_volume_without_overwriting_existing_value(tmp_path, monkeypatch):
     home = tmp_path / "home"
     config_dir = home / ".rta"
     config_dir.mkdir(parents=True)
@@ -168,9 +166,7 @@ content = """Custom prompt
     reset_config()
     cfg = get_config()
 
-    assert cfg.llm.system_prompt.content.startswith(
-        "You are an expert coding assistant called Rta."
-    )
+    assert cfg.llm.system_prompt.content.startswith("You are an expert coding assistant called Rta.")
     assert "# Tool usage" not in cfg.llm.system_prompt.content
     assert "Old tool instruction" not in cfg.llm.system_prompt.content
     assert "~/.rta/skills" in cfg.llm.system_prompt.content
@@ -211,9 +207,7 @@ system_prompt = "legacy prompt"
     cfg = get_config()
 
     assert cfg.llm.default_model == "legacy-model"
-    assert cfg.llm.system_prompt.content.startswith(
-        "You are an expert coding assistant called Rta."
-    )
+    assert cfg.llm.system_prompt.content.startswith("You are an expert coding assistant called Rta.")
     assert "legacy prompt" not in cfg.llm.system_prompt.content
     assert cfg.llm.system_prompt.git_context is True
 

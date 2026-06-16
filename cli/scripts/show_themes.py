@@ -37,10 +37,7 @@ KON_THEME_TO_GHOSTTY_THEME = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--project-dir",
-        type=Path,
-        default=Path.cwd(),
-        help="Directory to open before running `uv run kon -c`.",
+        "--project-dir", type=Path, default=Path.cwd(), help="Directory to open before running `uv run kon -c`."
     )
     parser.add_argument(
         "--ghostty-config",
@@ -54,12 +51,8 @@ def parse_args() -> argparse.Namespace:
         default=Path.home() / ".config" / "kon" / "config.toml",
         help="Kon config file to rewrite during previews.",
     )
-    parser.add_argument(
-        "--duration", type=float, default=10.0, help="How long each preview stays open in seconds."
-    )
-    parser.add_argument(
-        "--pause", type=float, default=1.5, help="Pause between previews in seconds."
-    )
+    parser.add_argument("--duration", type=float, default=10.0, help="How long each preview stays open in seconds.")
+    parser.add_argument("--pause", type=float, default=1.5, help="Pause between previews in seconds.")
     parser.add_argument(
         "--ghostty-app",
         type=Path,
@@ -70,9 +63,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def list_ghostty_themes() -> set[str]:
-    result = subprocess.run(
-        ["ghostty", "+list-themes"], check=True, capture_output=True, text=True
-    )
+    result = subprocess.run(["ghostty", "+list-themes"], check=True, capture_output=True, text=True)
     themes = set()
     for line in result.stdout.splitlines():
         theme = line.strip()
@@ -144,9 +135,7 @@ def sh_quote(value: str) -> str:
 
 
 def launch_preview(ghostty_app: Path, project_dir: Path, duration: float) -> None:
-    trap_cmd = (
-        'trap \'test -n "$kon_pid" && kill -TERM "$kon_pid" 2>/dev/null || true\' EXIT INT TERM'
-    )
+    trap_cmd = 'trap \'test -n "$kon_pid" && kill -TERM "$kon_pid" 2>/dev/null || true\' EXIT INT TERM'
     shell_script = (
         f"cd {sh_quote(str(project_dir))} && "
         "kon_pid='' && "
@@ -187,12 +176,8 @@ def main() -> int:
     available_themes = list_ghostty_themes()
     ensure_theme_mapping_is_valid(available_themes)
 
-    original_ghostty_config = (
-        ghostty_config_path.read_text(encoding="utf-8") if ghostty_config_path.exists() else None
-    )
-    original_kon_config = (
-        kon_config_path.read_text(encoding="utf-8") if kon_config_path.exists() else None
-    )
+    original_ghostty_config = ghostty_config_path.read_text(encoding="utf-8") if ghostty_config_path.exists() else None
+    original_kon_config = kon_config_path.read_text(encoding="utf-8") if kon_config_path.exists() else None
 
     try:
         for kon_theme, ghostty_theme in KON_THEME_TO_GHOSTTY_THEME.items():

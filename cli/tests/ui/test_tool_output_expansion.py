@@ -79,9 +79,7 @@ async def test_diff_tool_output_is_clipped_instead_of_wrapped():
         block = chat.start_tool("edit", "tool-1", "~/file.py")
         await pilot.pause()
 
-        chat.set_tool_result(
-            "tool-1", None, f"[on #123456]+ long line{DIFF_BG_PAD_MARKER}[/]", True
-        )
+        chat.set_tool_result("tool-1", None, f"[on #123456]+ long line{DIFF_BG_PAD_MARKER}[/]", True)
         await pilot.pause()
 
         output = block.query_one("#tool-output", Label)

@@ -72,9 +72,7 @@ class TestCheckPermission:
         assert check_permission(BashTool(), {"command": "rm -rf /"}) == PermissionDecision.ALLOW
 
     def test_read_only_tool_always_allowed(self):
-        assert (
-            check_permission(ReadTool(), {"file_path": "/etc/passwd"}) == PermissionDecision.ALLOW
-        )
+        assert check_permission(ReadTool(), {"file_path": "/etc/passwd"}) == PermissionDecision.ALLOW
 
     def test_bash_safe_command_allowed(self):
         assert check_permission(BashTool(), {"command": "ls -la"}) == PermissionDecision.ALLOW
@@ -83,8 +81,5 @@ class TestCheckPermission:
         assert check_permission(BashTool(), {"command": "rm -rf /"}) == PermissionDecision.PROMPT
 
     def test_mutating_tool_prompts(self):
-        assert (
-            check_permission(WriteTool(), {"file_path": "x", "content": "y"})
-            == PermissionDecision.PROMPT
-        )
+        assert check_permission(WriteTool(), {"file_path": "x", "content": "y"}) == PermissionDecision.PROMPT
         assert check_permission(EditTool(), {"file_path": "x"}) == PermissionDecision.PROMPT

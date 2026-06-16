@@ -31,9 +31,7 @@ async def test_edit_single_replace(edit_tool, text_file):
 @pytest.mark.asyncio
 async def test_edit_replace_all(edit_tool, text_file):
     result = await edit_tool.execute(
-        EditParams(
-            path=str(text_file), old_string="line2", new_string="replaced", replace_all=True
-        ), cwd="/tmp"
+        EditParams(path=str(text_file), old_string="line2", new_string="replaced", replace_all=True), cwd="/tmp"
     )
     assert result.success
     assert "+2" in result.result
@@ -56,9 +54,7 @@ async def test_edit_not_found(edit_tool, text_file):
 @pytest.mark.asyncio
 async def test_edit_file_not_found(edit_tool, tmp_path):
     result = await edit_tool.execute(
-        EditParams(
-            path=str(tmp_path / "nonexistent.py"), old_string="line1", new_string="replaced"
-        ), cwd="/tmp"
+        EditParams(path=str(tmp_path / "nonexistent.py"), old_string="line1", new_string="replaced"), cwd="/tmp"
     )
     assert not result.success
     assert "File not found" in result.result

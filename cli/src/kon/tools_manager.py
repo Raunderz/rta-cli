@@ -166,10 +166,7 @@ async def _download_tool(tool: ToolName) -> str:
 
         _BIN_DIR.mkdir(parents=True, exist_ok=True)
 
-        download_url = (
-            f"https://github.com/{config.repo}/releases/download/"
-            f"{config.tag_prefix}{version}/{asset_name}"
-        )
+        download_url = f"https://github.com/{config.repo}/releases/download/{config.tag_prefix}{version}/{asset_name}"
 
         archive_path = _BIN_DIR / asset_name
         try:
@@ -207,9 +204,7 @@ async def ensure_tool(tool: ToolName, silent: bool = False) -> str | None:
         return None
 
 
-async def ensure_tools(
-    tools: list[ToolName] | None = None, silent: bool = False
-) -> dict[ToolName, str | None]:
+async def ensure_tools(tools: list[ToolName] | None = None, silent: bool = False) -> dict[ToolName, str | None]:
     if tools is None:
         tools = ["fd", "rg"]
     results = await asyncio.gather(*(ensure_tool(t, silent=silent) for t in tools))

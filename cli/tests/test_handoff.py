@@ -55,9 +55,7 @@ class _TestCommandsApp(CommandsMixin):
         self._provider = provider
         self._session = session
         self._agent = SimpleNamespace(
-            system_prompt="system",
-            context=SimpleNamespace(agents_files=[], skills=[]),
-            reload_context=lambda: None,
+            system_prompt="system", context=SimpleNamespace(agents_files=[], skills=[]), reload_context=lambda: None
         )
         self._is_running = False
         self._tools = []
@@ -161,9 +159,7 @@ async def test_generate_handoff_prompt_uses_query_and_messages(monkeypatch):
     provider = MockProvider()
     captured = {}
 
-    async def _fake_stream(
-        messages, *, system_prompt=None, tools=None, temperature=None, max_tokens=None
-    ):
+    async def _fake_stream(messages, *, system_prompt=None, tools=None, temperature=None, max_tokens=None):
         captured["messages"] = messages
         captured["system_prompt"] = system_prompt
 
@@ -177,10 +173,7 @@ async def test_generate_handoff_prompt_uses_query_and_messages(monkeypatch):
     monkeypatch.setattr(provider, "stream", _fake_stream)
 
     result = await generate_handoff_prompt(
-        [UserMessage(content="we changed auth")],
-        provider,
-        system_prompt="sys",
-        query="ship phase 2",
+        [UserMessage(content="we changed auth")], provider, system_prompt="sys", query="ship phase 2"
     )
 
     assert result == "Task: Continue"
@@ -193,9 +186,7 @@ async def test_generate_handoff_prompt_uses_query_and_messages(monkeypatch):
 async def test_do_handoff_creates_link_entries_and_prefills_prompt(monkeypatch):
     session = Session.in_memory("/test/project", provider="mock", model_id="mock-model")
     session.append_message(UserMessage(content="fix bug"))
-    session.append_message(
-        AssistantMessage(content=[TextContent(text="done")], stop_reason=StopReason.STOP)
-    )
+    session.append_message(AssistantMessage(content=[TextContent(text="done")], stop_reason=StopReason.STOP))
 
     provider = MockProvider()
     chat = _FakeChat()
@@ -221,9 +212,7 @@ async def test_do_handoff_creates_link_entries_and_prefills_prompt(monkeypatch):
     new_custom_entries = [e for e in app._session.entries if isinstance(e, CustomMessageEntry)]
     assert any(e.custom_type == app.HANDOFF_BACKLINK_TYPE for e in new_custom_entries)
 
-    original_custom_entries = [
-        e for e in original_session.entries if isinstance(e, CustomMessageEntry)
-    ]
+    original_custom_entries = [e for e in original_session.entries if isinstance(e, CustomMessageEntry)]
     assert any(e.custom_type == app.HANDOFF_FORWARD_LINK_TYPE for e in original_custom_entries)
 
 
@@ -236,12 +225,7 @@ async def test_new_conversation_resets_file_change_stats():
     info_bar = _FakeInfoBar()
     status_line = _FakeStatusLine()
     app = _TestCommandsApp(
-        session=session,
-        provider=provider,
-        chat=chat,
-        input_box=input_box,
-        info_bar=info_bar,
-        status_line=status_line,
+        session=session, provider=provider, chat=chat, input_box=input_box, info_bar=info_bar, status_line=status_line
     )
 
     await app._do_new_conversation(cast(Any, chat), info_bar, status_line)
@@ -255,9 +239,7 @@ def test_clear_conversation_resets_file_change_stats():
     chat = _FakeChat()
     input_box = _FakeInput()
     info_bar = _FakeInfoBar()
-    app = _TestCommandsApp(
-        session=session, provider=provider, chat=chat, input_box=input_box, info_bar=info_bar
-    )
+    app = _TestCommandsApp(session=session, provider=provider, chat=chat, input_box=input_box, info_bar=info_bar)
 
     app._clear_conversation()
 
@@ -269,13 +251,7 @@ def test_clear_conversation_creates_session_with_persisted_system_prompt(monkeyp
     original_create = Session.create
 
     def _fake_create(
-        cwd,
-        persist=True,
-        provider=None,
-        model_id=None,
-        thinking_level="high",
-        system_prompt=None,
-        tools=None,
+        cwd, persist=True, provider=None, model_id=None, thinking_level="high", system_prompt=None, tools=None
     ):
         captured["system_prompt"] = system_prompt
         return original_create(

@@ -65,9 +65,7 @@ class OllamaProvider(BaseProvider):
         llm_stream.set_iterator(self._process_stream(payload, llm_stream))
         return llm_stream
 
-    async def _process_stream(
-        self, payload: dict[str, Any], llm_stream: LLMStream
-    ) -> AsyncIterator[StreamPart]:
+    async def _process_stream(self, payload: dict[str, Any], llm_stream: LLMStream) -> AsyncIterator[StreamPart]:
         try:
             async with (
                 httpx.AsyncClient(timeout=120.0) as client,
@@ -75,9 +73,7 @@ class OllamaProvider(BaseProvider):
             ):
                 if response.status_code != 200:
                     error_text = await response.aread()
-                    yield StreamError(
-                        error=f"Ollama Error {response.status_code}: {error_text.decode()}"
-                    )
+                    yield StreamError(error=f"Ollama Error {response.status_code}: {error_text.decode()}")
                     return
 
                 emitted_tool_ids = set()
@@ -93,8 +89,7 @@ class OllamaProvider(BaseProvider):
                     if chunk.get("done"):
                         if "prompt_eval_count" in chunk:
                             llm_stream._usage = Usage(
-                                input_tokens=chunk.get("prompt_eval_count", 0),
-                                output_tokens=chunk.get("eval_count", 0),
+                                input_tokens=chunk.get("prompt_eval_count", 0), output_tokens=chunk.get("eval_count", 0)
                             )
                         break
 
@@ -128,9 +123,7 @@ class OllamaProvider(BaseProvider):
         except Exception as e:
             yield StreamError(error=f"Ollama Connection Error: {e!s}")
 
-    def _convert_messages(
-        self, messages: list[Message], system_prompt: str | None
-    ) -> list[dict[str, Any]]:
+    def _convert_messages(self, messages: list[Message], system_prompt: str | None) -> list[dict[str, Any]]:
         result = []
         if system_prompt:
             result.append({"role": "system", "content": system_prompt})
@@ -161,36 +154,21 @@ class OllamaProvider(BaseProvider):
                         content_parts.append(item.thinking)
                     elif isinstance(item, ToolCall):
                         tool_calls.append(
-                            {
-                                "type": "function",
-                                "function": {"name": item.name, "arguments": item.arguments},
-                            }
+                            {"type": "function", "function": {"name": item.name, "arguments": item.arguments}}
                         )
 
-                res_msg = {
-                    "role": "assistant",
-                    "content": "".join(content_parts) if content_parts else None,
-                }
+                res_msg = {"role": "assistant", "content": "".join(content_parts) if content_parts else None}
                 if tool_calls:
                     res_msg["tool_calls"] = tool_calls
                 result.append(res_msg)
             elif isinstance(msg, ToolResultMessage):
                 text_parts = [item.text for item in msg.content if isinstance(item, TextContent)]
-                result.append(
-                    {"role": "tool", "content": "\n".join(text_parts) if text_parts else ""}
-                )
+                result.append({"role": "tool", "content": "\n".join(text_parts) if text_parts else ""})
         return result
 
     def _convert_tools(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:
         return [
-            {
-                "type": "function",
-                "function": {
-                    "name": t.name,
-                    "description": t.description,
-                    "parameters": t.parameters,
-                },
-            }
+            {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.parameters}}
             for t in tools
         ]
 

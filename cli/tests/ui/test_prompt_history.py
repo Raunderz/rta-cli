@@ -84,13 +84,7 @@ def test_corrupt_lines_ignored(tmp_path):
     path = ph._history_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
-        json.dumps("good")
-        + "\n"
-        + "not valid json\n"
-        + json.dumps(42)
-        + "\n"
-        + json.dumps("also good")
-        + "\n",
+        json.dumps("good") + "\n" + "not valid json\n" + json.dumps(42) + "\n" + json.dumps("also good") + "\n",
         encoding="utf-8",
     )
 

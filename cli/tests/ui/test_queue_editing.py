@@ -11,10 +11,7 @@ class FakeQueueDisplay:
         self.editing: int | None = None
 
     def update_items(
-        self,
-        items: list[tuple[str, bool]],
-        selected: int | None = None,
-        editing: int | None = None,
+        self, items: list[tuple[str, bool]], selected: int | None = None, editing: int | None = None
     ) -> None:
         self.items = items
         self.selected = selected
@@ -92,11 +89,7 @@ def test_editing_last_queue_item_keeps_visible_editing_placeholder() -> None:
     assert list(app._pending_queue) == [("display one", "query one"), ("display two", "query two")]
     assert app.input_box.text == "query three"
     assert app.input_box.focused is True
-    assert app.queue_display.items == [
-        ("display one", False),
-        ("display two", False),
-        ("display three", False),
-    ]
+    assert app.queue_display.items == [("display one", False), ("display two", False), ("display three", False)]
     assert app.queue_display.selected == 2
     assert app.queue_display.editing == 2
 
@@ -146,9 +139,6 @@ def test_ctrl_d_delete_removes_selected_queue_item() -> None:
 
     assert app.delete_selected_queue_item() is True
 
-    assert list(app._pending_queue) == [
-        ("display one", "query one"),
-        ("display three", "query three"),
-    ]
+    assert list(app._pending_queue) == [("display one", "query one"), ("display three", "query three")]
     assert app.queue_display.items == [("display one", False), ("display three", False)]
     assert app.queue_display.selected == 1

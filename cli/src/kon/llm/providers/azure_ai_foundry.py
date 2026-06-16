@@ -27,6 +27,4 @@ class AzureAIFoundryProvider(AnthropicProvider):
                 "Set AZURE_AI_FOUNDRY_BASE_URL environment variable or pass base_url in config."
             )
 
-        self._client = AsyncAnthropic(
-            api_key=api_key, base_url=base_url, http_client=make_http_client()
-        )
+        self._client = AsyncAnthropic(api_key=api_key, base_url=base_url, http_client=make_http_client())

@@ -17,9 +17,7 @@ def escape_tool_output_text(text: str) -> str:
     return "\n".join(escape(line) for line in text.split("\n"))
 
 
-def truncate_tool_output_text(
-    text: str, max_lines: int = 5, escape_lines: bool = True
-) -> tuple[str, bool]:
+def truncate_tool_output_text(text: str, max_lines: int = 5, escape_lines: bool = True) -> tuple[str, bool]:
     if not text:
         return text, False
 

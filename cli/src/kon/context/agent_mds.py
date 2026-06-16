@@ -110,13 +110,7 @@ def formatted_agent_mds(agents_files: list[ContextFile]) -> str:
     if not agents_files:
         return ""
 
-    lines = [
-        "# Project Context",
-        "",
-        "Project guidelines for coding agents.",
-        "",
-        "<project_guidelines>",
-    ]
+    lines = ["# Project Context", "", "Project guidelines for coding agents.", "", "<project_guidelines>"]
 
     for ctx in agents_files:
         lines.append(f'<file path="{escape_xml(ctx.path)}">')

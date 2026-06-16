@@ -20,9 +20,7 @@ class BaseTool[T: BaseModel](ABC):
     prompt_guidelines: tuple[str, ...] = ()
 
     @abstractmethod
-    async def execute(
-        self, params: T, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult: ...
+    async def execute(self, params: T, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult: ...
 
     def format_call(self, params: T) -> str:
         data = params.model_dump(exclude_none=True)

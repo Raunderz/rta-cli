@@ -2,14 +2,7 @@ import json
 
 import pytest
 
-from kon.tools.memory import (
-    ForgetParams,
-    ForgetTool,
-    MemorizeParams,
-    MemorizeTool,
-    RecallParams,
-    RecallTool,
-)
+from kon.tools.memory import ForgetParams, ForgetTool, MemorizeParams, MemorizeTool, RecallParams, RecallTool
 
 
 @pytest.fixture

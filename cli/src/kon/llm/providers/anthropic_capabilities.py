@@ -43,9 +43,7 @@ class AnthropicCapabilities:
     effort_map: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_EFFORT_MAP))
 
     # For non-adaptive thinking models, custom per-level token budgets.
-    thinking_budgets: dict[str, int] = field(
-        default_factory=lambda: dict(DEFAULT_THINKING_BUDGETS)
-    )
+    thinking_budgets: dict[str, int] = field(default_factory=lambda: dict(DEFAULT_THINKING_BUDGETS))
 
     # Non-adaptive thinking models need the interleaved-thinking beta header
     # to use thinking between tool calls. Adaptive models include it natively.
@@ -79,18 +77,10 @@ _OPUS_4_6 = AnthropicCapabilities(
 
 _SONNET_4_6 = AnthropicCapabilities(
     adaptive_thinking=True,
-    effort_map={
-        "minimal": "low",
-        "low": "low",
-        "medium": "medium",
-        "high": "high",
-        "xhigh": "max",
-    },
+    effort_map={"minimal": "low", "low": "low", "medium": "medium", "high": "high", "xhigh": "max"},
 )
 
-_LEGACY_THINKING = AnthropicCapabilities(
-    adaptive_thinking=False, supports_interleaved_thinking_beta=True
-)
+_LEGACY_THINKING = AnthropicCapabilities(adaptive_thinking=False, supports_interleaved_thinking_beta=True)
 
 
 # Order matters: more specific patterns first. Patterns are matched against

@@ -16,9 +16,7 @@ def text_file(tmp_path):
 
 @pytest.mark.asyncio
 async def test_write(write_tool, text_file):
-    tool_result = await write_tool.execute(
-        WriteParams(path=str(text_file), content="line1\nline2\nline3"), cwd="/tmp"
-    )
+    tool_result = await write_tool.execute(WriteParams(path=str(text_file), content="line1\nline2\nline3"), cwd="/tmp")
     assert tool_result.success
     assert "Created" in tool_result.result
     assert "+3" in tool_result.result

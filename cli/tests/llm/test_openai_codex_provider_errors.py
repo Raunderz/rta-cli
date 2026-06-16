@@ -5,14 +5,7 @@ from typing import Any, cast
 
 import pytest
 
-from kon.core.types import (
-    StopReason,
-    StreamDone,
-    StreamError,
-    TextPart,
-    ToolCallDelta,
-    ToolCallStart,
-)
+from kon.core.types import StopReason, StreamDone, StreamError, TextPart, ToolCallDelta, ToolCallStart
 from kon.llm.base import LLMStream, ProviderConfig
 from kon.llm.oauth.openai import OpenAICredentials
 from kon.llm.providers import openai_codex_responses as codex_provider
@@ -60,16 +53,12 @@ def test_format_provider_error_falls_back_for_empty_message():
 
 
 def test_resolve_websocket_url_uses_ws_scheme_and_codex_responses_path():
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(base_url="https://chatgpt.com/backend-api", model="gpt-5.5")
-    )
+    provider = OpenAICodexResponsesProvider(ProviderConfig(base_url="https://chatgpt.com/backend-api", model="gpt-5.5"))
     assert provider._resolve_websocket_url() == "wss://chatgpt.com/backend-api/codex/responses"
 
 
 def test_websocket_headers_use_beta_and_request_id():
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-123", model="gpt-5.5")
-    )
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-123", model="gpt-5.5"))
     headers = provider._build_websocket_headers("token", "account")
     assert headers["OpenAI-Beta"] == "responses_websockets=2026-02-06"
     assert headers["session_id"] == "session-123"
@@ -115,9 +104,7 @@ def test_request_body_matches_pi_codex_defaults_and_clamps_cache_key():
         (400, "bad request", False),
     ],
 )
-def test_retryable_response_error_matches_status_or_transient_text(
-    status: int, error_text: str, expected: bool
-):
+def test_retryable_response_error_matches_status_or_transient_text(status: int, error_text: str, expected: bool):
     assert _is_retryable_response_error(status, error_text) is expected
 
 
@@ -125,10 +112,7 @@ def test_retryable_response_error_matches_status_or_transient_text(
 async def test_stream_impl_uses_valid_credentials_for_token_and_account(monkeypatch):
     provider = OpenAICodexResponsesProvider(ProviderConfig(model="gpt-5.5"))
     creds = OpenAICredentials(
-        refresh="refresh",
-        access="access-token",
-        expires=9_999_999_999_999,
-        account_id="account-id",
+        refresh="refresh", access="access-token", expires=9_999_999_999_999, account_id="account-id"
     )
     captured: dict[str, Any] = {}
 
@@ -169,9 +153,7 @@ async def test_stream_impl_raises_when_openai_credentials_are_invalid(monkeypatc
 
 @pytest.mark.asyncio
 async def test_stream_falls_back_to_sse_when_websocket_fails_before_events(monkeypatch):
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-fallback", model="gpt-5.5")
-    )
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-fallback", model="gpt-5.5"))
 
     async def fail_websocket(*args, **kwargs):
         raise CodexTransportError("websocket unavailable")
@@ -205,12 +187,8 @@ async def test_stream_falls_back_to_sse_when_websocket_fails_before_events(monke
 
 
 @pytest.mark.asyncio
-async def test_stream_emits_stream_error_and_records_fallback_on_mid_stream_ws_failure(
-    monkeypatch,
-):
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-mid", model="gpt-5.5")
-    )
+async def test_stream_emits_stream_error_and_records_fallback_on_mid_stream_ws_failure(monkeypatch):
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-mid", model="gpt-5.5"))
 
     async def ws_events(*args, **kwargs):
         yield {"type": "response.output_text.delta", "delta": "hi"}
@@ -250,12 +228,8 @@ async def test_stream_emits_stream_error_and_records_fallback_on_mid_stream_ws_f
 
 
 @pytest.mark.asyncio
-async def test_stream_falls_back_to_sse_after_raw_websocket_event_without_stream_parts(
-    monkeypatch,
-):
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-raw-start", model="gpt-5.5")
-    )
+async def test_stream_falls_back_to_sse_after_raw_websocket_event_without_stream_parts(monkeypatch):
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-raw-start", model="gpt-5.5"))
 
     async def ws_events(*args, **kwargs):
         on_event = kwargs.get("on_event")
@@ -294,9 +268,7 @@ async def test_stream_falls_back_to_sse_after_raw_websocket_event_without_stream
 
 @pytest.mark.asyncio
 async def test_stream_propagates_non_codex_exception_from_websocket_setup(monkeypatch):
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-bug", model="gpt-5.5")
-    )
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-bug", model="gpt-5.5"))
 
     async def buggy_websocket(*args, **kwargs):
         raise KeyError("oops")
@@ -326,9 +298,7 @@ async def test_stream_propagates_non_codex_exception_from_websocket_setup(monkey
 
 @pytest.mark.asyncio
 async def test_websocket_reuse_sends_only_cached_input_delta(monkeypatch):
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-cache", model="gpt-5.5")
-    )
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-cache", model="gpt-5.5"))
     sent_bodies: list[dict[str, Any]] = []
     response_ids = ["resp_1", "resp_2"]
     message_ids = ["msg_1", "msg_2"]
@@ -363,10 +333,7 @@ async def test_websocket_reuse_sends_only_cached_input_delta(monkeypatch):
                         "content": [{"type": "output_text", "text": text}],
                     },
                 },
-                {
-                    "type": "response.completed",
-                    "response": {"id": response_id, "status": "completed"},
-                },
+                {"type": "response.completed", "response": {"id": response_id, "status": "completed"}},
             ]
 
         def __aiter__(self):
@@ -376,8 +343,7 @@ async def test_websocket_reuse_sends_only_cached_input_delta(monkeypatch):
             if not self._events:
                 raise StopAsyncIteration
             return SimpleNamespace(
-                type=codex_provider.aiohttp.WSMsgType.TEXT,
-                data=codex_provider.json.dumps(self._events.pop(0)),
+                type=codex_provider.aiohttp.WSMsgType.TEXT, data=codex_provider.json.dumps(self._events.pop(0))
             )
 
         def exception(self):
@@ -435,16 +401,12 @@ async def test_websocket_reuse_sends_only_cached_input_delta(monkeypatch):
     assert len(sent_bodies) == 2
     assert sent_bodies[0].get("previous_response_id") is None
     assert sent_bodies[1]["previous_response_id"] == "resp_1"
-    assert sent_bodies[1]["input"] == [
-        {"role": "user", "content": [{"type": "input_text", "text": "Now finish"}]}
-    ]
+    assert sent_bodies[1]["input"] == [{"role": "user", "content": [{"type": "input_text", "text": "Now finish"}]}]
 
 
 @pytest.mark.asyncio
 async def test_cancelled_websocket_stream_closes_and_evicts_cached_connection(monkeypatch):
-    provider = OpenAICodexResponsesProvider(
-        ProviderConfig(session_id="session-cancel", model="gpt-5.5")
-    )
+    provider = OpenAICodexResponsesProvider(ProviderConfig(session_id="session-cancel", model="gpt-5.5"))
     sent = asyncio.Event()
     receiving = asyncio.Event()
 
@@ -485,9 +447,7 @@ async def test_cancelled_websocket_stream_closes_and_evicts_cached_connection(mo
     monkeypatch.setattr(provider, "_new_websocket_connection", fake_new_connection)
 
     events = provider._stream_websocket_events(
-        {"model": "gpt-5.5", "stream": True},
-        {"Authorization": "Bearer t"},
-        session_id="session-cancel",
+        {"model": "gpt-5.5", "stream": True}, {"Authorization": "Bearer t"}, session_id="session-cancel"
     )
 
     async def next_event() -> dict[str, Any]:
@@ -511,21 +471,11 @@ async def test_process_codex_events_routes_parallel_function_call_deltas_by_item
     events: list[dict[str, Any]] = [
         {
             "type": "response.output_item.added",
-            "item": {
-                "type": "function_call",
-                "id": "item_A",
-                "call_id": "call_A",
-                "name": "tool_a",
-            },
+            "item": {"type": "function_call", "id": "item_A", "call_id": "call_A", "name": "tool_a"},
         },
         {
             "type": "response.output_item.added",
-            "item": {
-                "type": "function_call",
-                "id": "item_B",
-                "call_id": "call_B",
-                "name": "tool_b",
-            },
+            "item": {"type": "function_call", "id": "item_B", "call_id": "call_B", "name": "tool_b"},
         },
         {"type": "response.function_call_arguments.delta", "item_id": "item_A", "delta": "{"},
         {"type": "response.function_call_arguments.delta", "item_id": "item_B", "delta": "{"},
@@ -561,23 +511,10 @@ async def test_process_codex_events_done_reconciliation_appends_missing_suffix()
     events: list[dict[str, Any]] = [
         {
             "type": "response.output_item.added",
-            "item": {
-                "type": "function_call",
-                "id": "item_A",
-                "call_id": "call_A",
-                "name": "tool_a",
-            },
+            "item": {"type": "function_call", "id": "item_A", "call_id": "call_A", "name": "tool_a"},
         },
-        {
-            "type": "response.function_call_arguments.delta",
-            "item_id": "item_A",
-            "delta": '{"cmd":"ec',
-        },
-        {
-            "type": "response.function_call_arguments.done",
-            "item_id": "item_A",
-            "arguments": '{"cmd":"echo"}',
-        },
+        {"type": "response.function_call_arguments.delta", "item_id": "item_A", "delta": '{"cmd":"ec'},
+        {"type": "response.function_call_arguments.done", "item_id": "item_A", "arguments": '{"cmd":"echo"}'},
         {"type": "response.completed", "response": {"status": "completed"}},
     ]
 
@@ -631,23 +568,10 @@ async def test_process_codex_events_final_arguments_can_replace_partial_argument
     events: list[dict[str, Any]] = [
         {
             "type": "response.output_item.added",
-            "item": {
-                "type": "function_call",
-                "id": "item_A",
-                "call_id": "call_A",
-                "name": "tool_a",
-            },
+            "item": {"type": "function_call", "id": "item_A", "call_id": "call_A", "name": "tool_a"},
         },
-        {
-            "type": "response.function_call_arguments.delta",
-            "item_id": "item_A",
-            "delta": '{"broken":',
-        },
-        {
-            "type": "response.function_call_arguments.done",
-            "item_id": "item_A",
-            "arguments": '{"path":"/tmp"}',
-        },
+        {"type": "response.function_call_arguments.delta", "item_id": "item_A", "delta": '{"broken":'},
+        {"type": "response.function_call_arguments.done", "item_id": "item_A", "arguments": '{"path":"/tmp"}'},
         {"type": "response.completed", "response": {"status": "completed"}},
     ]
 
@@ -667,10 +591,7 @@ async def test_incomplete_response_with_content_filter_maps_to_stop_reason_error
     events: list[dict[str, Any]] = [
         {
             "type": "response.incomplete",
-            "response": {
-                "status": "incomplete",
-                "incomplete_details": {"reason": "content_filter"},
-            },
+            "response": {"status": "incomplete", "incomplete_details": {"reason": "content_filter"}},
         }
     ]
 
@@ -690,11 +611,7 @@ def test_apply_response_metadata_preserves_zero_cache_write_tokens():
             "input_tokens": 100,
             "output_tokens": 50,
             "cache_write_tokens": 7,
-            "input_tokens_details": {
-                "cached_tokens": 0,
-                "cache_write_tokens": 0,
-                "cache_creation_tokens": 9,
-            },
+            "input_tokens_details": {"cached_tokens": 0, "cache_write_tokens": 0, "cache_creation_tokens": 9},
         }
     }
     provider._apply_response_metadata(response_obj, llm_stream)

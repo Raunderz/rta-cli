@@ -36,7 +36,7 @@ async def test_youtube_transcript_success(monkeypatch):
 async def test_youtube_transcript_invalid_url():
     from kon.context.project import ProjectInfo
 
-    monkeypatch_info = ProjectInfo(language="python")
+    ProjectInfo(language="python")
 
     tool = YouTubeTranscriptTool()
     params = YouTubeTranscriptParams(video_url="https://example.com")

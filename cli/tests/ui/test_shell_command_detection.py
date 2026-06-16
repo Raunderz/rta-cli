@@ -107,9 +107,7 @@ async def test_execute_shell_command_basic():
     mock_result.ui_details_full = "expanded output"
     mock_result.ui_summary = "Command completed"
 
-    with patch.object(
-        BashTool, "execute", new_callable=AsyncMock, return_value=mock_result
-    ) as execute:
+    with patch.object(BashTool, "execute", new_callable=AsyncMock, return_value=mock_result) as execute:
         # Call the method
         await Rta._execute_shell_command(app, "ls -la", False)
 
@@ -122,12 +120,7 @@ async def test_execute_shell_command_basic():
 
     # Verify tool result was routed through ChatLog
     mock_chat.set_tool_result.assert_called_once_with(
-        "shell-1",
-        "Command completed",
-        "collapsed output",
-        True,
-        markup=True,
-        ui_details_full="expanded output",
+        "shell-1", "Command completed", "collapsed output", True, markup=True, ui_details_full="expanded output"
     )
     assert execute.call_args.kwargs["inline_output"] is False
 
@@ -160,9 +153,7 @@ async def test_execute_shell_command_with_llm():
     # Mock the _run_agent method
     app._run_agent = AsyncMock()
 
-    with patch.object(
-        BashTool, "execute", new_callable=AsyncMock, return_value=mock_result
-    ) as execute:
+    with patch.object(BashTool, "execute", new_callable=AsyncMock, return_value=mock_result) as execute:
         # Call the method with send_to_llm=True
         await Rta._execute_shell_command(app, "git status", True)
 
@@ -175,12 +166,7 @@ async def test_execute_shell_command_with_llm():
     assert app._interrupt_requested is False
     assert execute.call_args.kwargs["inline_output"] is False
     mock_chat.set_tool_result.assert_called_once_with(
-        "shell-1",
-        "Command completed",
-        "collapsed output",
-        True,
-        markup=True,
-        ui_details_full="expanded output",
+        "shell-1", "Command completed", "collapsed output", True, markup=True, ui_details_full="expanded output"
     )
 
 

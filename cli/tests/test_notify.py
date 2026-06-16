@@ -77,19 +77,7 @@ def test_notify_uses_configured_linux_player_volumes(monkeypatch):
                 "/sounds/error.wav",
             ],
         ),
-        (
-            "ffplay",
-            [
-                "ffplay",
-                "-nodisp",
-                "-autoexit",
-                "-loglevel",
-                "quiet",
-                "-volume",
-                "25",
-                "/sounds/error.wav",
-            ],
-        ),
+        ("ffplay", ["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", "25", "/sounds/error.wav"]),
     ]
 
     for player, expected_command in cases:
@@ -118,9 +106,7 @@ def test_notify_ignores_unsupported_platform(monkeypatch):
 
 def test_linux_player_prefers_paplay(monkeypatch):
     mod._linux_player.cache_clear()
-    monkeypatch.setattr(
-        mod.shutil, "which", lambda command: command if command == "paplay" else None
-    )
+    monkeypatch.setattr(mod.shutil, "which", lambda command: command if command == "paplay" else None)
 
     assert mod._linux_player() == "paplay"
 
@@ -129,9 +115,7 @@ def test_linux_player_prefers_paplay(monkeypatch):
 
 def test_linux_player_falls_back_to_aplay(monkeypatch):
     mod._linux_player.cache_clear()
-    monkeypatch.setattr(
-        mod.shutil, "which", lambda command: command if command == "aplay" else None
-    )
+    monkeypatch.setattr(mod.shutil, "which", lambda command: command if command == "aplay" else None)
 
     assert mod._linux_player() == "aplay"
 

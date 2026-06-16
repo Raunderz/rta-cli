@@ -26,14 +26,7 @@ _ANSI_ESCAPE_RE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07]*\x07|\x1b[()]
 
 
 def _get_env() -> dict[str, str]:
-    return {
-        **os.environ,
-        "CI": "true",
-        "NO_COLOR": "1",
-        "TERM": "dumb",
-        "GIT_PAGER": "cat",
-        "PAGER": "cat",
-    }
+    return {**os.environ, "CI": "true", "NO_COLOR": "1", "TERM": "dumb", "GIT_PAGER": "cat", "PAGER": "cat"}
 
 
 def _get_shell() -> str | None:
@@ -123,18 +116,14 @@ def _write_full_output_to_temp(output: str) -> str:
 
 class BashParams(BaseModel):
     command: str = Field(description="The bash command to execute")
-    timeout: int = Field(
-        description=f"Timeout in seconds (default {DEFAULT_TIMEOUT})", default=DEFAULT_TIMEOUT
-    )
+    timeout: int = Field(description=f"Timeout in seconds (default {DEFAULT_TIMEOUT})", default=DEFAULT_TIMEOUT)
 
 
 class BashTool(BaseTool):
     name = "bash"
     tool_icon = "$"
     params = BashParams
-    prompt_guidelines = (
-        "Use bash for terminal operations (git, package managers, builds, tests, running scripts)",
-    )
+    prompt_guidelines = ("Use bash for terminal operations (git, package managers, builds, tests, running scripts)",)
     description = (
         "Execute a bash command in the current working directory. "
         f"Output truncated to last {MAX_OUTPUT_LINES} lines or {MAX_OUTPUT_BYTES // 1024}KB. "
@@ -156,9 +145,7 @@ class BashTool(BaseTool):
     def format_call(self, params: BashParams) -> str:
         return params.command
 
-    def _format_display(
-        self, output: str, max_lines: int = 5, max_line_chars: int = 500
-    ) -> tuple[str, str | None]:
+    def _format_display(self, output: str, max_lines: int = 5, max_line_chars: int = 500) -> tuple[str, str | None]:
         truncation_color = config.ui.colors.dim
 
         if not output:
@@ -176,8 +163,7 @@ class BashTool(BaseTool):
                 hidden_chars = len(line) - max_line_chars
                 char_truncated = True
                 full_formatted.append(
-                    f"[dim]{visible}[/dim]"
-                    f"[{truncation_color}]... ({hidden_chars} more chars)[/{truncation_color}]"
+                    f"[dim]{visible}[/dim][{truncation_color}]... ({hidden_chars} more chars)[/{truncation_color}]"
                 )
             else:
                 escaped = line.replace("[", "\\[")
@@ -191,11 +177,7 @@ class BashTool(BaseTool):
         return collapsed_display, expanded_display
 
     async def execute(
-        self,
-        params: BashParams,
-        cwd: str,
-        cancel_event: asyncio.Event | None = None,
-        inline_output: bool = False,
+        self, params: BashParams, cwd: str, cancel_event: asyncio.Event | None = None, inline_output: bool = False
     ) -> ToolResult:
         if not params.command.strip():
             msg = "Command cannot be empty"
@@ -205,9 +187,7 @@ class BashTool(BaseTool):
 
         cwd_path = Path(cwd)
         if not cwd_path.exists():
-            return ToolResult(
-                success=False, ui_summary=f"[red]Working directory does not exist: {cwd_path}[/red]"
-            )
+            return ToolResult(success=False, ui_summary=f"[red]Working directory does not exist: {cwd_path}[/red]")
 
         proc = None
         try:
@@ -228,9 +208,7 @@ class BashTool(BaseTool):
                 if cancel_event:
                     cancel_wait = asyncio.create_task(cancel_event.wait())
                     done, pending = await asyncio.wait(
-                        [comm_task, cancel_wait],
-                        timeout=params.timeout,
-                        return_when=asyncio.FIRST_COMPLETED,
+                        [comm_task, cancel_wait], timeout=params.timeout, return_when=asyncio.FIRST_COMPLETED
                     )
 
                     if not done:
@@ -240,17 +218,14 @@ class BashTool(BaseTool):
                                 await task
                         await _kill_process_tree(proc)
                         return ToolResult(
-                            success=False,
-                            ui_summary=f"[red]Command timed out after {params.timeout}s[/red]",
+                            success=False, ui_summary=f"[red]Command timed out after {params.timeout}s[/red]"
                         )
 
                     if cancel_wait in done and cancel_event.is_set():
                         await _kill_process_tree(proc)
                         if not comm_task.done():
                             with contextlib.suppress(asyncio.CancelledError, TimeoutError):
-                                await asyncio.wait_for(
-                                    asyncio.shield(comm_task), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS
-                                )
+                                await asyncio.wait_for(asyncio.shield(comm_task), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS)
                             if not comm_task.done():
                                 comm_task.cancel()
                                 with contextlib.suppress(asyncio.CancelledError):
@@ -268,25 +243,18 @@ class BashTool(BaseTool):
 
                     stdout_bytes, stderr_bytes = comm_task.result()
                 else:
-                    stdout_bytes, stderr_bytes = await asyncio.wait_for(
-                        comm_task, timeout=params.timeout
-                    )
+                    stdout_bytes, stderr_bytes = await asyncio.wait_for(comm_task, timeout=params.timeout)
 
             except TimeoutError:
                 await _kill_process_tree(proc)
                 if comm_task is not None and not comm_task.done():
                     with contextlib.suppress(asyncio.CancelledError, TimeoutError):
-                        await asyncio.wait_for(
-                            asyncio.shield(comm_task), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS
-                        )
+                        await asyncio.wait_for(asyncio.shield(comm_task), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS)
                     if not comm_task.done():
                         comm_task.cancel()
                         with contextlib.suppress(asyncio.CancelledError):
                             await comm_task
-                return ToolResult(
-                    success=False,
-                    ui_summary=f"[red]Command timed out after {params.timeout}s[/red]",
-                )
+                return ToolResult(success=False, ui_summary=f"[red]Command timed out after {params.timeout}s[/red]")
 
             stdout = _sanitize_output(stdout_bytes.decode("utf-8", errors="replace"))
             stderr = _sanitize_output(stderr_bytes.decode("utf-8", errors="replace"))
@@ -300,10 +268,7 @@ class BashTool(BaseTool):
 
             trunc = _truncate_tail(full_output)
             if trunc.truncated:
-                marker = (
-                    f"\n\n[output truncated to last {trunc.lines_kept} lines "
-                    f"of {trunc.total_lines}"
-                )
+                marker = f"\n\n[output truncated to last {trunc.lines_kept} lines of {trunc.total_lines}"
                 if inline_output:
                     marker += "]"
                 else:
@@ -314,9 +279,7 @@ class BashTool(BaseTool):
             result_text = trunc.content or "(no output)"
 
             display_max = sys.maxsize if inline_output else 5
-            display_text, display_text_full = self._format_display(
-                trunc.content, max_lines=display_max
-            )
+            display_text, display_text_full = self._format_display(trunc.content, max_lines=display_max)
 
             non_empty_lines = [line for line in (trunc.content or "").split("\n") if line.strip()]
             is_single_line = len(non_empty_lines) <= 1
@@ -326,10 +289,7 @@ class BashTool(BaseTool):
                     summary_line = display_text.replace("\n", " ").strip()
                     return ToolResult(success=True, result=result_text, ui_summary=summary_line)
                 return ToolResult(
-                    success=True,
-                    result=result_text,
-                    ui_details=display_text,
-                    ui_details_full=display_text_full,
+                    success=True, result=result_text, ui_details=display_text, ui_details_full=display_text_full
                 )
             else:
                 return ToolResult(

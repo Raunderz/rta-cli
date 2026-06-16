@@ -17,9 +17,7 @@ except ImportError:
 
 class RefactorParams(BaseModel):
     file_path: str = Field(..., description="Path to the Python file")
-    action: Literal["rename_function", "rename_class"] = Field(
-        ..., description="The refactoring action to perform"
-    )
+    action: Literal["rename_function", "rename_class"] = Field(..., description="The refactoring action to perform")
     old_name: str = Field(..., description="Current name of the entity")
     new_name: str = Field(..., description="New name for the entity")
 
@@ -31,13 +29,9 @@ class RefactorPythonTool(BaseTool[RefactorParams]):
     mutating = True
     tool_icon = "🏗️"
 
-    async def execute(
-        self, params: RefactorParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: RefactorParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         if cst is None or m is None:
-            return ToolResult(
-                success=False, result="Error: libcst not installed. AST refactoring unavailable."
-            )
+            return ToolResult(success=False, result="Error: libcst not installed. AST refactoring unavailable.")
 
         abs_path = os.path.abspath(os.path.join(cwd, params.file_path))
         if not os.path.exists(abs_path):

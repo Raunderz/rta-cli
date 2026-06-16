@@ -20,9 +20,7 @@ class WriteTool(BaseTool):
     name = "write"
     tool_icon = "+"
     params = WriteParams
-    prompt_guidelines = (
-        "Use write only for new files or complete rewrites (NOT echo >/cat <<EOF)",
-    )
+    prompt_guidelines = ("Use write only for new files or complete rewrites (NOT echo >/cat <<EOF)",)
     description = (
         "Write content to a file. Creates the file if it doesn't exist, overwrites if it does. "
         "Automatically creates parent directories."
@@ -47,9 +45,7 @@ class WriteTool(BaseTool):
             colored.append(f"[dim]  \u22ef {len(lines) - 20} more lines \u22ef[/dim]")
         return "\n".join(colored)
 
-    async def execute(
-        self, params: WriteParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: WriteParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         verify_path_sandbox(params.path, cwd)
         file_path = Path(params.path)
         file_path.parent.mkdir(parents=True, exist_ok=True)

@@ -59,9 +59,7 @@ class PlainListItem(ListItem):
             yield from line
             yield new_line
 
-    def render_number(
-        self, console: Console, options: ConsoleOptions, number: int, last_number: int
-    ) -> RenderResult:
+    def render_number(self, console: Console, options: ConsoleOptions, number: int, last_number: int) -> RenderResult:
         number_width = len(str(last_number)) + 2
         render_options = options.update(width=options.max_width - number_width)
         lines = console.render_lines(self.elements, render_options, style=self.style)

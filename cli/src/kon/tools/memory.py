@@ -45,24 +45,16 @@ class MemorizeTool(BaseTool[MemorizeParams]):
     name = "memorize"
     params = MemorizeParams
     description = (
-        "Store a fact persistently. Use for user preferences, project decisions, "
-        "or any info you want to recall later."
+        "Store a fact persistently. Use for user preferences, project decisions, or any info you want to recall later."
     )
     mutating = True
     tool_icon = "🧠"
 
-    async def execute(
-        self, params: MemorizeParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: MemorizeParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         data = _load()
-        data[params.key] = {
-            "value": params.value,
-            "tags": params.tags.split(",") if params.tags else [],
-        }
+        data[params.key] = {"value": params.value, "tags": params.tags.split(",") if params.tags else []}
         _save(data)
-        return ToolResult(
-            success=True, result=f"Memorized: {params.key}", ui_summary=f"Memorized {params.key}"
-        )
+        return ToolResult(success=True, result=f"Memorized: {params.key}", ui_summary=f"Memorized {params.key}")
 
     def format_call(self, params: MemorizeParams) -> str:
         return f"{params.key}"
@@ -71,16 +63,11 @@ class MemorizeTool(BaseTool[MemorizeParams]):
 class RecallTool(BaseTool[RecallParams]):
     name = "recall"
     params = RecallParams
-    description = (
-        "Search stored memories by keyword. Only call this when you need "
-        "to remember something from earlier."
-    )
+    description = "Search stored memories by keyword. Only call this when you need to remember something from earlier."
     mutating = False
     tool_icon = "🔍"
 
-    async def execute(
-        self, params: RecallParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: RecallParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         data = _load()
         if not data:
             return ToolResult(success=True, result="No memories stored.")
@@ -100,9 +87,7 @@ class RecallTool(BaseTool[RecallParams]):
             return ToolResult(success=True, result="No matching memories found.")
 
         result_text = "\n".join(f"- **{k}**: {v}" for k, v in matches[:10])
-        return ToolResult(
-            success=True, result=result_text, ui_summary=f"Found {len(matches)} matches"
-        )
+        return ToolResult(success=True, result=result_text, ui_summary=f"Found {len(matches)} matches")
 
     def format_call(self, params: RecallParams) -> str:
         return f"'{params.query}'"
@@ -115,16 +100,12 @@ class ForgetTool(BaseTool[ForgetParams]):
     mutating = True
     tool_icon = "🗑️"
 
-    async def execute(
-        self, params: ForgetParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: ForgetParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         data = _load()
         if params.key in data:
             del data[params.key]
             _save(data)
-            return ToolResult(
-                success=True, result=f"Forgot: {params.key}", ui_summary=f"Forgot {params.key}"
-            )
+            return ToolResult(success=True, result=f"Forgot: {params.key}", ui_summary=f"Forgot {params.key}")
         return ToolResult(success=False, result=f"Key '{params.key}' not found.")
 
     def format_call(self, params: ForgetParams) -> str:

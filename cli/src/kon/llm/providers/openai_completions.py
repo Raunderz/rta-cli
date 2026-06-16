@@ -4,11 +4,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, cast
 
 from openai import APIStatusError, AsyncOpenAI, RateLimitError
-from openai.types.chat import (
-    ChatCompletionChunk,
-    ChatCompletionMessageParam,
-    ChatCompletionToolParam,
-)
+from openai.types.chat import ChatCompletionChunk, ChatCompletionMessageParam, ChatCompletionToolParam
 
 from kon import config as kon_config
 
@@ -32,14 +28,7 @@ from ...core.types import (
     Usage,
     UserMessage,
 )
-from ..base import (
-    BaseProvider,
-    LLMStream,
-    ProviderConfig,
-    is_local_base_url,
-    make_http_client,
-    resolve_api_key,
-)
+from ..base import BaseProvider, LLMStream, ProviderConfig, is_local_base_url, make_http_client, resolve_api_key
 from .openai_compat import supports_developer_role
 from .sanitize import sanitize_surrogates
 
@@ -57,19 +46,12 @@ def _detect_compat(provider: str, base_url: str, model: str = "") -> OpenAICompl
     normalized_provider = provider.lower()
     normalized_base_url = base_url.lower()
     normalized_model = model.lower()
-    is_zai = (
-        normalized_provider == "zai"
-        or normalized_provider == "zhipu"
-        or "api.z.ai" in normalized_base_url
-    )
+    is_zai = normalized_provider == "zai" or normalized_provider == "zhipu" or "api.z.ai" in normalized_base_url
     is_deepseek = normalized_provider == "deepseek" or "api.deepseek.com" in normalized_base_url
 
     if is_zai:
         return OpenAICompletionsCompat(
-            supports_store=False,
-            supports_developer_role=False,
-            supports_reasoning_effort=False,
-            thinking_format="zai",
+            supports_store=False, supports_developer_role=False, supports_reasoning_effort=False, thinking_format="zai"
         )
 
     if is_deepseek:
@@ -84,9 +66,7 @@ def _detect_compat(provider: str, base_url: str, model: str = "") -> OpenAICompl
             thinking_format="llama_gemma",
         )
 
-    return OpenAICompletionsCompat(
-        supports_developer_role=supports_developer_role(provider, base_url)
-    )
+    return OpenAICompletionsCompat(supports_developer_role=supports_developer_role(provider, base_url))
 
 
 class OpenAICompletionsProvider(BaseProvider):
@@ -120,9 +100,7 @@ class OpenAICompletionsProvider(BaseProvider):
             timeout=kon_config.llm.request_timeout_seconds,
             http_client=make_http_client(),
         )
-        self._compat = _detect_compat(
-            config.provider or "", config.base_url or "", config.model or ""
-        )
+        self._compat = _detect_compat(config.provider or "", config.base_url or "", config.model or "")
 
     @staticmethod
     def _env_vars_for_provider(config: ProviderConfig) -> tuple[str, ...]:
@@ -255,15 +233,11 @@ class OpenAICompletionsProvider(BaseProvider):
 
                         if tool_call.function and tool_call.function.name:
                             yield ToolCallStart(
-                                id=tool_call.id or "",
-                                name=tool_call.function.name,
-                                index=tool_call.index,
+                                id=tool_call.id or "", name=tool_call.function.name, index=tool_call.index
                             )
 
                         if tool_call.function and tool_call.function.arguments:
-                            yield ToolCallDelta(
-                                index=tool_call.index, arguments_delta=tool_call.function.arguments
-                            )
+                            yield ToolCallDelta(index=tool_call.index, arguments_delta=tool_call.function.arguments)
 
             yield StreamDone(stop_reason=stop_reason)
 
@@ -271,10 +245,7 @@ class OpenAICompletionsProvider(BaseProvider):
             yield StreamError(error=str(e))
 
     def _convert_messages(
-        self,
-        messages: list[Message],
-        system_prompt: str | None,
-        compat: OpenAICompletionsCompat | None = None,
+        self, messages: list[Message], system_prompt: str | None, compat: OpenAICompletionsCompat | None = None
     ) -> list[ChatCompletionMessageParam]:
         result: list[ChatCompletionMessageParam] = []
 
@@ -288,9 +259,7 @@ class OpenAICompletionsProvider(BaseProvider):
                 and not prompt_content.startswith("<|think|>")
             ):
                 prompt_content = "<|think|>" + prompt_content
-            result.append(
-                cast(ChatCompletionMessageParam, {"role": role, "content": prompt_content})
-            )
+            result.append(cast(ChatCompletionMessageParam, {"role": role, "content": prompt_content}))
 
         pending_images: list[ImageContent] = []
 
@@ -317,24 +286,14 @@ class OpenAICompletionsProvider(BaseProvider):
         return result
 
     def _create_image_user_message(self, images: list[ImageContent]) -> ChatCompletionMessageParam:
-        parts: list[dict[str, Any]] = [
-            {"type": "text", "text": "Attached image(s) from tool result:"}
-        ]
+        parts: list[dict[str, Any]] = [{"type": "text", "text": "Attached image(s) from tool result:"}]
         for img in images:
-            parts.append(
-                {
-                    "type": "image_url",
-                    "image_url": {"url": f"data:{img.mime_type};base64,{img.data}"},
-                }
-            )
+            parts.append({"type": "image_url", "image_url": {"url": f"data:{img.mime_type};base64,{img.data}"}})
         return cast(ChatCompletionMessageParam, {"role": "user", "content": parts})
 
     def _convert_user_message(self, msg: UserMessage) -> ChatCompletionMessageParam:
         if isinstance(msg.content, str):
-            return cast(
-                ChatCompletionMessageParam,
-                {"role": "user", "content": sanitize_surrogates(msg.content)},
-            )
+            return cast(ChatCompletionMessageParam, {"role": "user", "content": sanitize_surrogates(msg.content)})
 
         # Multi-part content (text + images)
         parts: list[dict[str, Any]] = []
@@ -342,12 +301,7 @@ class OpenAICompletionsProvider(BaseProvider):
             if isinstance(item, TextContent):
                 parts.append({"type": "text", "text": sanitize_surrogates(item.text)})
             elif isinstance(item, ImageContent):
-                parts.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{item.mime_type};base64,{item.data}"},
-                    }
-                )
+                parts.append({"type": "image_url", "image_url": {"url": f"data:{item.mime_type};base64,{item.data}"}})
 
         return cast(ChatCompletionMessageParam, {"role": "user", "content": parts})
 
@@ -380,9 +334,7 @@ class OpenAICompletionsProvider(BaseProvider):
         if self.force_string_assistant_content:
             content: Any = "".join(content_parts) if content_parts else None
         else:
-            content = (
-                [{"type": "text", "text": t} for t in content_parts] if content_parts else None
-            )
+            content = [{"type": "text", "text": t} for t in content_parts] if content_parts else None
 
         result: dict[str, Any] = {"role": "assistant", "content": content}
 
@@ -410,20 +362,13 @@ class OpenAICompletionsProvider(BaseProvider):
         else:
             content = "(no output)"
 
-        return cast(
-            ChatCompletionMessageParam,
-            {"role": "tool", "tool_call_id": msg.tool_call_id, "content": content},
-        )
+        return cast(ChatCompletionMessageParam, {"role": "tool", "tool_call_id": msg.tool_call_id, "content": content})
 
     def _convert_tools(self, tools: list[ToolDefinition]) -> list[ChatCompletionToolParam]:
         return [
             {
                 "type": "function",
-                "function": {
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters,
-                },
+                "function": {"name": tool.name, "description": tool.description, "parameters": tool.parameters},
             }
             for tool in tools
         ]

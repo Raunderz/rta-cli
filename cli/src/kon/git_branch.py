@@ -21,9 +21,7 @@ def find_git_paths(cwd: str) -> GitPaths | None:
                     with open(git_path, encoding="utf-8") as f:
                         content = f.read().strip()
                     if content.startswith("gitdir: "):
-                        git_dir = os.path.abspath(
-                            os.path.join(directory, content.removeprefix("gitdir: ").strip())
-                        )
+                        git_dir = os.path.abspath(os.path.join(directory, content.removeprefix("gitdir: ").strip()))
                         head_path = os.path.join(git_dir, "HEAD")
                         if not os.path.exists(head_path):
                             return None

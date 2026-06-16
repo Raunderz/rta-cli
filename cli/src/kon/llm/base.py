@@ -56,9 +56,7 @@ def make_http_client() -> httpx.AsyncClient | None:
     # Returns None when verify is required so the SDK uses its own default client.
     if not kon_config.llm.tls.insecure_skip_verify:
         return None
-    return httpx.AsyncClient(
-        verify=False, timeout=httpx.Timeout(kon_config.llm.request_timeout_seconds)
-    )
+    return httpx.AsyncClient(verify=False, timeout=httpx.Timeout(kon_config.llm.request_timeout_seconds))
 
 
 def resolve_api_key(
@@ -163,17 +161,12 @@ class BaseProvider(ABC):
 
     def set_thinking_level(self, level: str) -> None:
         if level not in self.thinking_levels:
-            raise ValueError(
-                f"Invalid thinking level '{level}' for {self.name}. "
-                f"Valid levels: {self.thinking_levels}"
-            )
+            raise ValueError(f"Invalid thinking level '{level}' for {self.name}. Valid levels: {self.thinking_levels}")
         self.config.thinking_level = level
 
     def cycle_thinking_level(self) -> str:
         levels = self.thinking_levels
-        current_idx = (
-            levels.index(self.config.thinking_level) if self.config.thinking_level in levels else 0
-        )
+        current_idx = levels.index(self.config.thinking_level) if self.config.thinking_level in levels else 0
         next_idx = (current_idx + 1) % len(levels)
         new_level = levels[next_idx]
         self.config.thinking_level = new_level
@@ -189,11 +182,7 @@ class BaseProvider(ABC):
         max_tokens: int | None = None,
     ) -> LLMStream:
         return await self._stream_impl(
-            messages,
-            system_prompt=system_prompt,
-            tools=tools,
-            temperature=temperature,
-            max_tokens=max_tokens,
+            messages, system_prompt=system_prompt, tools=tools, temperature=temperature, max_tokens=max_tokens
         )
 
     async def get_metadata(self) -> dict[str, Any]:

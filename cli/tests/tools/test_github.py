@@ -115,6 +115,7 @@ async def test_github_search_issues_success(monkeypatch):
     assert "Repo: torvalds/linux" in result.result
     assert result.ui_summary == "Found 1 issues"
 
+
 @pytest.mark.asyncio
 async def test_github_search_rate_limit(monkeypatch):
     def mock_urlopen_rate_limit(req, timeout=None):
@@ -130,5 +131,3 @@ async def test_github_search_rate_limit(monkeypatch):
     assert result.success is False
     assert result.result is not None
     assert "GitHub API rate limit exceeded" in result.result
-
-

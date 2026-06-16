@@ -15,10 +15,7 @@ def test_azure_ai_foundry_inherits_anthropic_conversion():
 
 
 def test_azure_ai_foundry_requires_api_key():
-    with (
-        patch.dict(os.environ, {}, clear=True),
-        pytest.raises(ValueError, match="No API key found"),
-    ):
+    with patch.dict(os.environ, {}, clear=True), pytest.raises(ValueError, match="No API key found"):
         AzureAIFoundryProvider(ProviderConfig(model="claude-sonnet-4.6"))
 
 

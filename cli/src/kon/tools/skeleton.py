@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from pydantic import BaseModel
 
@@ -19,9 +18,7 @@ class SkeletonTool(BaseTool[SkeletonParams]):
     mutating = False
     tool_icon = "💀"
 
-    async def execute(
-        self, params: SkeletonParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: SkeletonParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         try:
             indexer = BM25Indexer(cwd)
             # Ensure index exists
@@ -29,9 +26,7 @@ class SkeletonTool(BaseTool[SkeletonParams]):
                 await asyncio.to_thread(indexer.index_project)
 
             skeleton = indexer.get_skeleton()
-            return ToolResult(
-                success=True, result=skeleton, ui_summary="Retrieved project skeleton"
-            )
+            return ToolResult(success=True, result=skeleton, ui_summary="Retrieved project skeleton")
         except Exception as e:
             return ToolResult(success=False, result=f"Error getting skeleton: {e}")
 

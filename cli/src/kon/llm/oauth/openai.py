@@ -54,10 +54,7 @@ def load_openai_credentials() -> OpenAICredentials | None:
     try:
         data = json.loads(path.read_text())
         return OpenAICredentials(
-            refresh=data["refresh"],
-            access=data["access"],
-            expires=data["expires"],
-            account_id=data["account_id"],
+            refresh=data["refresh"], access=data["access"], expires=data["expires"], account_id=data["account_id"]
         )
     except (json.JSONDecodeError, KeyError):
         return None
@@ -172,11 +169,7 @@ async def _exchange_code_for_tokens(code: str, verifier: str) -> OpenAICredentia
     access = data.get("access_token")
     refresh = data.get("refresh_token")
     expires_in = data.get("expires_in")
-    if (
-        not isinstance(access, str)
-        or not isinstance(refresh, str)
-        or not isinstance(expires_in, int)
-    ):
+    if not isinstance(access, str) or not isinstance(refresh, str) or not isinstance(expires_in, int):
         raise RuntimeError("OpenAI OAuth token response missing required fields")
 
     account_id = _extract_account_id(access)
@@ -184,10 +177,7 @@ async def _exchange_code_for_tokens(code: str, verifier: str) -> OpenAICredentia
         raise RuntimeError("Failed to extract chatgpt_account_id from OpenAI OAuth token")
 
     return OpenAICredentials(
-        access=access,
-        refresh=refresh,
-        expires=int(time.time() * 1000) + expires_in * 1000,
-        account_id=account_id,
+        access=access, refresh=refresh, expires=int(time.time() * 1000) + expires_in * 1000, account_id=account_id
     )
 
 
@@ -197,11 +187,7 @@ async def refresh_openai_token(creds: OpenAICredentials) -> OpenAICredentials:
         session.post(
             _TOKEN_URL,
             headers={"Content-Type": "application/x-www-form-urlencoded"},
-            data={
-                "grant_type": "refresh_token",
-                "refresh_token": creds.refresh,
-                "client_id": _CLIENT_ID,
-            },
+            data={"grant_type": "refresh_token", "refresh_token": creds.refresh, "client_id": _CLIENT_ID},
         ) as response,
     ):
         if response.status >= 400:
@@ -212,11 +198,7 @@ async def refresh_openai_token(creds: OpenAICredentials) -> OpenAICredentials:
     access = data.get("access_token")
     refresh = data.get("refresh_token")
     expires_in = data.get("expires_in")
-    if (
-        not isinstance(access, str)
-        or not isinstance(refresh, str)
-        or not isinstance(expires_in, int)
-    ):
+    if not isinstance(access, str) or not isinstance(refresh, str) or not isinstance(expires_in, int):
         raise RuntimeError("OpenAI OAuth refresh response missing required fields")
 
     account_id = _extract_account_id(access)
@@ -224,10 +206,7 @@ async def refresh_openai_token(creds: OpenAICredentials) -> OpenAICredentials:
         raise RuntimeError("Failed to extract chatgpt_account_id from OpenAI OAuth token")
 
     refreshed = OpenAICredentials(
-        access=access,
-        refresh=refresh,
-        expires=int(time.time() * 1000) + expires_in * 1000,
-        account_id=account_id,
+        access=access, refresh=refresh, expires=int(time.time() * 1000) + expires_in * 1000, account_id=account_id
     )
     save_openai_credentials(refreshed)
     return refreshed
@@ -258,9 +237,7 @@ async def _start_callback_server(state: str) -> tuple[asyncio.AbstractServer, as
             code = (query.get("code") or [None])[0]
 
             if req_state != state or not isinstance(code, str) or not code:
-                writer.write(
-                    b"HTTP/1.1 400 Bad Request\r\nContent-Length: 14\r\n\r\nState mismatch"
-                )
+                writer.write(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 14\r\n\r\nState mismatch")
                 await writer.drain()
                 return
 
@@ -364,9 +341,7 @@ async def login(
             code = parsed_code
 
         if not code:
-            raise TimeoutError(
-                "OpenAI OAuth timed out waiting for authorization callback on port 1455."
-            )
+            raise TimeoutError("OpenAI OAuth timed out waiting for authorization callback on port 1455.")
 
         creds = await _exchange_code_for_tokens(code, verifier)
         save_openai_credentials(creds)

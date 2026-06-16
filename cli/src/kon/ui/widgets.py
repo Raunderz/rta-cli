@@ -1,6 +1,6 @@
 import os
 import time
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from rich.spinner import Spinner
 from rich.text import Text
@@ -259,20 +259,14 @@ class InfoBar(Vertical):
         return result
 
     def update_tokens(
-        self,
-        input_tokens: int,
-        output_tokens: int,
-        cache_read_tokens: int = 0,
-        cache_write_tokens: int = 0,
+        self, input_tokens: int, output_tokens: int, cache_read_tokens: int = 0, cache_write_tokens: int = 0
     ) -> None:
         self._input_tokens += input_tokens
         self._output_tokens += output_tokens
         self._cache_read_tokens += cache_read_tokens
         self._cache_write_tokens += cache_write_tokens
         # Context size is latest turn's full token footprint.
-        self._context_tokens = (
-            input_tokens + output_tokens + cache_read_tokens + cache_write_tokens
-        )
+        self._context_tokens = input_tokens + output_tokens + cache_read_tokens + cache_write_tokens
         self._label_row1_right.update(self._format_row1_right())
 
     def set_tokens(
@@ -379,9 +373,7 @@ class QueueDisplay(Vertical):
         content_width = max(0, self.size.width - 2) if self.size.width else 0
         result = Text()
         result.append("Queue", style="bold " + dim_color)
-        result.append(
-            " (↑/↓ select, enter edit, ctrl+d delete, esc discard edit)", style=dim_color
-        )
+        result.append(" (↑/↓ select, enter edit, ctrl+d delete, esc discard edit)", style=dim_color)
         for index, (text, is_steer) in enumerate(ordered):
             is_selected = index == self._selected
             is_editing = index == self._editing
@@ -400,10 +392,7 @@ class QueueDisplay(Vertical):
         return result
 
     def update_items(
-        self,
-        items: list[tuple[str, bool]],
-        selected: int | None = None,
-        editing: int | None = None,
+        self, items: list[tuple[str, bool]], selected: int | None = None, editing: int | None = None
     ) -> None:
         self._items = items
         self._selected = selected

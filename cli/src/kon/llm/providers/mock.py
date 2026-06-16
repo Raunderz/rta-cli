@@ -146,9 +146,7 @@ class MockProvider(BaseProvider):
 
                 async def tool_hang_invalid_json_iter():
                     yield ToolCallStart(id="call-1", name="write", index=0, arguments={})
-                    yield ToolCallDelta(
-                        index=0, arguments_delta='{"path": "/tmp/test.txt", "content": "incomplete'
-                    )
+                    yield ToolCallDelta(index=0, arguments_delta='{"path": "/tmp/test.txt", "content": "incomplete')
                     await asyncio.sleep(3600)
 
                 return tool_hang_invalid_json_iter()

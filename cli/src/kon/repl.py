@@ -66,9 +66,7 @@ def _show_resumed_history(session: Any) -> None:
         if last_assistant is None and isinstance(entry, MessageEntry):
             msg = entry.message
             if isinstance(msg, AssistantMessage):
-                text = "".join(
-                    p.text for p in msg.content if isinstance(p, TextContent)
-                ).strip()
+                text = "".join(p.text for p in msg.content if isinstance(p, TextContent)).strip()
                 if text:
                     last_assistant = text
         if last_user is None and isinstance(entry, MessageEntry):
@@ -78,9 +76,7 @@ def _show_resumed_history(session: Any) -> None:
                 if isinstance(content, str):
                     last_user = content
                 elif isinstance(content, list):
-                    last_user = "".join(
-                        p.text for p in content if isinstance(p, TextContent)
-                    ).strip()
+                    last_user = "".join(p.text for p in content if isinstance(p, TextContent)).strip()
         if last_user and last_assistant:
             break
 
@@ -180,10 +176,7 @@ def _show_status(state: ReplState) -> None:
         from kon import auth
         from kon import config as kon_config
 
-        api_key = (
-            kon_config.rta.api_key
-            or auth.load_credential("rta_api_key")
-        )
+        api_key = kon_config.rta.api_key or auth.load_credential("rta_api_key")
         if not api_key:
             print("Not logged in. Run `rta login` first.")
             return
@@ -195,11 +188,7 @@ def _show_status(state: ReplState) -> None:
             print("No server URL configured.")
             return
 
-        resp = httpx.get(
-            f"{server_url}/v1/usage",
-            headers={"X-API-KEY": api_key},
-            timeout=10.0,
-        )
+        resp = httpx.get(f"{server_url}/v1/usage", headers={"X-API-KEY": api_key}, timeout=10.0)
         if resp.status_code != 200:
             print(f"Failed to fetch usage: {resp.status_code}")
             return
@@ -218,11 +207,7 @@ def _show_status(state: ReplState) -> None:
         print(f"Error fetching status: {e}")
 
 
-async def _run_turn(
-    state: ReplState,
-    query: str,
-    cancel_event: asyncio.Event,
-) -> StopReason:
+async def _run_turn(state: ReplState, query: str, cancel_event: asyncio.Event) -> StopReason:
     """Run a single user turn and consume events. Returns the stop reason."""
     stop = StopReason.STOP
 
@@ -351,11 +336,7 @@ def run_repl(
     import os
 
     initial_model = model or config.llm.default_model
-    initial_provider = (
-        provider
-        if provider is not None
-        else (config.llm.default_provider if model is None else None)
-    )
+    initial_provider = provider if provider is not None else (config.llm.default_provider if model is None else None)
     base = base_url or config.llm.default_base_url or None
     thinking = config.llm.default_thinking_level
     openai_auth = openai_compat_auth_mode or config.llm.auth.openai_compat
@@ -381,9 +362,7 @@ def run_repl(
     )
 
     try:
-        init = runtime.initialize(
-            resume_session=resume_session, continue_recent=continue_recent
-        )
+        init = runtime.initialize(resume_session=resume_session, continue_recent=continue_recent)
         if init.provider_error:
             print(f"Error: {init.provider_error}", file=sys.stderr)
             return 2

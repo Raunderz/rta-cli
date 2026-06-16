@@ -68,17 +68,13 @@ class OpenAIResponsesProvider(BaseProvider):
         max_tokens: int | None = None,
     ) -> LLMStream:
         client = self._get_client()
-        params = self._build_params(
-            messages, system_prompt, tools, max_tokens, session_id=self.config.session_id
-        )
+        params = self._build_params(messages, system_prompt, tools, max_tokens, session_id=self.config.session_id)
         response_stream = await client.responses.create(**params)
         llm_stream = LLMStream()
         llm_stream.set_iterator(self._process_stream(response_stream, llm_stream))
         return llm_stream
 
-    async def _process_stream(
-        self, response_stream: Any, llm_stream: LLMStream
-    ) -> AsyncIterator[StreamPart]:
+    async def _process_stream(self, response_stream: Any, llm_stream: LLMStream) -> AsyncIterator[StreamPart]:
         current_text = ""
         current_thinking = ""
         current_tool_calls: dict[str, dict[str, Any]] = {}
@@ -90,10 +86,7 @@ class OpenAIResponsesProvider(BaseProvider):
             async for event in response_stream:
                 event_type = event.type
 
-                if event_type in (
-                    "response.reasoning_summary_text.delta",
-                    "response.reasoning_text.delta",
-                ):
+                if event_type in ("response.reasoning_summary_text.delta", "response.reasoning_text.delta"):
                     delta = event.delta
                     current_thinking += delta
                     yield ThinkPart(think=delta)
@@ -122,9 +115,7 @@ class OpenAIResponsesProvider(BaseProvider):
 
                 elif event_type == "response.function_call_arguments.delta":
                     item_id = getattr(event, "item_id", None)
-                    call_key = (
-                        call_key_by_item_id.get(item_id) if item_id else current_tool_call_key
-                    )
+                    call_key = call_key_by_item_id.get(item_id) if item_id else current_tool_call_key
                     if not call_key:
                         continue
                     call_data = current_tool_calls.get(call_key)
@@ -136,9 +127,7 @@ class OpenAIResponsesProvider(BaseProvider):
 
                 elif event_type == "response.function_call_arguments.done":
                     item_id = getattr(event, "item_id", None)
-                    call_key = (
-                        call_key_by_item_id.get(item_id) if item_id else current_tool_call_key
-                    )
+                    call_key = call_key_by_item_id.get(item_id) if item_id else current_tool_call_key
                     if not call_key:
                         continue
                     call_data = current_tool_calls.get(call_key)
@@ -167,11 +156,7 @@ class OpenAIResponsesProvider(BaseProvider):
                             call_key = call_id
                         elif item_id and item_id in call_key_by_item_id:
                             call_key = call_key_by_item_id[item_id]
-                        if (
-                            not call_key
-                            or call_key not in current_tool_calls
-                            or item.arguments is None
-                        ):
+                        if not call_key or call_key not in current_tool_calls or item.arguments is None:
                             continue
                         call_data = current_tool_calls[call_key]
                         current_args = call_data["arguments"]
@@ -180,14 +165,10 @@ class OpenAIResponsesProvider(BaseProvider):
                             missing = final_args[len(current_args) :]
                             if missing:
                                 call_data["arguments"] += missing
-                                yield ToolCallDelta(
-                                    index=call_data["index"], arguments_delta=missing
-                                )
+                                yield ToolCallDelta(index=call_data["index"], arguments_delta=missing)
                         elif final_args != current_args:
                             call_data["arguments"] = final_args
-                            yield ToolCallDelta(
-                                index=call_data["index"], arguments_delta=final_args
-                            )
+                            yield ToolCallDelta(index=call_data["index"], arguments_delta=final_args)
 
                 elif event_type in ("response.completed", "response.done"):
                     response = getattr(event, "response", None)
@@ -197,12 +178,8 @@ class OpenAIResponsesProvider(BaseProvider):
                         if response.usage.input_tokens_details:
                             cached = response.usage.input_tokens_details.cached_tokens or 0
                             cache_write = (
-                                getattr(
-                                    response.usage.input_tokens_details, "cache_write_tokens", 0
-                                )
-                                or getattr(
-                                    response.usage.input_tokens_details, "cache_creation_tokens", 0
-                                )
+                                getattr(response.usage.input_tokens_details, "cache_write_tokens", 0)
+                                or getattr(response.usage.input_tokens_details, "cache_creation_tokens", 0)
                                 or cache_write
                             )
                         input_tokens = response.usage.input_tokens or 0
@@ -232,9 +209,7 @@ class OpenAIResponsesProvider(BaseProvider):
                             args = json.loads(call_args) if call_args else {}
                         except json.JSONDecodeError:
                             args = {}
-                        content.append(
-                            ToolCall(id=call_data["id"], name=call_data["name"], arguments=args)
-                        )
+                        content.append(ToolCall(id=call_data["id"], name=call_data["name"], arguments=args))
 
                     stop_reason = self._map_stop_reason(
                         response.status if response and hasattr(response, "status") else None
@@ -266,12 +241,7 @@ class OpenAIResponsesProvider(BaseProvider):
     ) -> dict[str, Any]:
         input_messages = self._convert_messages(messages, system_prompt)
 
-        params: dict[str, Any] = {
-            "model": self.config.model,
-            "input": input_messages,
-            "stream": True,
-            "store": False,
-        }
+        params: dict[str, Any] = {"model": self.config.model, "input": input_messages, "stream": True, "store": False}
 
         # Prompt caching - use session_id as cache key
         if session_id:
@@ -290,17 +260,11 @@ class OpenAIResponsesProvider(BaseProvider):
 
         return params
 
-    def _convert_messages(
-        self, messages: list[Message], system_prompt: str | None
-    ) -> list[dict[str, Any]]:
+    def _convert_messages(self, messages: list[Message], system_prompt: str | None) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = []
 
         if system_prompt:
-            role = (
-                "developer"
-                if supports_developer_role(self.config.provider, self.config.base_url)
-                else "system"
-            )
+            role = "developer" if supports_developer_role(self.config.provider, self.config.base_url) else "system"
             result.append({"role": role, "content": sanitize_surrogates(system_prompt)})
 
         pending_images: list[ImageContent] = []
@@ -313,20 +277,13 @@ class OpenAIResponsesProvider(BaseProvider):
 
                 if isinstance(msg.content, str):
                     result.append(
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "input_text", "text": sanitize_surrogates(msg.content)}
-                            ],
-                        }
+                        {"role": "user", "content": [{"type": "input_text", "text": sanitize_surrogates(msg.content)}]}
                     )
                 else:
                     content_parts: list[dict[str, Any]] = []
                     for item in msg.content:
                         if isinstance(item, TextContent):
-                            content_parts.append(
-                                {"type": "input_text", "text": sanitize_surrogates(item.text)}
-                            )
+                            content_parts.append({"type": "input_text", "text": sanitize_surrogates(item.text)})
                         elif isinstance(item, ImageContent):
                             content_parts.append(
                                 {
@@ -354,12 +311,7 @@ class OpenAIResponsesProvider(BaseProvider):
                     elif isinstance(block, TextContent):
                         content = [{"type": "output_text", "text": block.text, "annotations": []}]
                         result.append(
-                            {
-                                "type": "message",
-                                "role": "assistant",
-                                "content": content,
-                                "status": "completed",
-                            }
+                            {"type": "message", "role": "assistant", "content": content, "status": "completed"}
                         )
                     elif isinstance(block, ToolCall):
                         if "|" in block.id:
@@ -385,9 +337,7 @@ class OpenAIResponsesProvider(BaseProvider):
                 else:
                     call_id = msg.tool_call_id
                 text_result = "\n".join(text_parts) if text_parts else "(see attached)"
-                result.append(
-                    {"type": "function_call_output", "call_id": call_id, "output": text_result}
-                )
+                result.append({"type": "function_call_output", "call_id": call_id, "output": text_result})
 
                 if has_images:
                     for item in msg.content:
@@ -400,16 +350,10 @@ class OpenAIResponsesProvider(BaseProvider):
         return result
 
     def _create_image_user_message(self, images: list[ImageContent]) -> dict[str, Any]:
-        content_parts: list[dict[str, Any]] = [
-            {"type": "input_text", "text": "Attached image(s) from tool result:"}
-        ]
+        content_parts: list[dict[str, Any]] = [{"type": "input_text", "text": "Attached image(s) from tool result:"}]
         for img in images:
             content_parts.append(
-                {
-                    "type": "input_image",
-                    "detail": "auto",
-                    "image_url": f"data:{img.mime_type};base64,{img.data}",
-                }
+                {"type": "input_image", "detail": "auto", "image_url": f"data:{img.mime_type};base64,{img.data}"}
             )
         return {"role": "user", "content": content_parts}
 

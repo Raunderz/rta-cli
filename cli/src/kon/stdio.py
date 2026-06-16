@@ -1,6 +1,7 @@
 """JSON-lines pipe mode for IDE integration (--stdio flag)."""
 
 import asyncio
+import contextlib
 import json
 import logging
 import os
@@ -28,10 +29,8 @@ logger = logging.getLogger("kon.stdio")
 def _write_response(obj: dict[str, Any]) -> None:
     """Write a single JSON line to stdout via raw fd and flush."""
     line = json.dumps(obj, ensure_ascii=False) + "\n"
-    try:
+    with contextlib.suppress(OSError):
         os.write(1, line.encode("utf-8"))
-    except OSError:
-        pass
 
 
 def _stdin_reader(queue: asyncio.Queue[str | None], loop: asyncio.AbstractEventLoop) -> None:
@@ -85,11 +84,7 @@ async def run_stdio_mode(
     from kon import config
 
     initial_model = model or config.llm.default_model
-    initial_provider = (
-        provider
-        if provider is not None
-        else (config.llm.default_provider if model is None else None)
-    )
+    initial_provider = provider if provider is not None else (config.llm.default_provider if model is None else None)
     base = base_url or config.llm.default_base_url or None
     thinking = config.llm.default_thinking_level
     openai_auth = openai_compat_auth_mode or config.llm.auth.openai_compat
@@ -120,9 +115,7 @@ async def run_stdio_mode(
     _dbg.write("stdio: initializing runtime...\n")
     _dbg.flush()
 
-    init = runtime.initialize(
-        resume_session=resume_session, continue_recent=continue_recent
-    )
+    init = runtime.initialize(resume_session=resume_session, continue_recent=continue_recent)
 
     _dbg.write(f"stdio: runtime initialized, provider_error={init.provider_error}\n")
     _dbg.flush()
@@ -139,12 +132,9 @@ async def run_stdio_mode(
     _dbg.write("stdio: agent ready, writing status_response\n")
     _dbg.flush()
 
-    _write_response({
-        "type": "status_response",
-        "version": VERSION,
-        "model": runtime.model,
-        "session_id": runtime.session.id,
-    })
+    _write_response(
+        {"type": "status_response", "version": VERSION, "model": runtime.model, "session_id": runtime.session.id}
+    )
 
     # Start background thread to read stdin lines
     line_queue: asyncio.Queue[str | None] = asyncio.Queue()
@@ -205,12 +195,14 @@ async def run_stdio_mode(
                 cancel_event.set()
 
             elif req_type == "status":
-                _write_response({
-                    "type": "status_response",
-                    "version": VERSION,
-                    "model": runtime.model,
-                    "session_id": runtime.session.id,
-                })
+                _write_response(
+                    {
+                        "type": "status_response",
+                        "version": VERSION,
+                        "model": runtime.model,
+                        "session_id": runtime.session.id,
+                    }
+                )
 
             elif req_type == "tool_approved":
                 approval_id = request.get("approval_id", "")
@@ -284,11 +276,13 @@ async def _run_chat(
                 case AgentEndEvent(total_usage=usage):
                     if usage:
                         tokens_used = usage.input_tokens + usage.output_tokens
-                    _write_response({
-                        "type": "text_done",
-                        "session_id": runtime.session.id if runtime.session else "",
-                        "tokens_used": tokens_used,
-                    })
+                    _write_response(
+                        {
+                            "type": "text_done",
+                            "session_id": runtime.session.id if runtime.session else "",
+                            "tokens_used": tokens_used,
+                        }
+                    )
     except Exception as e:
         if dbg:
             dbg.write(f"_run_chat error: {e}\n")

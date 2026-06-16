@@ -1,21 +1,17 @@
 import asyncio
 import os
-import signal
 import sys
-import subprocess
 
 import pytest
 
-from kon.tools.bash import _kill_process_tree, BashTool, BashParams
+from kon.tools.bash import BashParams, BashTool, _kill_process_tree
 
 
 @pytest.mark.asyncio
 async def test_kill_process_tree_already_exited():
     """kill_process_tree should be a no-op for already-exited process."""
     proc = await asyncio.create_subprocess_shell(
-        "exit 0",
-        stdout=asyncio.subprocess.DEVNULL,
-        stderr=asyncio.subprocess.DEVNULL,
+        "exit 0", stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL
     )
     await proc.wait()
     # Should not raise
@@ -45,11 +41,7 @@ async def test_kill_process_tree_no_such_process():
     async def _fake_wait():
         return None
 
-    fake_proc = types.SimpleNamespace(
-        pid=999999999,
-        returncode=None,
-        wait=_fake_wait,
-    )
+    fake_proc = types.SimpleNamespace(pid=999999999, returncode=None, wait=_fake_wait)
     # Should not raise
     await _kill_process_tree(fake_proc)
 

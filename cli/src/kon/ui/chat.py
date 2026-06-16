@@ -39,13 +39,7 @@ def _format_skill_label(skill: Skill) -> str:
 
 
 def _append_aligned_section(
-    text: Text,
-    title: str,
-    rows: list[tuple[str, str]],
-    *,
-    notice_color: str,
-    dim_color: str,
-    muted_color: str,
+    text: Text, title: str, rows: list[tuple[str, str]], *, notice_color: str, dim_color: str, muted_color: str
 ) -> None:
     if text.plain.strip():
         text.append("\n")
@@ -214,28 +208,10 @@ class ChatLog(VerticalScroll):
             info_text.append("\n")
 
             shortcut_rows = (
-                (
-                    ("/", "slash commands"),
-                    ("@", "files/dirs"),
-                    ("tab", "complete paths"),
-                    ("↑/↓", "history"),
-                ),
-                (
-                    ("shift+tab", "permissions"),
-                    ("esc", "to interrupt"),
-                    ("shift+enter", "add newline"),
-                ),
-                (
-                    ("ctrl+c", "clear input"),
-                    ("ctrl+c x2", "exit"),
-                    ("enter", "queue"),
-                    ("alt+enter", "steer"),
-                ),
-                (
-                    ("↑/↓", "select queue"),
-                    ("ctrl+t", "cycle thinking"),
-                    ("ctrl+shift+t", "toggle thinking"),
-                ),
+                (("/", "slash commands"), ("@", "files/dirs"), ("tab", "complete paths"), ("↑/↓", "history")),
+                (("shift+tab", "permissions"), ("esc", "to interrupt"), ("shift+enter", "add newline")),
+                (("ctrl+c", "clear input"), ("ctrl+c x2", "exit"), ("enter", "queue"), ("alt+enter", "steer")),
+                (("↑/↓", "select queue"), ("ctrl+t", "cycle thinking"), ("ctrl+shift+t", "toggle thinking")),
             )
 
             for row_idx, row in enumerate(shortcut_rows):
@@ -253,9 +229,7 @@ class ChatLog(VerticalScroll):
         info_label.add_class("session-info")
         self.mount(info_label, before=0)
 
-    def add_loaded_resources(
-        self, context_paths: list[str], skills: list[Skill], tools: list[BaseTool]
-    ) -> None:
+    def add_loaded_resources(self, context_paths: list[str], skills: list[Skill], tools: list[BaseTool]) -> None:
         if not context_paths and not skills and not tools:
             return
 
@@ -389,10 +363,7 @@ class ChatLog(VerticalScroll):
 
         text.append("\n")
         text.append("[Extra tools]\n", style=notice_color)
-        text.append(
-            "  --extra-tools web_search,web_fetch  or  [tools] extra in ~/.rta/config.toml",
-            style=muted_color,
-        )
+        text.append("  --extra-tools web_search,web_fetch  or  [tools] extra in ~/.rta/config.toml", style=muted_color)
 
         label = Label(text)
         label.add_class("info-message")
@@ -417,9 +388,7 @@ class ChatLog(VerticalScroll):
     def add_handoff_link_message(
         self, label: str, target_session_id: str, query: str, direction: Literal["back", "forward"]
     ) -> HandoffLinkBlock:
-        block = HandoffLinkBlock(
-            label=label, target_session_id=target_session_id, query=query, direction=direction
-        )
+        block = HandoffLinkBlock(label=label, target_session_id=target_session_id, query=query, direction=direction)
         self.mount(block)
         self._scroll_if_anchored(animate=False)
         self._prune_if_needed()
@@ -460,12 +429,8 @@ class ChatLog(VerticalScroll):
         self._scroll_if_anchored(animate=False)
         return block
 
-    def start_tool(
-        self, name: str, tool_id: str, call_msg: str | None = None, icon: str = "→"
-    ) -> ToolBlock:
-        block = ToolBlock(
-            name=name, call_msg=call_msg, icon=icon, expanded=self._tool_output_expanded
-        )
+    def start_tool(self, name: str, tool_id: str, call_msg: str | None = None, icon: str = "→") -> ToolBlock:
+        block = ToolBlock(name=name, call_msg=call_msg, icon=icon, expanded=self._tool_output_expanded)
 
         # Consecutive tool calls without detail output render compactly (no
         # margin). Tools with detail output (diffs, bash output, etc.) always
@@ -502,12 +467,7 @@ class ChatLog(VerticalScroll):
         block = self._tool_blocks.get(tool_id)
         if block:
             block.set_result(
-                ui_summary,
-                ui_details,
-                success,
-                markup=markup,
-                ui_details_full=ui_details_full,
-                images=images,
+                ui_summary, ui_details, success, markup=markup, ui_details_full=ui_details_full, images=images
             )
             if ui_details:
                 # All ToolStartEvents arrive during streaming before any
@@ -605,9 +565,7 @@ class ChatLog(VerticalScroll):
 
         cleaned_message = message.strip()
         if not cleaned_message:
-            cleaned_message = (
-                "Unknown error (no details provided)." if error else "No details provided."
-            )
+            cleaned_message = "Unknown error (no details provided)." if error else "No details provided."
 
         style = info_color
         prefix = "✓ "

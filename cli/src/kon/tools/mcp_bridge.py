@@ -36,23 +36,16 @@ class MCPTool(BaseTool[BaseModel]):
                 field_type = float
 
             default = ... if prop_name in required else None
-            fields[prop_name] = (
-                field_type,
-                Field(default, description=prop_def.get("description", "")),
-            )
+            fields[prop_name] = (field_type, Field(default, description=prop_def.get("description", "")))
 
         self.params = create_model(f"{self.name}_Params", **fields)
 
-    async def execute(
-        self, params: BaseModel, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: BaseModel, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         args = params.model_dump(exclude_none=True)
         try:
             # MCP calls are usually fast but can be slow, run in executor if stdio
             loop = asyncio.get_event_loop()
-            res = await loop.run_in_executor(
-                None, call_mcp_tool, self.server_name, self.mcp_name, args
-            )
+            res = await loop.run_in_executor(None, call_mcp_tool, self.server_name, self.mcp_name, args)
 
             if not res:
                 return ToolResult(success=True, result="Tool executed successfully (no output).")

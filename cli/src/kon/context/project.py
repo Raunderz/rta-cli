@@ -81,22 +81,14 @@ def discover_project(workspace: str) -> ProjectInfo:
 
     if language == "python":
         info.test_framework = (
-            "pytest"
-            if find_project_file(workspace, ["pytest.ini", "conftest.py", "tests/"])
-            else None
+            "pytest" if find_project_file(workspace, ["pytest.ini", "conftest.py", "tests/"]) else None
         )
-        info.linter = (
-            "ruff" if find_project_file(workspace, ["ruff.toml", ".ruff.toml"]) else "flake8"
-        )
+        info.linter = "ruff" if find_project_file(workspace, ["ruff.toml", ".ruff.toml"]) else "flake8"
         info.src_pattern = "*.py"
         info.test_pattern = "test_*.py"
     elif language in ("javascript", "typescript"):
-        info.test_framework = (
-            "vitest" if find_project_file(workspace, ["vitest.config.*"]) else "jest"
-        )
-        info.package_manager = (
-            "pnpm" if find_project_file(workspace, ["pnpm-lock.yaml"]) else "npm"
-        )
+        info.test_framework = "vitest" if find_project_file(workspace, ["vitest.config.*"]) else "jest"
+        info.package_manager = "pnpm" if find_project_file(workspace, ["pnpm-lock.yaml"]) else "npm"
         info.src_pattern = "*.ts" if language == "typescript" else "*.js"
 
     return info

@@ -50,32 +50,18 @@ in a directory are relevant, include the path to the directory.]
 ---"""
 
 
-def is_overflow(
-    usage: Usage, context_window: int, max_output_tokens: int, buffer_tokens: int
-) -> bool:
-    count = (
-        usage.input_tokens
-        + usage.output_tokens
-        + usage.cache_read_tokens
-        + usage.cache_write_tokens
-    )
+def is_overflow(usage: Usage, context_window: int, max_output_tokens: int, buffer_tokens: int) -> bool:
+    count = usage.input_tokens + usage.output_tokens + usage.cache_read_tokens + usage.cache_write_tokens
     reserved = min(buffer_tokens, max_output_tokens)
     usable = context_window - reserved
     return count >= usable
 
 
 def _calculate_context_tokens(usage: Usage) -> int:
-    return (
-        usage.input_tokens
-        + usage.output_tokens
-        + usage.cache_read_tokens
-        + usage.cache_write_tokens
-    )
+    return usage.input_tokens + usage.output_tokens + usage.cache_read_tokens + usage.cache_write_tokens
 
 
-async def generate_summary(
-    messages: list[Message], provider: BaseProvider, system_prompt: str | None = None
-) -> str:
+async def generate_summary(messages: list[Message], provider: BaseProvider, system_prompt: str | None = None) -> str:
     """Send the full conversation + summarization prompt to the LLM, return summary text."""
     summary_messages: list[Message] = [*messages, UserMessage(content=SUMMARIZATION_PROMPT)]
 

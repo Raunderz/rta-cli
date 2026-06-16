@@ -125,14 +125,9 @@ def tool_call_idle_timeout_seconds() -> float | None:
     return None if timeout <= 0 else timeout
 
 
-def _create_skipped_tool_result(
-    tool_call: ToolCall, reason: str = "Interrupted by user"
-) -> ToolResultMessage:
+def _create_skipped_tool_result(tool_call: ToolCall, reason: str = "Interrupted by user") -> ToolResultMessage:
     return ToolResultMessage(
-        tool_call_id=tool_call.id,
-        tool_name=tool_call.name,
-        content=[TextContent(text=reason)],
-        is_error=True,
+        tool_call_id=tool_call.id, tool_name=tool_call.name, content=[TextContent(text=reason)], is_error=True
     )
 
 
@@ -169,9 +164,7 @@ def _finalize_tool_call_data(tool_call_data: dict, tools: list[BaseTool]) -> Pen
             display = tool.format_call(params)
             approval_preview = tool.format_preview(params) or ""
         except (TypeError, KeyError, ValueError, ValidationError):
-            preflight_error = (
-                "Tool call arguments failed validation before execution; skipping execution."
-            )
+            preflight_error = "Tool call arguments failed validation before execution; skipping execution."
 
     return PendingToolCall(
         tool_call=tool_call,
@@ -256,9 +249,7 @@ async def run_single_turn(
 
     if cancel_event and cancel_event.is_set():
         yield InterruptedEvent(message="Interrupted by user")
-        yield TurnEndEvent(
-            turn=turn, assistant_message=None, tool_results=[], stop_reason=StopReason.INTERRUPTED
-        )
+        yield TurnEndEvent(turn=turn, assistant_message=None, tool_results=[], stop_reason=StopReason.INTERRUPTED)
         return
 
     delays = retry_delays if retry_delays is not None else [2, 4, 8]
@@ -267,12 +258,7 @@ async def run_single_turn(
     for attempt_num, delay in enumerate([*delays, None]):
         if cancel_event and cancel_event.is_set():
             yield InterruptedEvent(message="Interrupted by user")
-            yield TurnEndEvent(
-                turn=turn,
-                assistant_message=None,
-                tool_results=[],
-                stop_reason=StopReason.INTERRUPTED,
-            )
+            yield TurnEndEvent(turn=turn, assistant_message=None, tool_results=[], stop_reason=StopReason.INTERRUPTED)
             return
 
         try:
@@ -280,23 +266,16 @@ async def run_single_turn(
             break  # Success, exit retry loop
         except Exception as e:
             if provider.should_retry_for_error(e) and delay is not None:
-                yield RetryEvent(
-                    attempt=attempt_num + 1, total_attempts=len(delays), delay=delay, error=str(e)
-                )
+                yield RetryEvent(attempt=attempt_num + 1, total_attempts=len(delays), delay=delay, error=str(e))
                 if await _sleep_or_cancel(delay, cancel_event):
                     yield InterruptedEvent(message="Interrupted by user")
                     yield TurnEndEvent(
-                        turn=turn,
-                        assistant_message=None,
-                        tool_results=[],
-                        stop_reason=StopReason.INTERRUPTED,
+                        turn=turn, assistant_message=None, tool_results=[], stop_reason=StopReason.INTERRUPTED
                     )
                     return
                 continue
             yield ErrorEvent(error=str(e))  # Not retryable or retries exhausted
-            yield TurnEndEvent(
-                turn=turn, assistant_message=None, tool_results=[], stop_reason=StopReason.ERROR
-            )
+            yield TurnEndEvent(turn=turn, assistant_message=None, tool_results=[], stop_reason=StopReason.ERROR)
             return
 
     # Stream should be set at this point
@@ -363,18 +342,13 @@ async def run_single_turn(
         next_task = asyncio.create_task(_safe_anext(stream_iter))
         chunk_timeout = (
             tool_call_timeout
-            if (
-                tool_call_timeout is not None
-                and (current_state == StreamState.TOOL_CALL or pending_tool_calls)
-            )
+            if (tool_call_timeout is not None and (current_state == StreamState.TOOL_CALL or pending_tool_calls))
             else None
         )
 
         if cancel_task and not cancel_task.done():
             done, _ = await asyncio.wait(
-                {next_task, cancel_task},
-                timeout=chunk_timeout,
-                return_when=asyncio.FIRST_COMPLETED,
+                {next_task, cancel_task}, timeout=chunk_timeout, return_when=asyncio.FIRST_COMPLETED
             )
 
             if not done:
@@ -384,10 +358,7 @@ async def run_single_turn(
                 await _close_stream(stream)
                 timeout_secs = chunk_timeout or 0
                 yield WarningEvent(
-                    warning=(
-                        f"Tool-call stream stalled for {timeout_secs:g}s; "
-                        "continuing with collected arguments."
-                    )
+                    warning=(f"Tool-call stream stalled for {timeout_secs:g}s; continuing with collected arguments.")
                 )
                 # Some local providers intermittently miss terminal stream events
                 # after a tool call is fully emitted. If we're already in a tool
@@ -418,10 +389,7 @@ async def run_single_turn(
                 await _close_stream(stream)
                 timeout_secs = chunk_timeout or 0
                 yield WarningEvent(
-                    warning=(
-                        f"Tool-call stream stalled for {timeout_secs:g}s; "
-                        "continuing with collected arguments."
-                    )
+                    warning=(f"Tool-call stream stalled for {timeout_secs:g}s; continuing with collected arguments.")
                 )
                 for finalize_event in _finalize_current_state(include_empty=False):
                     yield finalize_event
@@ -530,9 +498,7 @@ async def run_single_turn(
                         and chunk_count % _TOOL_ARGS_TOKEN_CHUNK_UPDATE_INTERVAL == 0
                     ):
                         yield ToolArgsTokenUpdateEvent(
-                            tool_call_id=tool_call["id"],
-                            tool_name=tool_call["name"],
-                            token_count=token_count,
+                            tool_call_id=tool_call["id"], tool_name=tool_call["name"], token_count=token_count
                         )
 
             case StreamDone(stop_reason=reason):
@@ -600,15 +566,10 @@ async def run_single_turn(
                 approved = await _await_approval(future, cancel_event) == ApprovalResponse.APPROVE
 
             if approved:
-                result, file_changes = await _execute_tool(
-                    pending.tool_call, pending.tool, cwd, cancel_event
-                )
+                result, file_changes = await _execute_tool(pending.tool_call, pending.tool, cwd, cancel_event)
             else:
                 result = _create_skipped_tool_result(
-                    pending.tool_call,
-                    reason=(
-                        "Tool call denied by user. Ask them what they'd like you to do instead."
-                    ),
+                    pending.tool_call, reason=("Tool call denied by user. Ask them what they'd like you to do instead.")
                 )
 
         tool_results.append(result)

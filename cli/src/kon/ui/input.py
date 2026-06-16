@@ -50,9 +50,7 @@ _TEXTAREA_THEME = "kon-input"
 def _get_textarea_theme() -> TextAreaTheme:
     colors = config.ui.colors
     return TextAreaTheme(
-        name=_TEXTAREA_THEME,
-        base_style=Style(color=colors.fg),
-        cursor_style=Style(color=colors.bg, bgcolor=colors.fg),
+        name=_TEXTAREA_THEME, base_style=Style(color=colors.fg), cursor_style=Style(color=colors.bg, bgcolor=colors.fg)
     )
 
 
@@ -164,9 +162,7 @@ class InputBox(Vertical):
     }
     """
 
-    def __init__(
-        self, cwd: str | None = None, id: str | None = None, classes: str | None = None
-    ) -> None:
+    def __init__(self, cwd: str | None = None, id: str | None = None, classes: str | None = None) -> None:
         super().__init__(id=id, classes=classes)
         self._cwd = cwd or os.getcwd()
         self._history = PromptHistory()
@@ -175,11 +171,7 @@ class InputBox(Vertical):
         self._slash_provider = SlashCommandProvider(DEFAULT_COMMANDS.copy())
         self._file_provider = FilePathProvider(self._cwd)
         self._pr_provider = PullRequestProvider(self._cwd)
-        self._providers: list[AutocompleteProvider] = [
-            self._slash_provider,
-            self._file_provider,
-            self._pr_provider,
-        ]
+        self._providers: list[AutocompleteProvider] = [self._slash_provider, self._file_provider, self._pr_provider]
 
         # Active completion state (the list itself is external)
         self._active_provider: AutocompleteProvider | None = None
@@ -416,16 +408,12 @@ class InputBox(Vertical):
         if not raw_text:
             return
         query_text = self._expand_paste_markers(raw_text)
-        selected_skill_name, selected_skill_query = self._extract_selected_skill_submission(
-            query_text
-        )
+        selected_skill_name, selected_skill_query = self._extract_selected_skill_submission(query_text)
         display_text = self._strip_skill_markers(raw_text)
         query_text = self._strip_skill_markers(query_text)
         self._add_to_history(query_text)
         try:
-            if getattr(self.app, "finish_queue_edit", lambda _display, _query: False)(
-                display_text, query_text
-            ):
+            if getattr(self.app, "finish_queue_edit", lambda _display, _query: False)(display_text, query_text):
                 self.clear(reset_pastes=True)
                 return
         except Exception:

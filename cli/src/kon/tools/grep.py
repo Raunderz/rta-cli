@@ -22,12 +22,9 @@ MAX_LINE_LENGTH = 2000
 
 class GrepParams(BaseModel):
     pattern: str = Field(description="The regex pattern to search for in file contents")
-    path: str | None = Field(
-        description="Directory or file to search (default: current directory)", default=None
-    )
+    path: str | None = Field(description="Directory or file to search (default: current directory)", default=None)
     include: str | None = Field(
-        description='File pattern to include in the search (e.g. "*.py", "*.{ts,tsx}")',
-        default=None,
+        description='File pattern to include in the search (e.g. "*.py", "*.{ts,tsx}")', default=None
     )
 
 
@@ -52,9 +49,7 @@ class GrepTool(BaseTool):
             parts.append(f"({params.include})")
         return " ".join(parts)
 
-    async def execute(
-        self, params: GrepParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: GrepParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         if params.path:
             verify_path_sandbox(params.path, cwd)
 
@@ -71,15 +66,7 @@ class GrepTool(BaseTool):
             msg = f"Path not found: {search_path}"
             return ToolResult(success=False, result=msg, ui_summary=f"[red]{msg}[/red]")
 
-        args = [
-            rg_path,
-            "-nH",
-            "--hidden",
-            "--no-messages",
-            "--field-match-separator=|",
-            "--regexp",
-            params.pattern,
-        ]
+        args = [rg_path, "-nH", "--hidden", "--no-messages", "--field-match-separator=|", "--regexp", params.pattern]
         if params.include:
             args.extend(["--glob", params.include])
         args.append(search_path)
@@ -100,9 +87,7 @@ class GrepTool(BaseTool):
 
         # Exit codes: 0 = matches, 1 = no matches, 2 = errors (may still have matches)
         if exit_code == 1 or (exit_code == 2 and not output.strip()):
-            return ToolResult(
-                success=True, result="No matches found", ui_summary="[dim]No matches found[/dim]"
-            )
+            return ToolResult(success=True, result="No matches found", ui_summary="[dim]No matches found[/dim]")
 
         if exit_code not in (0, 2):
             msg = f"ripgrep failed: {error_output}"
@@ -133,15 +118,10 @@ class GrepTool(BaseTool):
         matches = matches[:MAX_MATCHES]
 
         if not matches:
-            return ToolResult(
-                success=True, result="No matches found", ui_summary="[dim]No matches found[/dim]"
-            )
+            return ToolResult(success=True, result="No matches found", ui_summary="[dim]No matches found[/dim]")
 
         total_matches = len(lines)
-        output_lines = [
-            f"Found {total_matches} matches"
-            + (f" (showing first {MAX_MATCHES})" if truncated else "")
-        ]
+        output_lines = [f"Found {total_matches} matches" + (f" (showing first {MAX_MATCHES})" if truncated else "")]
 
         current_file = ""
         for file_path, _, line_num, line_text in matches:

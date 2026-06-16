@@ -2,15 +2,7 @@ import json
 
 import pytest
 
-from kon.core.types import (
-    AssistantMessage,
-    StopReason,
-    TextContent,
-    ThinkingContent,
-    ToolCall,
-    Usage,
-    UserMessage,
-)
+from kon.core.types import AssistantMessage, StopReason, TextContent, ThinkingContent, ToolCall, Usage, UserMessage
 from kon.session import (
     CompactionEntry,
     CustomMessageEntry,
@@ -113,10 +105,7 @@ def test_round_trip_all_entry_types(tmp_path, monkeypatch):
     session.append_thinking_level_change("high")
     session.append_model_change("openai", "gpt-4")
     session.append_compaction(
-        summary="Compacted session",
-        first_kept_entry_id=msg_id,
-        tokens_before=1000,
-        details={"removed": 5},
+        summary="Compacted session", first_kept_entry_id=msg_id, tokens_before=1000, details={"removed": 5}
     )
     session.append_custom_message("error", "Something went wrong")
     info_id = session.append_session_info("My Test Session")
@@ -183,9 +172,7 @@ def test_round_trip_parent_id_linking(tmp_path, monkeypatch):
 def test_round_trip_session_properties(tmp_path, monkeypatch):
     monkeypatch.setattr("kon.session.Session.get_sessions_dir", lambda cwd: tmp_path)
 
-    session = Session.create(
-        "/test/project", provider="anthropic", model_id="claude-3-opus", thinking_level="high"
-    )
+    session = Session.create("/test/project", provider="anthropic", model_id="claude-3-opus", thinking_level="high")
 
     # Check initial values
     assert session.model == ("anthropic", "claude-3-opus", None)
@@ -282,9 +269,7 @@ def test_round_trip_multiple_messages(tmp_path, monkeypatch):
     # Add 100 messages
     for i in range(50):
         session.append_message(UserMessage(content=f"User message {i}"))
-        session.append_message(
-            AssistantMessage(content=[TextContent(text=f"Assistant response {i}")])
-        )
+        session.append_message(AssistantMessage(content=[TextContent(text=f"Assistant response {i}")]))
 
     assert len(session.messages) == 100
 
@@ -295,9 +280,7 @@ def test_round_trip_multiple_messages(tmp_path, monkeypatch):
     assert len(loaded_session.messages) == 100
     for i in range(50):
         assert loaded_session.messages[i * 2].content == f"User message {i}"
-        assert loaded_session.messages[i * 2 + 1].content == [
-            TextContent(text=f"Assistant response {i}")
-        ]
+        assert loaded_session.messages[i * 2 + 1].content == [TextContent(text=f"Assistant response {i}")]
 
 
 def test_round_trip_with_tool_calls(tmp_path, monkeypatch):
@@ -308,8 +291,7 @@ def test_round_trip_with_tool_calls(tmp_path, monkeypatch):
     # Add assistant message with tool call
     tool_call = ToolCall(id="tool-123", name="bash", arguments={"command": "ls -la"})
     msg = AssistantMessage(
-        content=[TextContent(text="I'll list the files:"), tool_call],
-        usage=Usage(input_tokens=5, output_tokens=10),
+        content=[TextContent(text="I'll list the files:"), tool_call], usage=Usage(input_tokens=5, output_tokens=10)
     )
     session.append_message(msg)
 

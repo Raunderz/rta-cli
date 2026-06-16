@@ -19,21 +19,15 @@ CONTEXT_LINES = 4
 class EditParams(BaseModel):
     path: str = Field(description="Absolute path of the file to edit")
     old_string: str = Field(description="The text to replace")
-    new_string: str = Field(
-        description="The text to replace it with (must be different from old_string)"
-    )
-    replace_all: bool = Field(
-        description="Replace all occurrences of old_string (default false)", default=False
-    )
+    new_string: str = Field(description="The text to replace it with (must be different from old_string)")
+    replace_all: bool = Field(description="Replace all occurrences of old_string (default false)", default=False)
 
 
 def _ellipsis(line_num_width: int, skipped: int) -> str:
     return f" {''.rjust(line_num_width)} \u22ef {skipped} lines \u22ef"  # ⋯ N lines ⋯
 
 
-def generate_diff(
-    old_content: str, new_content: str, context_lines: int = CONTEXT_LINES
-) -> tuple[str, int, int]:
+def generate_diff(old_content: str, new_content: str, context_lines: int = CONTEXT_LINES) -> tuple[str, int, int]:
     """
     Generate a diff with line numbers and context.
 
@@ -212,9 +206,7 @@ class EditTool(BaseTool):
         diff, _, _ = generate_diff(params.old_string, params.new_string)
         return format_diff_display(diff)
 
-    async def execute(
-        self, params: EditParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: EditParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         verify_path_sandbox(params.path, cwd)
         file_path = Path(params.path)
 

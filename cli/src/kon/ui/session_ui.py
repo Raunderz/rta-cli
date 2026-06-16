@@ -128,26 +128,15 @@ class SessionUIMixin:
             elif isinstance(entry, CompactionEntry):
                 chat.add_compaction_message(entry.tokens_before)
             elif isinstance(entry, CustomMessageEntry):
-                target_session_id = str(
-                    (entry.details or {}).get("target_session_id") or ""
-                ).strip()
+                target_session_id = str((entry.details or {}).get("target_session_id") or "").strip()
                 query = str((entry.details or {}).get("query") or "").strip()
                 if entry.custom_type == CommandsMixin.HANDOFF_BACKLINK_TYPE and target_session_id:
                     chat.add_handoff_link_message(
-                        label="Origin session",
-                        target_session_id=target_session_id,
-                        query=query,
-                        direction="back",
+                        label="Origin session", target_session_id=target_session_id, query=query, direction="back"
                     )
-                elif (
-                    entry.custom_type == CommandsMixin.HANDOFF_FORWARD_LINK_TYPE
-                    and target_session_id
-                ):
+                elif entry.custom_type == CommandsMixin.HANDOFF_FORWARD_LINK_TYPE and target_session_id:
                     chat.add_handoff_link_message(
-                        label="Handoff session",
-                        target_session_id=target_session_id,
-                        query=query,
-                        direction="forward",
+                        label="Handoff session", target_session_id=target_session_id, query=query, direction="forward"
                     )
                 elif entry.display:
                     chat.add_info_message(entry.content)
@@ -164,9 +153,7 @@ class SessionUIMixin:
             return
 
         if session.session_file is None:
-            chat.add_info_message(
-                "Failed to load linked session: missing session file", error=True
-            )
+            chat.add_info_message("Failed to load linked session: missing session file", error=True)
             input_box.focus()
             return
 
@@ -213,9 +200,7 @@ class SessionUIMixin:
 
         if self._runtime.agent:
             chat.add_loaded_resources(
-                context_paths=[
-                    format_path(f.path) for f in self._runtime.agent.context.agents_files
-                ],
+                context_paths=[format_path(f.path) for f in self._runtime.agent.context.agents_files],
                 skills=self._runtime.agent.context.skills,
                 tools=self._runtime.tools,
             )

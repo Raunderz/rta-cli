@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -104,12 +104,7 @@ class TestGetAllMCPTools:
     @patch("kon.tools.mcp_bridge.list_mcp_tools")
     @patch("kon.tools.mcp_bridge.load_mcp_config")
     def test_collects_tools_from_all_servers(self, mock_config, mock_list):
-        mock_config.return_value = {
-            "mcpServers": {
-                "server_a": {"command": "x"},
-                "server_b": {"command": "y"},
-            }
-        }
+        mock_config.return_value = {"mcpServers": {"server_a": {"command": "x"}, "server_b": {"command": "y"}}}
         mock_list.side_effect = lambda name: [
             {"name": f"tool_{name}", "description": f"desc {name}", "inputSchema": {"type": "object", "properties": {}}}
         ]
@@ -123,9 +118,11 @@ class TestGetAllMCPTools:
     @patch("kon.tools.mcp_bridge.load_mcp_config")
     def test_skips_failing_servers(self, mock_config, mock_list):
         mock_config.return_value = {"mcpServers": {"bad": {"command": "x"}, "good": {"command": "y"}}}
-        mock_list.side_effect = lambda name: (_ for _ in ()).throw(RuntimeError("fail")) if name == "bad" else [
-            {"name": "t", "inputSchema": {"type": "object", "properties": {}}}
-        ]
+        mock_list.side_effect = lambda name: (
+            (_ for _ in ()).throw(RuntimeError("fail"))
+            if name == "bad"
+            else [{"name": "t", "inputSchema": {"type": "object", "properties": {}}}]
+        )
         tools = get_all_mcp_tools()
         assert len(tools) == 1
 

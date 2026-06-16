@@ -33,9 +33,7 @@ class _FakeInfoBar:
         self.models: list[tuple[str, str | None]] = []
         self.thinking_levels: list[str] = []
 
-    def set_tokens(
-        self, input_t: int, output_t: int, context_t: int, cache_read_t: int, cache_write_t: int
-    ) -> None:
+    def set_tokens(self, input_t: int, output_t: int, context_t: int, cache_read_t: int, cache_write_t: int) -> None:
         self.tokens_calls.append((input_t, output_t, context_t, cache_read_t, cache_write_t))
 
     def set_file_changes(self, file_changes: dict[str, tuple[int, int]]) -> None:
@@ -78,9 +76,7 @@ class _TestSessionApp(SessionUIMixin):
         self._api_key = None
         self._hide_thinking = False
         self._current_block_type = None
-        self._agent = Agent(
-            provider=provider, tools=[], session=session, cwd=self._cwd, system_prompt="old prompt"
-        )
+        self._agent = Agent(provider=provider, tools=[], session=session, cwd=self._cwd, system_prompt="old prompt")
         self._runtime = ConversationRuntime(
             cwd=self._cwd,
             model=self._model,

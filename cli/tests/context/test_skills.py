@@ -116,9 +116,7 @@ description: This has: a colon in it
 
 class TestValidateSkill:
     def test_valid_skill(self):
-        warnings = _validate_skill(
-            "my-skill", "A valid description", "my-skill", "/path/SKILL.md", cmd_info="menu"
-        )
+        warnings = _validate_skill("my-skill", "A valid description", "my-skill", "/path/SKILL.md", cmd_info="menu")
 
         assert warnings == []
 
@@ -181,9 +179,7 @@ class TestValidateSkill:
         assert len(warnings) >= 3
 
     def test_cmd_info_too_long(self):
-        warnings = _validate_skill(
-            "my-skill", "Description", "my-skill", "/path/SKILL.md", cmd_info="x" * 33
-        )
+        warnings = _validate_skill("my-skill", "Description", "my-skill", "/path/SKILL.md", cmd_info="x" * 33)
 
         assert any("cmd_info exceeds 32 characters" in w.message for w in warnings)
 
@@ -322,10 +318,7 @@ description: Global version
         assert result.skills[0].name == "shared-skill"
         assert result.skills[0].path == str(local_skill_dir / "SKILL.md")
         collision = next(w for w in result.warnings if "name collision" in w.message)
-        expected = (
-            'name collision: "shared-skill" already loaded '
-            "from ~/repo/.agents/skills/shared-skill/SKILL.md"
-        )
+        expected = 'name collision: "shared-skill" already loaded from ~/repo/.agents/skills/shared-skill/SKILL.md'
         assert collision.message == expected
 
     def test_skips_duplicate_global_dir_when_cwd_is_home(self, tmp_path, monkeypatch):
@@ -447,9 +440,7 @@ Body here
         skill = next((s for s in load_builtin_cmd_skills().skills if s.name == "review"), None)
 
         assert skill is not None
-        prompt = render_skill_prompt(
-            skill, 'PR#68 feat/headless-mode "feat: add non-interactive prompt mode"'
-        )
+        prompt = render_skill_prompt(skill, 'PR#68 feat/headless-mode "feat: add non-interactive prompt mode"')
 
         assert "gh pr view 68" in prompt
         assert 'PR#68 feat/headless-mode "feat: add non-interactive prompt mode"' in prompt
@@ -458,13 +449,9 @@ Body here
 
 class TestMergeRegisteredSkills:
     def test_primary_skills_take_precedence(self):
-        primary = [
-            Skill(name="init", description="Primary", path="/primary/SKILL.md", register_cmd=True)
-        ]
+        primary = [Skill(name="init", description="Primary", path="/primary/SKILL.md", register_cmd=True)]
         secondary = [
-            Skill(
-                name="init", description="Secondary", path="/secondary/SKILL.md", register_cmd=True
-            ),
+            Skill(name="init", description="Secondary", path="/secondary/SKILL.md", register_cmd=True),
             Skill(name="other", description="Other", path="/other/SKILL.md", register_cmd=True),
         ]
 
@@ -494,11 +481,7 @@ class TestFormatSkillsForPrompt:
         assert "</available_skills>" in result
 
     def test_escapes_xml_chars(self):
-        skills = [
-            Skill(
-                name="test-skill", description='Uses <angle> & "quotes"', path="/path/to/SKILL.md"
-            )
-        ]
+        skills = [Skill(name="test-skill", description='Uses <angle> & "quotes"', path="/path/to/SKILL.md")]
 
         result = formatted_skills(skills)
 

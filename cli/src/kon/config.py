@@ -438,9 +438,7 @@ def _migrate_config_data(data: dict[str, Any]) -> tuple[dict[str, Any], int, int
     while current_version < CURRENT_CONFIG_VERSION:
         iterations += 1
         if iterations > max_iterations:
-            raise RuntimeError(
-                f"Config migration loop detected (stuck at version {current_version})"
-            )
+            raise RuntimeError(f"Config migration loop detected (stuck at version {current_version})")
         if current_version == 0:
             migrated = _migrate_v0_to_v1(migrated)
             current_version = 1
@@ -488,9 +486,7 @@ def _toml_format_value(value: Any) -> str:
         return _toml_escape_string(value)
     if isinstance(value, list):
         return "[" + ", ".join(_toml_format_value(item) for item in value) + "]"
-    raise TypeError(
-        f"Unsupported config value type for TOML serialization: {type(value).__name__}"
-    )
+    raise TypeError(f"Unsupported config value type for TOML serialization: {type(value).__name__}")
 
 
 def _toml_dump_dict(data: dict[str, Any], table: str | None = None) -> str:
@@ -569,9 +565,7 @@ def _read_config_data(config_file: Path) -> dict[str, Any]:
     try:
         return tomllib.loads(config_file.read_text(encoding="utf-8"))
     except tomllib.TOMLDecodeError as exc:
-        _record_config_warning(
-            f"Invalid config at {config_file}: {exc}. Falling back to built-in defaults."
-        )
+        _record_config_warning(f"Invalid config at {config_file}: {exc}. Falling back to built-in defaults.")
         return {}
 
 
@@ -585,8 +579,7 @@ def _load_config() -> Config:
             try:
                 backup = _backup_and_write_migrated_config(config_file, migrated_data)
                 _record_config_warning(
-                    f"Migrated config at {config_file} from v{from_version} to v{to_version}. "
-                    f"Backup saved to {backup}."
+                    f"Migrated config at {config_file} from v{from_version} to v{to_version}. Backup saved to {backup}."
                 )
             except Exception as exc:
                 _record_config_warning(
@@ -595,9 +588,7 @@ def _load_config() -> Config:
                 )
         return Config(migrated_data)
     except ValidationError as exc:
-        _record_config_warning(
-            f"Invalid config values at {config_file}: {exc}. Falling back to built-in defaults."
-        )
+        _record_config_warning(f"Invalid config values at {config_file}: {exc}. Falling back to built-in defaults.")
         return Config({})
 
 

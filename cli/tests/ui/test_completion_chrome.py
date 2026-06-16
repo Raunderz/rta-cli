@@ -8,12 +8,7 @@ import pytest
 from kon.runtime import ConversationRuntime
 from kon.session import SessionInfo
 from kon.ui.app import Rta
-from kon.ui.autocomplete import (
-    FilePathProvider,
-    PullRequestProvider,
-    SlashCommand,
-    SlashCommandProvider,
-)
+from kon.ui.autocomplete import FilePathProvider, PullRequestProvider, SlashCommand, SlashCommandProvider
 from kon.ui.floating_list import FloatingList, ListItem
 from kon.ui.input import InputBox
 from kon.ui.selection_mode import SelectionMode
@@ -52,9 +47,7 @@ class FakeInfoBar:
 
 
 class FakeCompletionList:
-    def __init__(
-        self, selected_item: ListItem | None = None, *, visible: bool | None = None
-    ) -> None:
+    def __init__(self, selected_item: ListItem | None = None, *, visible: bool | None = None) -> None:
         self.items: list[ListItem] = []
         self.selected_item = selected_item
         self.searchable: bool | None = None
@@ -67,9 +60,7 @@ class FakeCompletionList:
     def is_visible(self) -> bool:
         return not self.hidden
 
-    def show(
-        self, items: list[ListItem], searchable: bool = False, max_label_width: int | None = None
-    ) -> None:
+    def show(self, items: list[ListItem], searchable: bool = False, max_label_width: int | None = None) -> None:
         self.items = items
         self.searchable = searchable
         self.max_label_width = max_label_width
@@ -93,9 +84,7 @@ class FakeCompletionList:
 class FakeInputBox:
     def __init__(self) -> None:
         self.is_tab_completing = False
-        self.active_provider: (
-            SlashCommandProvider | FilePathProvider | PullRequestProvider | None
-        ) = None
+        self.active_provider: SlashCommandProvider | FilePathProvider | PullRequestProvider | None = None
         self.completing: bool | None = None
         self.submitted = False
         self.tab_completed_items: list[ListItem] = []
@@ -134,9 +123,7 @@ class FakeInputBox:
 
 
 class FakeRta:
-    def __init__(
-        self, selected_item: ListItem | None = None, *, completion_visible: bool | None = None
-    ) -> None:
+    def __init__(self, selected_item: ListItem | None = None, *, completion_visible: bool | None = None) -> None:
         self.chat = FakeChat()
         self.info_bar = FakeInfoBar()
         self.completion_list = FakeCompletionList(selected_item, visible=completion_visible)
@@ -205,15 +192,9 @@ class FakeRta:
         Rta._set_bottom_info_displaced(self._kon(), displaced)
 
     def _show_completion_list(
-        self,
-        items: list[ListItem],
-        *,
-        searchable: bool = False,
-        max_label_width: int | None = None,
+        self, items: list[ListItem], *, searchable: bool = False, max_label_width: int | None = None
     ) -> None:
-        Rta._show_completion_list(
-            self._kon(), items, searchable=searchable, max_label_width=max_label_width
-        )
+        Rta._show_completion_list(self._kon(), items, searchable=searchable, max_label_width=max_label_width)
 
     def _hide_completion_list(self, *, restore_info_bar: bool = True) -> None:
         Rta._hide_completion_list(self._kon(), restore_info_bar=restore_info_bar)
@@ -236,11 +217,7 @@ class FakeRta:
         max_label_width: int | None = None,
     ) -> None:
         Rta._show_selection_picker(
-            self._kon(),
-            items,
-            selection_mode,
-            searchable=searchable,
-            max_label_width=max_label_width,
+            self._kon(), items, selection_mode, searchable=searchable, max_label_width=max_label_width
         )
 
     def _handle_settings_select(self, item_value: str):
@@ -258,9 +235,7 @@ class FakeRta:
     def _delete_selected_resume_session(self) -> None:
         Rta._delete_selected_resume_session(self._kon())
 
-    def notify(
-        self, message: str, *, title: str = "", timeout: int = 0, severity: str = "information"
-    ) -> None:
+    def notify(self, message: str, *, title: str = "", timeout: int = 0, severity: str = "information") -> None:
         self.notifications.append((message, title, timeout, severity))
 
     def _handle_themes_command(self, args: str) -> None:
@@ -286,9 +261,7 @@ def _make_session_item(path, session_id: str = "session") -> ListItem:
 def test_completion_list_is_configured_for_ten_rows() -> None:
     app = Rta(cwd=".")
     floating_list = next(
-        widget
-        for widget in app.compose()
-        if isinstance(widget, FloatingList) and widget.id == "completion-list"
+        widget for widget in app.compose() if isinstance(widget, FloatingList) and widget.id == "completion-list"
     )
 
     assert floating_list._window_size == 10  # pyright: ignore[reportPrivateUsage]
@@ -330,12 +303,8 @@ def test_completion_update_displaces_info_bar_for_visible_list() -> None:
     assert app.chat.scrolled_to_end is True
 
 
-@pytest.mark.parametrize(
-    ("restore_info_bar", "expected_hidden_class"), [(True, False), (False, True)]
-)
-def test_hide_completion_list_controls_info_bar_restore(
-    restore_info_bar: bool, expected_hidden_class: bool
-) -> None:
+@pytest.mark.parametrize(("restore_info_bar", "expected_hidden_class"), [(True, False), (False, True)])
+def test_hide_completion_list_controls_info_bar_restore(restore_info_bar: bool, expected_hidden_class: bool) -> None:
     app = FakeRta()
     app.info_bar.classes.add("-completion-hidden")
 
@@ -354,9 +323,7 @@ def test_completion_select_terminal_paths_restore_info_bar(case: str) -> None:
     if case == "tab":
         app.input_box.is_tab_completing = True
     elif case == "slash":
-        app.input_box.active_provider = SlashCommandProvider(
-            [SlashCommand(name="help", description="help")]
-        )
+        app.input_box.active_provider = SlashCommandProvider([SlashCommand(name="help", description="help")])
     elif case == "file":
         app.input_box.active_provider = FilePathProvider(".")
 
@@ -456,9 +423,7 @@ def test_resume_delete_no_remaining_sessions_hides_picker_and_restores_scroll(tm
     assert app.input_box.autocomplete_enabled is True
     assert app.input_box.completing is False
     assert app._selection_mode is None
-    assert app.notifications == [
-        ("Session deleted (no saved sessions left)", "Sessions", 2, "information")
-    ]
+    assert app.notifications == [("Session deleted (no saved sessions left)", "Sessions", 2, "information")]
     assert app.chat.scrolled_to_end is True
 
 
