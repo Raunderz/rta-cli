@@ -38,17 +38,25 @@ SECRET_PATTERNS = [
     )),
 ]
 HOME_PATH_RE = re.compile(r"/home/[a-zA-Z0-9_-]+")
-SUPABASE_URL_RE = re.compile(r"https?://[a-z0-9]{20,}\.supabase\.co")
+SUPABASE_URL_RE = re.compile(r"(?:https?://)?[a-z0-9]{20,}\.supabase\.co")
 DEPLOYMENT_URL_RE = re.compile(
-    r"rta-[a-z0-9]+\.onrender\.com"
-    r"|rta-three\.vercel\.app"
-    r"|schallten-[a-z0-9]+\.hf\.space"
+    r"(?:https?://)?[\w-]+\.onrender\.com"
+    r"|(?:https?://)?[\w-]+\.vercel\.app"
+    r"|(?:https?://)?[\w-]+\.hf\.space"
+    r"|(?:https?://)?[\w-]+\.github\.io"
+    r"|(?:https?://)?[\w-]+\.pythonanywhere\.com"
+    r"|(?:https?://)?gitlab\.com/[\w-]+"
+    r"|(?:https?://)?esm\.sh/gh/[\w-]+"
+    r"|[\w-]+-github-io"
+    r"|(?:https?://)?raw\.githubusercontent\.com/[\w-]+"
 )
 GIT_AUTHOR_RE = re.compile(r"Author:\s*[^<]+<[^>]+>")
 GITHUB_USER_URL_RE = re.compile(r"github\.com[/:][\w-]+/[\w-]+")
 SSH_HOST_RE = re.compile(r"git@github\.com-\w+:")
 EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
-TWITTER_RE = re.compile(r"@(?:dunkelkron|korrykatti|schallten)\b")
+NUMERIC_USERID_RE = re.compile(r"\d+\+[\w]+@users\.noreply\.github\.com")
+WAKATIME_RE = re.compile(r"wakatime\.com/share/@[\w]+/[0-9a-f-]+")
+UMAMI_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 WAKATIME_RE = re.compile(r"wakatime\.com/share/@[\w]+/[0-9a-f-]+")
 UMAMI_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
@@ -71,7 +79,7 @@ def scrub(text) -> str:
     text = GITHUB_USER_URL_RE.sub("github.com/[USER]/[REPO]", text)
     text = SSH_HOST_RE.sub("git@github.com:[USER]/", text)
     text = EMAIL_RE.sub("[SCRUBBED_EMAIL]", text)
-    text = TWITTER_RE.sub("@[SCRUBBED]", text)
+    text = NUMERIC_USERID_RE.sub("[SCRUBBED_EMAIL]", text)
     text = WAKATIME_RE.sub("wakatime.com/share/@[SCRUBBED]", text)
     text = UMAMI_ID_RE.sub("[SCRUBBED_UUID]", text)
     return text
@@ -219,6 +227,7 @@ def build_turns_from_session(conn, session):
         project = project_row["name"] or os.path.basename(project_row["worktree"] or "")
     else:
         project = "unknown"
+    project = DEPLOYMENT_URL_RE.sub("[SCRUBBED_URL]", project)
 
     messages = get_session_messages(conn, session_id)
     if not messages:
