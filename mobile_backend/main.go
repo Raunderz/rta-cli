@@ -873,11 +873,27 @@ func handleListEnvs(w http.ResponseWriter, r *http.Request) {
 		TunnelURL string `json:"tunnel_url,omitempty"`
 	}
 
+	apiKey := r.Header.Get("X-API-KEY")
+	if apiKey == "" {
+		http.Error(w, "Missing X-API-KEY", http.StatusUnauthorized)
+		return
+	}
+
+	user, err := verifyKey(apiKey)
+	if err != nil {
+		http.Error(w, "Invalid API key", http.StatusUnauthorized)
+		return
+	}
+
 	var envList []*EnvStatus
 	now := time.Now()
 
 	envs.Range(func(k, v interface{}) bool {
 		env := v.(*Env)
+
+		if env.UserID != user.UserID {
+			return true
+		}
 
 		age := now.Sub(env.CreatedAt)
 		idle := now.Sub(env.LastPing)

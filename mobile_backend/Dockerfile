@@ -41,7 +41,10 @@ RUN curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_
 # Rta CLI
 # ============================================================================
 
-RUN curl -fsSL https://rta-three.vercel.app/rta -o /usr/local/bin/rta && chmod +x /usr/local/bin/rta
+ARG RTA_SHA256=948e21281a18efa3331b957cd32aa3eff63be8014ffec6fe61216fb967397db9
+RUN curl -fsSL https://rta-three.vercel.app/rta -o /tmp/rta && \
+    echo "${RTA_SHA256}  /tmp/rta" | sha256sum -c - && \
+    mv /tmp/rta /usr/local/bin/rta && chmod +x /usr/local/bin/rta
 
 # ============================================================================
 # cloudflared (tunneling)

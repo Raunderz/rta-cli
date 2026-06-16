@@ -65,28 +65,32 @@ def log_telemetry(user_id: str, data: dict):
 import time
 import asyncio
 from typing import Dict
-# Tier Cache
-# key: user_id, value: (tier, expiry)
-_tier_cache = {}
+from rta_backend.utils import TTLCache
+# Tier Cache (bounded to prevent memory leaks)
+# key: user_id, value: tier
+_tier_cache = TTLCache(max_size=2000)
 TIER_CACHE_TTL = 600  # 10 minutes
 
 # Per-user locks for atomic billing operations (prevents TOCTOU race conditions)
 _user_billing_locks: Dict[str, asyncio.Lock] = {}
 _billing_locks_lock = asyncio.Lock()
+MAX_BILLING_LOCKS = 500
 
 async def _get_billing_lock(user_id: str) -> asyncio.Lock:
     async with _billing_locks_lock:
         if user_id not in _user_billing_locks:
+            # Evict oldest locks if at capacity to prevent unbounded growth
+            if len(_user_billing_locks) >= MAX_BILLING_LOCKS:
+                oldest_key = next(iter(_user_billing_locks))
+                del _user_billing_locks[oldest_key]
             _user_billing_locks[user_id] = asyncio.Lock()
         return _user_billing_locks[user_id]
 
 def get_user_tier(user_id: str) -> str:
     """Fetch user subscription tier (with caching)."""
-    now = time.time()
-    if user_id in _tier_cache:
-        tier, expiry = _tier_cache[user_id]
-        if now < expiry:
-            return tier
+    cached = _tier_cache.get(user_id)
+    if cached is not None:
+        return cached
 
     client = get_supabase_client()
     res = client.table("profiles").select("subscription_tier").eq("id", user_id).execute()
@@ -94,7 +98,7 @@ def get_user_tier(user_id: str) -> str:
     if res.data:
         tier = res.data[0].get("subscription_tier", "free")
     
-    _tier_cache[user_id] = (tier, now + TIER_CACHE_TTL)
+    _tier_cache.set(user_id, tier, TIER_CACHE_TTL)
     return tier
 
 async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int, token_limit: int) -> tuple[bool, str]:

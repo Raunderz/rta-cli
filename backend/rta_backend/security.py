@@ -51,26 +51,24 @@ API_KEY_NAME = "X-API-KEY"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 import time
-# API Key and Token Cache
-# key: hashed_key or token, value: (user_id, expiry)
-_auth_cache = {}
+from rta_backend.utils import TTLCache
+# API Key and Token Cache (bounded to prevent memory leaks)
+# key: hashed_key or token, value: user_id
+_auth_cache = TTLCache(max_size=5000)
 AUTH_CACHE_TTL = 300  # 5 minutes
 
 async def require_api_key(request: Request, api_key: str = Security(api_key_header)) -> str:
     """
     Dependency to validate API key OR Bearer token and return user_id.
     """
-    now = time.time()
     user_id = None
-    cache_key = None
 
     # 1. Check for X-API-KEY
     if api_key:
         cache_key = hash_key(api_key)
-        if cache_key in _auth_cache:
-            uid, expiry = _auth_cache[cache_key]
-            if now < expiry:
-                user_id = uid
+        cached = _auth_cache.get(cache_key)
+        if cached is not None:
+            user_id = cached
 
     # 2. Check for Bearer token if API key failed or not in cache
     if not user_id:
@@ -78,10 +76,9 @@ async def require_api_key(request: Request, api_key: str = Security(api_key_head
         if auth_header and auth_header.startswith("Bearer "):
             bearer_token = auth_header.split(" ")[1]
             cache_key = f"bearer_{hash_key(bearer_token)}"
-            if cache_key in _auth_cache:
-                uid, expiry = _auth_cache[cache_key]
-                if now < expiry:
-                    user_id = uid
+            cached = _auth_cache.get(cache_key)
+            if cached is not None:
+                user_id = cached
 
     if user_id:
         request.state.user_id = user_id
@@ -95,7 +92,7 @@ async def require_api_key(request: Request, api_key: str = Security(api_key_head
         res = supabase.table("api_keys").select("user_id").eq("key_hash", hashed).execute()
         if res.data:
             user_id = res.data[0]["user_id"]
-            _auth_cache[hashed] = (user_id, now + AUTH_CACHE_TTL)
+            _auth_cache.set(hashed, user_id, AUTH_CACHE_TTL)
 
     if not user_id:
         auth_header = request.headers.get("Authorization")
@@ -105,7 +102,7 @@ async def require_api_key(request: Request, api_key: str = Security(api_key_head
                 auth_res = supabase.auth.get_user(token)
                 if auth_res.user:
                     user_id = auth_res.user.id
-                    _auth_cache[f"bearer_{hash_key(token)}"] = (user_id, now + AUTH_CACHE_TTL)
+                    _auth_cache.set(f"bearer_{hash_key(token)}", user_id, AUTH_CACHE_TTL)
             except Exception:
                 pass
 

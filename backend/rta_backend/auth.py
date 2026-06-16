@@ -40,7 +40,7 @@ import secrets
 
 @router.get("/github")
 async def github_login():
-    """Initiate GitHub OAuth flow with manual PKCE."""
+    """Initiate GitHub OAuth flow with manual PKCE and CSRF state."""
     supabase_url = os.getenv("SUPABASE_URL")
     backend_url = os.getenv("BACKEND_URL", "http://localhost:8000")
     redirect_to = f"{backend_url}/v1/auth/callback"
@@ -51,14 +51,26 @@ async def github_login():
         hashlib.sha256(code_verifier.encode()).digest()
     ).decode().replace("=", "")
     
-    auth_url = f"{supabase_url}/auth/v1/authorize?provider=github&redirect_to={redirect_to}&code_challenge={code_challenge}&code_challenge_method=S256"
+    # Generate CSRF state token to prevent session fixation attacks
+    oauth_state = secrets.token_urlsafe(32)
+    
+    auth_url = f"{supabase_url}/auth/v1/authorize?provider=github&redirect_to={redirect_to}&code_challenge={code_challenge}&code_challenge_method=S256&state={oauth_state}"
     
     response = RedirectResponse(auth_url)
-    # Store verifier in a secure, short-lived cookie
     cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+    # Store PKCE verifier in a secure, short-lived cookie
     response.set_cookie(
         key="pkce_verifier",
         value=code_verifier,
+        httponly=True,
+        max_age=600,  # 10 minutes
+        samesite="lax",
+        secure=cookie_secure
+    )
+    # Store CSRF state in a secure cookie to verify on callback
+    response.set_cookie(
+        key="oauth_state",
+        value=oauth_state,
         httponly=True,
         max_age=600,  # 10 minutes
         samesite="lax",
@@ -68,13 +80,21 @@ async def github_login():
 
 @router.get("/callback")
 async def auth_callback(request: Request):
-    """Handle Supabase OAuth callback with PKCE verification."""
+    """Handle Supabase OAuth callback with PKCE and CSRF state verification."""
     code = request.query_params.get("code")
+    state = request.query_params.get("state")
     code_verifier = request.cookies.get("pkce_verifier")
+    expected_state = request.cookies.get("oauth_state")
+    
+    frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
     
     if not code:
-        frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
         return RedirectResponse(f"{frontend_url}/auth?error=No+auth+code+received")
+    
+    # Verify CSRF state token matches what we sent
+    if not state or not expected_state or state != expected_state:
+        logger.warning("OAuth CSRF state mismatch — possible session fixation attempt")
+        return RedirectResponse(f"{frontend_url}/auth?error=Invalid+oauth+state")
 
     try:
         supabase_client = get_supabase_client()
@@ -108,6 +128,9 @@ async def auth_callback(request: Request):
         # Prevents leakage through browser history, Referer headers, and server logs
         response = RedirectResponse(f"{frontend_url}/dashboard")
         cookie_secure = os.getenv("COOKIE_SECURE", "true").lower() == "true"
+        # Clear the one-time use OAuth state cookie
+        response.delete_cookie(key="oauth_state")
+        response.delete_cookie(key="pkce_verifier")
         response.set_cookie(
             key="access_token",
             value=res.session.access_token,

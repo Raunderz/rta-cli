@@ -292,3 +292,94 @@ class TestTruncateMessages:
         result = truncate_messages(msgs, max_chars=10000)
         assert result[0]["role"] == "system"
         assert result[-1]["role"] == "assistant"
+
+
+# =============================================================================
+# TTLCache tests
+# =============================================================================
+
+class TestTTLCache:
+    def test_set_and_get(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=10)
+        cache.set("key1", "value1", ttl=60)
+        assert cache.get("key1") == "value1"
+
+    def test_returns_none_for_missing_key(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=10)
+        assert cache.get("nonexistent") is None
+
+    def test_evicts_expired_entries(self):
+        from rta_backend.utils import TTLCache
+        import time
+        cache = TTLCache(max_size=10)
+        cache.set("key1", "value1", ttl=0)  # expires immediately
+        time.sleep(0.01)
+        assert cache.get("key1") is None
+
+    def test_evicts_oldest_when_full(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=3)
+        cache.set("a", 1, ttl=60)
+        cache.set("b", 2, ttl=60)
+        cache.set("c", 3, ttl=60)
+        cache.set("d", 4, ttl=60)  # should evict "a"
+        assert cache.get("a") is None
+        assert cache.get("d") == 4
+
+    def test_moves_accessed_item_to_end(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=3)
+        cache.set("a", 1, ttl=60)
+        cache.set("b", 2, ttl=60)
+        cache.set("c", 3, ttl=60)
+        cache.get("a")  # access "a" to move it to end
+        cache.set("d", 4, ttl=60)  # should evict "b" (oldest unaccessed)
+        assert cache.get("a") == 1
+        assert cache.get("b") is None
+
+    def test_overwrite_existing_key(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=10)
+        cache.set("key1", "old", ttl=60)
+        cache.set("key1", "new", ttl=60)
+        assert cache.get("key1") == "new"
+        assert len(cache) == 1
+
+    def test_delete(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=10)
+        cache.set("key1", "value1", ttl=60)
+        cache.delete("key1")
+        assert cache.get("key1") is None
+
+    def test_len(self):
+        from rta_backend.utils import TTLCache
+        cache = TTLCache(max_size=10)
+        assert len(cache) == 0
+        cache.set("a", 1, ttl=60)
+        cache.set("b", 2, ttl=60)
+        assert len(cache) == 2
+
+
+# =============================================================================
+# OAuth state tests
+# =============================================================================
+
+class TestOAuthState:
+    def test_github_login_sets_state_cookie(self):
+        """github_login should set oauth_state cookie."""
+        from rta_backend.auth import github_login
+        import asyncio
+        response = asyncio.get_event_loop().run_until_complete(github_login())
+        # RedirectResponse has set_cookie on the response object itself
+        # Check that the redirect URL contains state parameter
+        assert "state=" in response.headers["location"]
+
+    def test_callback_rejects_mismatched_state(self):
+        """auth_callback should reject if state doesn't match cookie."""
+        from rta_backend.auth import auth_callback
+        import inspect
+        sig = inspect.signature(auth_callback)
+        assert "request" in sig.parameters

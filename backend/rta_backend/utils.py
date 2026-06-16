@@ -1,6 +1,41 @@
 import re
 import json
 import logging
+import time
+from collections import OrderedDict
+
+
+class TTLCache:
+    """Bounded dict with per-entry TTL and LRU eviction."""
+    
+    def __init__(self, max_size: int = 1000):
+        self._max_size = max_size
+        self._data: OrderedDict[str, tuple] = OrderedDict()
+    
+    def get(self, key: str):
+        """Return value if present and not expired, else None. Moves key to end (most recent)."""
+        if key not in self._data:
+            return None
+        value, expiry = self._data[key]
+        if time.time() >= expiry:
+            del self._data[key]
+            return None
+        self._data.move_to_end(key)
+        return value
+    
+    def set(self, key: str, value, ttl: float):
+        """Store value with TTL. Evicts oldest entry if at capacity."""
+        if key in self._data:
+            del self._data[key]
+        elif len(self._data) >= self._max_size:
+            self._data.popitem(last=False)
+        self._data[key] = (value, time.time() + ttl)
+    
+    def delete(self, key: str):
+        self._data.pop(key, None)
+    
+    def __len__(self):
+        return len(self._data)
 
 class JSONFormatter(logging.Formatter):
     """Custom JSON formatter for structured logging."""
