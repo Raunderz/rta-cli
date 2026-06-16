@@ -105,7 +105,7 @@ jobs:
       - name: Build & Package Mac (Bundle)
         run: |
           scripts/build.sh --addons --debug --forcefallback --reconfigure --lto --bundle --mode ${{ needs.version.outputs.buildtype }} -b build
-          tar -C build -czvf rta-desktop-${{ needs.version.outputs.ref }}-${{ matrix.config.arch }}-bundle.tar.gz "RTA Desktop.app"
+          tar -C build -czvf rta-desktop-${{ needs.version.outputs.ref }}-${{ matrix.config.arch }}-bundle.tar.gz rta-desktop.app
 
       - name: Build & Package Mac (Portable)
         run: |
@@ -157,7 +157,7 @@ jobs:
       - name: Package Darwin (Universal DMG Image)
         run: |
           dmgbuild -s resources/macos/rta-desktop-dmg.py \
-            -D "app_path=rta-desktop-${{ needs.version.outputs.ref }}-universal-darwin-bundle/RTA Desktop.app" \
+            -D "app_path=rta-desktop-${{ needs.version.outputs.ref }}-universal-darwin-bundle/rta-desktop.app" \
             "RTA Desktop" "rta-desktop-${{ needs.version.outputs.ref }}-universal-darwin.dmg"
 
       - name: Package Darwin (Universal Portable)
