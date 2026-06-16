@@ -42,7 +42,7 @@ local STYLE = {
   background2 = { 0.12, 0.12, 0.12 },
   background3 = { 0.15, 0.15, 0.15 },
   text = { 0.9, 0.9, 0.9 },
-  dim = { 0.5, 0.5, 0.5 },
+  dim = { 0.5, 0.5, 0.5, 1.0 },
   accent = { 0.3, 0.6, 1.0 },
   selection = { 0.2, 0.3, 0.5 },
   warn = { 1.0, 0.6, 0.2 },
@@ -52,6 +52,14 @@ local STYLE = {
   divider = { 0.3, 0.3, 0.3 },
   divider_size = 1,
   scale = 1,
+  scrollbar = { 0.3, 0.3, 0.3 },
+  scrollbar2 = { 0.4, 0.4, 0.4 },
+  drag_overlay = { 0.2, 0.2, 0.3 },
+  line_limit = 80,
+  syntax = { normal = { 0.9, 0.9, 0.9 } },
+  expanded_scrollbar_size = 10,
+  syntax_fonts = {},
+  code_font = FONT,
 }
 
 -- Renderer mock
@@ -257,12 +265,52 @@ end
 -- Global SCALE (Lite XL default)
 SCALE = SCALE or 1
 renderer = renderer or {}
+system = system or {}
 renderer.draw_rect = renderer.draw_rect or function(x, y, w, h, color)
   table.insert(M.state.drawn_rects, { x = x, y = y, w = w, h = h, color = color })
 end
 renderer.draw_text = renderer.draw_text or function(font, text, x, y, color)
   table.insert(M.state.drawn_text, { font = font, text = text, x = x, y = y, color = color })
 end
+
+-- System mock (global)
+system.get_window_mode = system.get_window_mode or function() return "normal" end
+system.set_window_mode = system.set_window_mode or function(mode) end
+system.absolute_path = system.absolute_path or function(p) return p end
+system.get_process_id = system.get_process_id or function() return 0 end
+system.path_compare = system.path_compare or function(a, b) return a < b end
+system.sleep = system.sleep or function(t) end
+system.wait_event = system.wait_event or function(t) end
+system.raise_window = system.raise_window or function() end
+
+-- Regex mock (global)
+regex = regex or {}
+regex.compile = regex.compile or function(pattern) return pattern end
+regex.find_offsets = regex.find_offsets or function(r, str) return nil end
+regex.match = regex.match or function() return nil end
+regex.gmatch = regex.gmatch or function() return function() end end
+regex.gsub = regex.gsub or function(s, p, r) return s, 0 end
+
+-- System mock
+local SYSTEM = {
+  get_window_mode = function() return "normal" end,
+  set_window_mode = function(mode) end,
+  absolute_path = function(p) return p end,
+  get_process_id = function() return 0 end,
+  path_compare = function(a, b) return a < b end,
+  sleep = function(t) end,
+  wait_event = function(t) end,
+  raise_window = function() end,
+}
+
+-- Regex mock
+local REGEX = {
+  compile = function(pattern) return pattern end,
+  find_offsets = function(regex, str) return nil end,
+  match = function() return nil end,
+  gmatch = function() return function() end end,
+  gsub = function(s, p, r) return s, 0 end,
+}
 
 -- Install package.preload interceptors
 local function install_mocks()
@@ -276,6 +324,11 @@ local function install_mocks()
   package.preload["core.process"] = function() return PROCESS end
   package.preload["core.logview"] = function() return LogView_cls end
   package.preload["core.json"] = function() return JSON end
+  package.preload["system"] = function() return SYSTEM end
+  package.preload["regex"] = function() return REGEX end
+  package.preload["core.status_view"] = function()
+    return { visible = true, add_item = function() end, separator2 = "|" }
+  end
 end
 
 -- Expose internals for test setup
@@ -291,6 +344,8 @@ M.keymap = KEYMAP
 M.json = JSON
 M.View = View
 M.LogView = LogView_cls
+M.SYSTEM = SYSTEM
+M.REGEX = REGEX
 M.install = install_mocks
 
 return M
