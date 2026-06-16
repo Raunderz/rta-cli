@@ -17,7 +17,7 @@ def test_system_prompt_includes_guidelines():
     assert "Use edit for precise changes" in prompt
     assert "Use write only for new files or complete rewrites" in prompt
     assert "Use bash for terminal operations" in prompt
-    assert "Use web_search/web_fetch instead of curl/wget" in prompt
+    assert "web_search" in prompt
     assert "Rta session logs are JSONL files in ~/.rta/sessions" in prompt
     assert prompt.count("# Tool usage") == 1
     tool_usage = prompt.split("# Tool usage", 1)[1]

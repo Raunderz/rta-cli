@@ -32,7 +32,7 @@ async def test_arxiv_search_success(monkeypatch):
 
     tool = ArXivTool()
     params = ArXivParams(query="transformer", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -59,7 +59,7 @@ async def test_arxiv_search_no_results(monkeypatch):
 
     tool = ArXivTool()
     params = ArXivParams(query="nonexistentquery", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -75,7 +75,7 @@ async def test_arxiv_search_error(monkeypatch):
 
     tool = ArXivTool()
     params = ArXivParams(query="transformer", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is False
     assert result.result is not None

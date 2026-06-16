@@ -52,7 +52,7 @@ class TestMCPToolExecute:
             mock_call.return_value = {
                 "content": [{"type": "text", "text": "result line 1"}, {"type": "text", "text": "result line 2"}]
             }
-            result = await tool.execute(tool.params(q="test"))
+            result = await tool.execute(tool.params(q="test"), cwd="/tmp")
 
         assert result.success is True
         assert "result line 1" in result.result
@@ -64,7 +64,7 @@ class TestMCPToolExecute:
         tool = MCPTool("srv", _make_tool_def())
         with patch("kon.tools.mcp_bridge.call_mcp_tool") as mock_call:
             mock_call.return_value = None
-            result = await tool.execute(tool.params())
+            result = await tool.execute(tool.params(), cwd="/tmp")
 
         assert result.success is True
         assert "no output" in result.result
@@ -74,7 +74,7 @@ class TestMCPToolExecute:
         tool = MCPTool("srv", _make_tool_def())
         with patch("kon.tools.mcp_bridge.call_mcp_tool") as mock_call:
             mock_call.return_value = {"error": "something went wrong"}
-            result = await tool.execute(tool.params())
+            result = await tool.execute(tool.params(), cwd="/tmp")
 
         assert result.success is False
         assert "something went wrong" in result.result
@@ -84,7 +84,7 @@ class TestMCPToolExecute:
         tool = MCPTool("srv", _make_tool_def())
         with patch("kon.tools.mcp_bridge.call_mcp_tool") as mock_call:
             mock_call.side_effect = ConnectionError("timeout")
-            result = await tool.execute(tool.params())
+            result = await tool.execute(tool.params(), cwd="/tmp")
 
         assert result.success is False
         assert "timeout" in result.result
@@ -94,7 +94,7 @@ class TestMCPToolExecute:
         tool = MCPTool("srv", _make_tool_def())
         with patch("kon.tools.mcp_bridge.call_mcp_tool") as mock_call:
             mock_call.return_value = {"key": "value"}
-            result = await tool.execute(tool.params())
+            result = await tool.execute(tool.params(), cwd="/tmp")
 
         assert result.success is True
         assert '"key"' in result.result

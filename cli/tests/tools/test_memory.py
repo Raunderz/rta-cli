@@ -27,7 +27,7 @@ async def test_memorize_and_recall(mock_memory_path):
 
     # Test Memorize
     params = MemorizeParams(key="color", value="blue", tags="ui,theme")
-    result = await memo_tool.execute(params)
+    result = await memo_tool.execute(params, cwd="/tmp")
     assert result.success is True
     assert result.result is not None
     assert "Memorized: color" in result.result
@@ -41,14 +41,14 @@ async def test_memorize_and_recall(mock_memory_path):
     # Test Recall
     recall_tool = RecallTool()
     recall_params = RecallParams(query="color")
-    result = await recall_tool.execute(recall_params)
+    result = await recall_tool.execute(recall_params, cwd="/tmp")
     assert result.success is True
     assert result.result is not None
     assert "blue" in result.result
 
     # Test Recall Miss
     recall_params = RecallParams(query="something_else")
-    result = await recall_tool.execute(recall_params)
+    result = await recall_tool.execute(recall_params, cwd="/tmp")
     assert result.result is not None
     assert "No matching memories" in result.result
 
@@ -59,10 +59,10 @@ async def test_forget(mock_memory_path):
     forget_tool = ForgetTool()
 
     # Memorize
-    await memo_tool.execute(MemorizeParams(key="temp", value="data", tags=None))
+    await memo_tool.execute(MemorizeParams(key="temp", value="data", tags=None), cwd="/tmp")
 
     # Forget
-    result = await forget_tool.execute(ForgetParams(key="temp"))
+    result = await forget_tool.execute(ForgetParams(key="temp"), cwd="/tmp")
     assert result.success is True
 
     # Verify gone
@@ -71,5 +71,5 @@ async def test_forget(mock_memory_path):
         assert "temp" not in data
 
     # Forget non-existent
-    result = await forget_tool.execute(ForgetParams(key="temp"))
+    result = await forget_tool.execute(ForgetParams(key="temp"), cwd="/tmp")
     assert result.success is False

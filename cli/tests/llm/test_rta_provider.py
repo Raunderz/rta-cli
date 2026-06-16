@@ -22,7 +22,7 @@ async def test_rta_provider_streams_response():
     config = ProviderConfig(base_url="http://api.rta.test", api_key="test_key")
     provider = RtaProvider(config)
 
-    sse_data = [
+    chunks = [
         {"type": "thought", "content": "Thinking..."},
         {"type": "text", "content": "Hello! "},
         {"type": "text", "content": "How can I help?"},
@@ -39,11 +39,14 @@ async def test_rta_provider_streams_response():
         {"type": "meta", "content": {"id": "msg_abc"}},
     ]
 
-    sse_payload = "".join([f"data: {json.dumps(d)}\n\n" for d in sse_data]) + "data: [DONE]\n\n"
+    poll_response = {"chunks": chunks, "next_index": len(chunks), "done": True, "status": "completed"}
 
     with respx.mock:
-        respx.post("http://api.rta.test/v1/chat").mock(
-            return_value=Response(200, content=sse_payload)
+        respx.post("http://api.rta.test/v1/chat/async").mock(
+            return_value=Response(200, json={"job_id": "job_123"})
+        )
+        respx.get("http://api.rta.test/v1/chat/job/job_123").mock(
+            return_value=Response(200, json=poll_response)
         )
 
         stream = await provider.stream([UserMessage(content="Hi")])
@@ -78,7 +81,7 @@ async def test_rta_provider_error_handling():
     provider = RtaProvider(config)
 
     with respx.mock:
-        respx.post("http://api.rta.test/v1/chat").mock(
+        respx.post("http://api.rta.test/v1/chat/async").mock(
             return_value=Response(401, content="Unauthorized")
         )
 

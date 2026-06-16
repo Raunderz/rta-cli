@@ -29,14 +29,14 @@ async def test_read(read_tool, text_file, monkeypatch):
     monkeypatch.setattr("kon.tools.read.MAX_LINES_PER_FILE", 5)
     monkeypatch.setattr("kon.tools.read.MAX_CHARS_PER_LINE", 10)
 
-    tool_result = await read_tool.execute(ReadParams(path=str(text_file)))
+    tool_result = await read_tool.execute(ReadParams(path=str(text_file)), cwd="/tmp")
     lines = tool_result.result.split("\n")
     assert len(lines) == 6  # 5 lines + truncation
     assert lines[0] == "     1\tline1"
     assert lines[3] == "     4\tlong-line- [output truncated after 10 chars]"
     assert lines[-1] == "[output truncated after 5 lines]"
 
-    tool_result = await read_tool.execute(ReadParams(path=str(text_file), offset=2, limit=3))
+    tool_result = await read_tool.execute(ReadParams(path=str(text_file), offset=2, limit=3), cwd="/tmp")
     lines = tool_result.result.split("\n")
     assert len(lines) == 4  # 3 lines + trailing ""
     assert lines[0] == "     2\tline2"
@@ -45,7 +45,7 @@ async def test_read(read_tool, text_file, monkeypatch):
 
 @pytest.mark.asyncio
 async def test_read_path_not_found(read_tool, tmp_path):
-    result = await read_tool.execute(ReadParams(path=str(tmp_path / "nonexistent.txt")))
+    result = await read_tool.execute(ReadParams(path=str(tmp_path / "nonexistent.txt")), cwd="/tmp")
     assert not result.success
     assert "Path not found" in result.result
     assert "Path not found" in result.ui_summary
@@ -55,7 +55,7 @@ async def test_read_path_not_found(read_tool, tmp_path):
 async def test_read_not_a_file_or_directory(read_tool, tmp_path):
     fifo_path = tmp_path / "myfifo"
     os.mkfifo(fifo_path)
-    result = await read_tool.execute(ReadParams(path=str(fifo_path)))
+    result = await read_tool.execute(ReadParams(path=str(fifo_path)), cwd="/tmp")
     assert not result.success
     assert "Path is not a file or directory" in result.result
     assert "Path is not a file or directory" in result.ui_summary
@@ -78,7 +78,7 @@ async def test_read_directory_uses_fd_with_depth_3_when_small(read_tool, tmp_pat
     monkeypatch.setattr(ReadTool, "_list_directory_entries", mock_list_directory_entries)
     monkeypatch.setattr("kon.tools.read.ensure_tool", mock_ensure_tool)
 
-    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)))
+    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)), cwd="/tmp")
 
     assert calls == [("fd", tmp_path, 3, 201)]
     assert tool_result.success is True
@@ -106,7 +106,7 @@ async def test_read_directory_falls_back_to_depth_2(read_tool, tmp_path, monkeyp
     monkeypatch.setattr(ReadTool, "_list_directory_entries", mock_list_directory_entries)
     monkeypatch.setattr("kon.tools.read.ensure_tool", mock_ensure_tool)
 
-    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)))
+    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)), cwd="/tmp")
 
     assert calls == [3, 2]
     assert tool_result.success is True
@@ -134,7 +134,7 @@ async def test_read_directory_falls_back_to_depth_1_and_truncates(
     monkeypatch.setattr(ReadTool, "_list_directory_entries", mock_list_directory_entries)
     monkeypatch.setattr("kon.tools.read.ensure_tool", mock_ensure_tool)
 
-    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)))
+    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)), cwd="/tmp")
 
     assert calls == [(3, 201), (2, 201), (1, 1001)]
     assert tool_result.success is True
@@ -158,7 +158,7 @@ async def test_read_directory_empty(read_tool, tmp_path, monkeypatch):
     monkeypatch.setattr(ReadTool, "_list_directory_entries", mock_list_directory_entries)
     monkeypatch.setattr("kon.tools.read.ensure_tool", mock_ensure_tool)
 
-    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)))
+    tool_result = await read_tool.execute(ReadParams(path=str(tmp_path)), cwd="/tmp")
 
     assert tool_result.success is True
     assert tool_result.result == "(empty directory)"

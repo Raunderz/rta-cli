@@ -51,7 +51,7 @@ async def test_read_directory_cancellation_waits_for_communicate_cleanup(tmp_pat
     cancel_event = asyncio.Event()
     cancel_event.set()
 
-    result = await read_tool.execute(ReadParams(path=str(tmp_path)), cancel_event=cancel_event)
+    result = await read_tool.execute(ReadParams(path=str(tmp_path)), cwd="/tmp", cancel_event=cancel_event)
 
     assert result.success is False
     assert result.result == "Read aborted"
@@ -78,7 +78,7 @@ async def test_bash_cancellation_waits_for_communicate_cleanup(monkeypatch):
     cancel_event = asyncio.Event()
     cancel_event.set()
 
-    result = await bash_tool.execute(BashParams(command="sleep 10"), cancel_event=cancel_event)
+    result = await bash_tool.execute(BashParams(command="sleep 10"), cwd="/tmp", cancel_event=cancel_event)
 
     assert result.success is False
     assert result.result == "Command aborted"

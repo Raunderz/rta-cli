@@ -28,7 +28,7 @@ async def test_sequential_thinking_basic():
         branch_id=None,
         needs_more_thoughts=True,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
     assert result.success is True
     assert result.result is not None
     assert "Thought 1/3" in result.result
@@ -46,7 +46,7 @@ async def test_sequential_thinking_basic():
         branch_id=None,
         needs_more_thoughts=True,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
     assert result.result is not None
     assert "Second step" in result.result
 
@@ -62,7 +62,7 @@ async def test_sequential_thinking_basic():
         branch_id=None,
         needs_more_thoughts=False,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
     assert result.result is not None
     assert "Final step" in result.result
     assert "Thought chain complete" in result.result
@@ -86,7 +86,8 @@ async def test_sequential_thinking_revision():
             branch_from_thought=None,
             branch_id=None,
             needs_more_thoughts=True,
-        )
+        ),
+        cwd="/tmp",
     )
 
     # Revision
@@ -101,7 +102,7 @@ async def test_sequential_thinking_revision():
         branch_id=None,
         needs_more_thoughts=True,
     )
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
     assert result.result is not None
     assert "Revised thought" in result.result
     assert "Original thought" not in result.result

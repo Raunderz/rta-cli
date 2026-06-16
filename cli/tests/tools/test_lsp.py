@@ -47,7 +47,7 @@ async def test_get_diagnostics_no_issues(mock_all, monkeypatch, tmp_path):
 
     tool = GetDiagnosticsTool()
     params = GetDiagnosticsParams(file_path="test.py")
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -71,7 +71,7 @@ async def test_get_diagnostics_empty_diagnostics_list(mock_all, monkeypatch, tmp
 
     tool = GetDiagnosticsTool()
     params = GetDiagnosticsParams(file_path="test.py")
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -106,7 +106,7 @@ async def test_get_diagnostics_with_errors(mock_all, monkeypatch, tmp_path):
 
     tool = GetDiagnosticsTool()
     params = GetDiagnosticsParams(file_path="test.py")
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -132,7 +132,7 @@ async def test_go_to_definition_success(mock_all, monkeypatch, tmp_path):
 
     tool = GoToDefinitionTool()
     params = GoToDefinitionParams(file_path="test.py", line=5, character=5)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None

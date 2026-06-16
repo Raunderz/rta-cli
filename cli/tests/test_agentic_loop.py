@@ -308,7 +308,7 @@ async def test_run_single_turn_default_scenario(sample_messages, tools):
     provider = MockProvider(scenario="default")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Check thinking sequence
@@ -338,7 +338,7 @@ async def test_run_single_turn_simple_text_scenario(sample_messages, tools):
     provider = MockProvider(scenario="simple_text")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Expected: TextStart, TextDelta, TextEnd, TurnEnd
@@ -359,7 +359,7 @@ async def test_run_single_turn_thinking_text_tool_scenario(sample_messages, tool
     provider = MockProvider(scenario="thinking_text_tool")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Check thinking sequence
@@ -392,7 +392,7 @@ async def test_run_single_turn_retries_scenario(sample_messages, tools):
     events = []
 
     async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0]
+        provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0], cwd="/tmp"
     ):
         events.append(event)
 
@@ -419,7 +419,7 @@ async def test_run_single_turn_retry_exhausted_scenario(sample_messages, tools):
     events = []
 
     async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0]
+        provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0], cwd="/tmp"
     ):
         events.append(event)
 
@@ -442,7 +442,7 @@ async def test_run_single_turn_non_retryable_scenario(sample_messages, tools):
     provider = MockProvider(scenario="non_retryable")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # No retry events
@@ -462,7 +462,7 @@ async def test_run_single_turn_stream_error_scenario(sample_messages, tools):
     provider = MockProvider(scenario="stream_error")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Should have text delta before error
@@ -486,7 +486,7 @@ async def test_run_single_turn_drops_leading_empty_newlines_before_thinking(
     provider = MockProvider(scenario="leading_empty_text_then_think")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Should begin with thinking, not empty text
@@ -503,7 +503,7 @@ async def test_run_single_turn_drops_leading_empty_newlines_before_text(sample_m
     provider = MockProvider(scenario="leading_empty_text_then_text")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     assert isinstance(events[0], TextStartEvent)
@@ -517,7 +517,7 @@ async def test_run_single_turn_unknown_tool_scenario(sample_messages, tools):
     provider = MockProvider(scenario="unknown_tool")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Tool should still be recorded
@@ -547,7 +547,7 @@ async def test_run_single_turn_routes_indexed_tool_call_deltas(sample_messages):
     )
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, [], turn=1):
+    async for event in run_single_turn(provider, sample_messages, [], turn=1, cwd="/tmp"):
         events.append(event)
 
     arg_deltas = [e for e in events if isinstance(e, ToolArgsDeltaEvent)]
@@ -569,7 +569,7 @@ async def test_run_single_turn_long_text_scenario(sample_messages, tools):
     provider = MockProvider(scenario="long_text")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Should have multiple text deltas
@@ -593,7 +593,7 @@ async def test_run_single_turn_tool_hang_timeout_fallback(sample_messages, tools
         provider = MockProvider(scenario="tool_hang")
         events = []
 
-        async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+        async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
             events.append(event)
     finally:
         reset_config()
@@ -618,7 +618,7 @@ async def test_run_single_turn_skips_tool_on_invalid_partial_json_arguments(
         provider = MockProvider(scenario="tool_hang_invalid_json")
         events = []
 
-        async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+        async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
             events.append(event)
     finally:
         reset_config()
@@ -640,7 +640,7 @@ async def test_run_single_turn_pre_cancelled(sample_messages, tools):
     events = []
 
     async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, cancel_event=cancel_event
+        provider, sample_messages, tools, turn=1, cancel_event=cancel_event, cwd="/tmp"
     ):
         events.append(event)
 
@@ -666,7 +666,7 @@ async def test_run_single_turn_cancel_during_retry_backoff(sample_messages, tool
     cancel_task = asyncio.create_task(cancel_soon())
 
     async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, cancel_event=cancel_event, retry_delays=[1, 1, 1]
+        provider, sample_messages, tools, turn=1, cancel_event=cancel_event, retry_delays=[1, 1, 1], cwd="/tmp"
     ):
         events.append(event)
 
@@ -719,7 +719,7 @@ async def test_tool_args_token_counting(tools, sample_messages):
     provider = MockProvider(scenario="tool_with_many_chunks")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Find token update events
@@ -748,7 +748,7 @@ async def test_tool_args_token_count_resets_between_tools(tools, sample_messages
     provider = MockProvider(scenario="default")
     events = []
 
-    async for event in run_single_turn(provider, sample_messages, tools, turn=1):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cwd="/tmp"):
         events.append(event)
 
     # Default scenario has small args, so few or no updates expected
