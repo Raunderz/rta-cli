@@ -1,15 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_all
+from PyInstaller.utils.hooks import collect_all, collect_data_files
 
 pydantic_datas, pydantic_binaries, pydantic_hiddenimports = collect_all('pydantic')
 pydantic_core_datas, pydantic_core_binaries, pydantic_core_hiddenimports = collect_all('pydantic_core')
 
+kon_datas = collect_data_files('kon')
+
 a = Analysis(
-    ['rta_entry.py'],
-    pathex=[],
+    ['run.py'],
+    pathex=['src'],
     binaries=pydantic_binaries + pydantic_core_binaries,
-    datas=pydantic_datas + pydantic_core_datas + [('src/kon/defaults', 'kon/defaults')],
+    datas=pydantic_datas + pydantic_core_datas + kon_datas,
     hiddenimports=[
         'pydantic',
         'pydantic_core',
@@ -20,13 +22,48 @@ a = Analysis(
         'rich',
         'textual',
         'curl_cffi',
+        'ddgs',
+        'html_to_markdown',
+        'readability',
+        'libcst',
+        'PIL',
+        'kon.defaults',
+        'kon.defaults.config',
+        'kon.builtin_skills',
+        'kon.builtin_skills.init',
+        'kon.builtin_skills.review',
     ] + pydantic_hiddenimports + pydantic_core_hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=[
+        'tkinter',
+        'unittest',
+        'test',
+        'pytest',
+        'numpy',
+        'pandas',
+        'scipy',
+        'matplotlib',
+        'torch',
+        'tensorflow',
+        'notebook',
+        'IPython',
+        'sphinx',
+        'docutils',
+        'pydoc',
+        'doctest',
+        'lib2to3',
+        'ensurepip',
+        'idlelib',
+        'turtledemo',
+        'distutils',
+        'setuptools',
+        'pip',
+        'wheel',
+    ],
     noarchive=False,
-    optimize=0,
+    optimize=1,
 )
 pyz = PYZ(a.pure)
 
