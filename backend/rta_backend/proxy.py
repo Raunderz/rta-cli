@@ -35,8 +35,7 @@ STREAM_DISPATCH = {
 
 from rta_backend.prompts import SYSTEM_PROMPT
 
-# Constants
-TIER_TOKEN_CAPS = {"free": 2000, "pro": 8000, "enterprise": 32000}
+# Note: max_tokens is capped by main.py using TIER_CAPS before reaching proxy functions.
 
 
 # Models
@@ -278,7 +277,7 @@ async def route_chat_request(
     messages = truncate_messages(raw_messages)
 
     sequence = get_routing_sequence(request.provider, request.model)
-    max_tokens = min(request.max_tokens, TIER_TOKEN_CAPS.get(user_tier.lower(), 2000))
+    max_tokens = min(request.max_tokens, 32000)
     keys = get_provider_keys()
 
     models_tried = []
@@ -376,7 +375,7 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
     messages = truncate_messages(raw_messages)
 
     sequence = get_routing_sequence(request.provider, request.model)
-    max_tokens = min(request.max_tokens, TIER_TOKEN_CAPS.get(user_tier.lower(), 2000))
+    max_tokens = min(request.max_tokens, 32000)
     keys = get_provider_keys()
 
     models_tried = []
@@ -453,7 +452,7 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
                 logging.error(f"Stream unexpected error in {provider_name}: {type(e).__name__}: {e}")
                 break
 
-    yield {"type": "error", "content": f"All providers failed: {models_tried}"}
+    yield {"type": "error", "content": "All providers failed. Please try again later."}
     meta = {"models_tried": models_tried, "latency_ms": 0, "fallback_used": True}
     if last_error:
         meta["last_error"] = str(last_error)

@@ -128,6 +128,10 @@ app = FastAPI(
 # Context variable to hold the current request for rate limiting and logging
 request_var: ContextVar[Request] = ContextVar("request", default=None)
 
+# Stack of log record factories to avoid cross-request contamination
+_log_factory_stack: list = []
+_log_factory_lock = asyncio.Lock()
+
 @app.middleware("http")
 async def observability_middleware(request: Request, call_next):
     # Get or generate Request ID
@@ -137,13 +141,14 @@ async def observability_middleware(request: Request, call_next):
     # Set request ID in context for logging
     token = request_var.set(request)
     
-    # Custom log record factory to inject request_id into all logs during this request
+    # Stack-based log record factory to avoid cross-request contamination
     old_factory = logging.getLogRecordFactory()
     def record_factory(*args, **kwargs):
         record = old_factory(*args, **kwargs)
         record.request_id = request_id
         return record
     logging.setLogRecordFactory(record_factory)
+    _log_factory_stack.append(old_factory)
     
     start_time = time.time()
     try:
@@ -154,7 +159,9 @@ async def observability_middleware(request: Request, call_next):
         return response
     finally:
         request_var.reset(token)
-        logging.setLogRecordFactory(old_factory)
+        _log_factory_stack.pop()
+        restored = _log_factory_stack[-1] if _log_factory_stack else old_factory
+        logging.setLogRecordFactory(restored)
 
 # CORS setup
 allowed_origins = os.getenv("ALLOWED_ORIGINS", "").split(",")
@@ -181,7 +188,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Tier caps for token limits and rate limits
 TIER_CAPS = {
-    "free":       {"calls_day": 10,   "tokens_day": 15000,   "tokens_req": 2000,  "tokens_month": 25000},
+    "free":       {"calls_day": 10,   "tokens_day": 15000,   "tokens_req": 4000,  "tokens_month": 25000},
     "basic":      {"calls_day": 50,   "tokens_day": 60000,   "tokens_req": 4000,  "tokens_month": 100000},
     "pro":        {"calls_day": 100,  "tokens_day": 100000,  "tokens_req": 10000, "tokens_month": 1000000},
     "enterprise": {"calls_day": 500,  "tokens_day": 500000,  "tokens_req": 32000, "tokens_month": 10000000},
@@ -249,7 +256,7 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
     """
     Background worker for AI calls.
     """
-    update_job(job_id, status="running")
+    await update_job(job_id, status="running")
     try:
         if payload.stream:
             collected_text = ""
@@ -260,7 +267,7 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
             
             async for event in route_chat_request_stream(payload, user_id, user_tier):
                 # Store chunk for polling
-                update_job(job_id, chunk=event)
+                await update_job(job_id, chunk=event)
                 
                 if event["type"] == "text":
                     collected_text += event["content"]
@@ -308,9 +315,9 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
                 if total_tokens > 0:
                     await update_token_usage(user_id, total_tokens)
                 await log_telemetry_task(user_id, payload, pr)
-                update_job(job_id, status="completed", result=pr.dict())
+                await update_job(job_id, status="completed", result=pr.dict())
             else:
-                update_job(job_id, status="completed")
+                await update_job(job_id, status="completed")
         else:
             result = await route_chat_request(payload, user_id, user_tier)
             from rta_backend.db import update_token_usage
@@ -322,11 +329,11 @@ async def run_chat_job(job_id: str, payload: ChatRequest, user_id: str, user_tie
                 if total_tokens > 0:
                     await update_token_usage(user_id, total_tokens)
             await log_telemetry_task(user_id, payload, result)
-            update_job(job_id, status="completed", result=result.dict())
+            await update_job(job_id, status="completed", result=result.dict())
 
     except Exception as e:
-        logging.error(f"Job {job_id} failed: {type(e).__name__}: {e}")
-        update_job(job_id, status="failed", error="Job execution failed")
+        logging.error(f"Job {job_id} failed: {type(e).__name__}")
+        await update_job(job_id, status="failed", error="Job execution failed")
 
 @app.post("/v1/chat")
 @limiter.limit(get_tier_limit, key_func=get_user_id_key)
@@ -724,7 +731,7 @@ async def status_endpoint(request: Request):
         supabase.table("profiles").select("id").limit(1).execute()
         db_status = "operational"
     except Exception as e:
-        print(f"Status DB Check Error: {e}")
+        logging.error("Status DB Check Error: %s", e)
         db_status = "degraded"
 
     data = {

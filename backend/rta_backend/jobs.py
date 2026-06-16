@@ -1,11 +1,22 @@
 import uuid
 import time
 import logging
+import asyncio
 from typing import Dict, Any, Optional
 
 from rta_backend.db import get_supabase_client
 
 logger = logging.getLogger(__name__)
+
+# Per-job locks to prevent TOCTOU on chunk append
+_job_locks: Dict[str, asyncio.Lock] = {}
+_job_locks_lock = asyncio.Lock()
+
+async def _get_job_lock(job_id: str) -> asyncio.Lock:
+    async with _job_locks_lock:
+        if job_id not in _job_locks:
+            _job_locks[job_id] = asyncio.Lock()
+        return _job_locks[job_id]
 
 # Supabase-backed job store
 # Schema (run once):
@@ -43,7 +54,7 @@ def create_job(user_id: str = "") -> str:
     return job_id
 
 
-def update_job(
+async def update_job(
     job_id: str,
     status: str = None,
     result: Any = None,
@@ -63,14 +74,16 @@ def update_job(
     if status in ("completed", "failed"):
         updates["done"] = True
 
-    # For chunks: fetch current, append, update
+    # For chunks: use per-job lock to prevent TOCTOU on read-append-write
     if chunk is not None:
-        res = client.table(TABLE).select("chunks").eq("id", job_id).execute()
-        current_chunks = []
-        if res.data and res.data[0].get("chunks"):
-            current_chunks = res.data[0]["chunks"]
-        current_chunks.append(chunk)
-        updates["chunks"] = current_chunks
+        lock = await _get_job_lock(job_id)
+        async with lock:
+            res = client.table(TABLE).select("chunks").eq("id", job_id).execute()
+            current_chunks = []
+            if res.data and res.data[0].get("chunks"):
+                current_chunks = list(res.data[0]["chunks"])
+            current_chunks.append(chunk)
+            updates["chunks"] = current_chunks
 
     client.table(TABLE).update(updates).eq("id", job_id).execute()
 

@@ -3,15 +3,14 @@
 import supabase
 from dotenv import load_dotenv
 import os
-import hashlib
 import logging
+import threading
 from rta_backend.utils import Sanitizer
-
-from supabase.lib.client_options import ClientOptions
 
 load_dotenv()
 
 _supabase_client = None
+_supabase_lock = threading.Lock()
 
 def get_supabase_client():
     """Return a module-level singleton Supabase client, creating it on first call."""
@@ -19,14 +18,17 @@ def get_supabase_client():
     if _supabase_client is not None:
         return _supabase_client
 
-    url = os.getenv("SUPABASE_URL")
-    key = os.getenv("sp_service_role") or os.getenv("SUPABASE_KEY")
-    
-    if not url or not key:
-        raise ValueError("SUPABASE_URL or SUPABASE_KEY missing in environment")
-    
-    _supabase_client = supabase.create_client(url, key)
-    return _supabase_client
+    with _supabase_lock:
+        if _supabase_client is not None:
+            return _supabase_client
+        url = os.getenv("SUPABASE_URL")
+        key = os.getenv("sp_service_role") or os.getenv("SUPABASE_KEY")
+        
+        if not url or not key:
+            raise ValueError("SUPABASE_URL or SUPABASE_KEY missing in environment")
+        
+        _supabase_client = supabase.create_client(url, key)
+        return _supabase_client
 
 def upsert_profile(user_id: str, username: str):
     """Create or update user profile."""
@@ -100,6 +102,9 @@ async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int,
     Check if user has calls and tokens remaining for today. 
     Uses 'calls_used_today' for call count and 'credits' for tokens used today.
     Returns (allowed: bool, reason_if_failed: str)
+    
+    Note: The per-user asyncio.Lock prevents concurrent reads within one process.
+    For multi-process deployments, consider moving increment logic to a Supabase RPC function.
     """
     from datetime import datetime, timezone
     
@@ -117,8 +122,8 @@ async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int,
         if res.data:
             row = res.data[0]
             reset_date = row.get("calls_reset_date")
-            used_calls = row.get("calls_used_today", 0) or 0
-            used_tokens = row.get("credits", 0) or 0
+            used_calls = max(0, row.get("calls_used_today", 0) or 0)
+            used_tokens = max(0, row.get("credits", 0) or 0)
             
             if reset_date != today:
                 used_calls = 0
@@ -146,6 +151,8 @@ async def check_and_update_daily_calls(user_id: str, tier: str, call_limit: int,
 async def update_token_usage(user_id: str, tokens_to_add: int):
     """Add tokens to the user's daily credit counter. Resets if date changed."""
     from datetime import datetime, timezone
+    if tokens_to_add <= 0:
+        return
     lock = await _get_billing_lock(user_id)
     async with lock:
         client = get_supabase_client()

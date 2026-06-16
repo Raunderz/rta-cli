@@ -1,5 +1,6 @@
 import os
 import re
+import logging
 from dotenv import load_dotenv
 import secrets
 import hashlib
@@ -11,22 +12,25 @@ from rta_backend.db import get_supabase_client
 load_dotenv()
 
 hcaptcha_secret_key = os.getenv("HCAPTCHA_SECRET_KEY")
+_hcaptcha_client = httpx.AsyncClient(timeout=10.0)
 
 from rta_backend.utils import Sanitizer
 
 async def verify_hcaptcha(token: str) -> bool:
     """Verify an hCaptcha token against the hCaptcha siteverify API."""
+    if not hcaptcha_secret_key:
+        logging.warning("HCAPTCHA_SECRET_KEY not set — skipping captcha verification")
+        return False
     try:
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                "https://hcaptcha.com/siteverify",
-                data={
-                    "secret": hcaptcha_secret_key,
-                    "response": token,
-                },
-            )
-            result = response.json()
-            return result.get("success", False)
+        response = await _hcaptcha_client.post(
+            "https://hcaptcha.com/siteverify",
+            data={
+                "secret": hcaptcha_secret_key,
+                "response": token,
+            },
+        )
+        result = response.json()
+        return result.get("success", False)
     except Exception:
         return False
 
