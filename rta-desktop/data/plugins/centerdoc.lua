@@ -9,7 +9,7 @@ local treeview = require "plugins.treeview"
 local DocView = require "core.docview"
 
 config.plugins.centerdoc = common.merge({
-  enabled = true,
+  enabled = false,
   zen_mode = false
 }, config.plugins.centerdoc)
 
@@ -75,7 +75,7 @@ config.plugins.centerdoc.config_spec = {
     description = "Activates document centering by default.",
     path = "enabled",
     type = "toggle",
-    default = true
+    default = false
   },
   {
     label = "Zen Mode",
