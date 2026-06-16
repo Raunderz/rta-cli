@@ -27,6 +27,8 @@ SECRET_PATTERNS = [
     ("STRIPE",      re.compile(r"sk_live_[0-9a-zA-Z]{24}")),
     ("GITHUB",      re.compile(r"ghp_[a-zA-Z0-9]{36}")),
     ("GITHUB_PAT",  re.compile(r"github_pat_[a-zA-Z0-9_]{80,}")),
+    ("SUPABASE_JWT", re.compile(r"eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}")),
+    ("HCAPTCHA",    re.compile(r"ES_[a-f0-9]{32}")),
     ("GENERIC_SECRET", re.compile(
         r'(?i)(password|secret|api_key|token|auth|credential|private_key)'
         r'["\s:=]+([A-Za-z0-9\-._~+/]{20,})'
@@ -34,6 +36,19 @@ SECRET_PATTERNS = [
 ]
 
 HOME_PATH_RE = re.compile(r"/home/[a-zA-Z0-9_-]+")
+SUPABASE_URL_RE = re.compile(r"https?://[a-z0-9]{20,}\.supabase\.co")
+DEPLOYMENT_URL_RE = re.compile(
+    r"rta-[a-z0-9]+\.onrender\.com"
+    r"|rta-three\.vercel\.app"
+    r"|schallten-[a-z0-9]+\.hf\.space"
+)
+GIT_AUTHOR_RE = re.compile(r"Author:\s*[^<]+<[^>]+>")
+GITHUB_USER_URL_RE = re.compile(r"github\.com[/:][\w-]+/[\w-]+")
+SSH_HOST_RE = re.compile(r"git@github\.com-\w+:")
+EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.\w+")
+TWITTER_RE = re.compile(r"@(?:dunkelkron|korrykatti|schallten)\b")
+WAKATIME_RE = re.compile(r"wakatime\.com/share/@[\w]+/[0-9a-f-]+")
+UMAMI_ID_RE = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 
 
 def scrub(text) -> str:
@@ -47,6 +62,15 @@ def scrub(text) -> str:
         else:
             text = pat.sub(f"[SCRUBBED_{label}]", text)
     text = HOME_PATH_RE.sub("/home/[USER]", text)
+    text = SUPABASE_URL_RE.sub("[SCRUBBED_SUPABASE_URL]", text)
+    text = DEPLOYMENT_URL_RE.sub("[SCRUBBED_URL]", text)
+    text = GIT_AUTHOR_RE.sub("Author: [SCRUBBED] <[SCRUBBED]>", text)
+    text = GITHUB_USER_URL_RE.sub("github.com/[USER]/[REPO]", text)
+    text = SSH_HOST_RE.sub("git@github.com:[USER]/", text)
+    text = EMAIL_RE.sub("[SCRUBBED_EMAIL]", text)
+    text = TWITTER_RE.sub("@[SCRUBBED]", text)
+    text = WAKATIME_RE.sub("wakatime.com/share/@[SCRUBBED]", text)
+    text = UMAMI_ID_RE.sub("[SCRUBBED_UUID]", text)
     return text
 
 
