@@ -16,7 +16,7 @@ async def test_semantic_search_success(monkeypatch):
 
     tool = SemanticSearchTool()
     params = SemanticSearchParams(query="login logic", limit=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -34,7 +34,7 @@ async def test_semantic_search_no_results(monkeypatch):
 
     tool = SemanticSearchTool()
     params = SemanticSearchParams(query="nonexistent", limit=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None

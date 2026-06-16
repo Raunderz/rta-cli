@@ -15,7 +15,7 @@ async def test_skeleton_success(monkeypatch):
 
     tool = SkeletonTool()
     params = SkeletonParams()
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -33,7 +33,7 @@ async def test_skeleton_triggers_indexing_when_corpus_empty(monkeypatch):
     monkeypatch.setattr("kon.tools.skeleton.BM25Indexer", lambda p: mock_indexer)
 
     tool = SkeletonTool()
-    result = await tool.execute(SkeletonParams())
+    result = await tool.execute(SkeletonParams(), cwd="/tmp")
 
     assert result.success is True
     mock_indexer.index_project.assert_called_once()
@@ -46,7 +46,7 @@ async def test_skeleton_error(monkeypatch):
     )
 
     tool = SkeletonTool()
-    result = await tool.execute(SkeletonParams())
+    result = await tool.execute(SkeletonParams(), cwd="/tmp")
 
     assert result.success is False
     assert "boom" in result.result

@@ -21,7 +21,7 @@ def image_file(tmp_path):
 
 @pytest.mark.asyncio
 async def test_read_image_file_detected(read_tool, image_file):
-    result = await read_tool.execute(ReadParams(path=str(image_file)))
+    result = await read_tool.execute(ReadParams(path=str(image_file)), cwd="/tmp")
 
     assert result.success
     assert result.result.startswith("Read image file [image/png]")
@@ -37,7 +37,7 @@ async def test_read_image_file_invalid(read_tool, tmp_path):
     invalid_image = tmp_path / "test.png"
     invalid_image.write_text("not an image")
 
-    result = await read_tool.execute(ReadParams(path=str(invalid_image)))
+    result = await read_tool.execute(ReadParams(path=str(invalid_image)), cwd="/tmp")
 
     assert not result.success
     assert "Failed to read image" in result.result

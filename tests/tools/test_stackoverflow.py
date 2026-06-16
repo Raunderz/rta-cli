@@ -41,7 +41,7 @@ async def test_so_search_success(monkeypatch):
 
     tool = StackOverflowTool()
     params = StackOverflowParams(query="center div", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -74,7 +74,7 @@ async def test_so_search_no_results(monkeypatch):
 
     tool = StackOverflowTool()
     params = StackOverflowParams(query="nonexistent", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -89,7 +89,7 @@ async def test_so_search_error(monkeypatch):
 
     tool = StackOverflowTool()
     params = StackOverflowParams(query="test", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is False
     assert result.result is not None

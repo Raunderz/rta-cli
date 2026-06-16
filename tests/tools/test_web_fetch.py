@@ -77,7 +77,7 @@ def test_extract_markdown_falls_back_when_readability_markdown_is_empty(monkeypa
 async def test_web_fetch_refuses_direct_loopback_before_fetch(monkeypatch):
     monkeypatch.setattr(web_fetch, "AsyncSession", _fail_session)
 
-    result = await WebFetchTool().execute(WebFetchParams(url="http://127.0.0.1:8000/"))
+    result = await WebFetchTool().execute(WebFetchParams(url="http://127.0.0.1:8000/"), cwd="/tmp")
 
     assert result.success is False
     assert result.result == "Refused: non-public address (127.0.0.1)"
@@ -93,7 +93,7 @@ async def test_web_fetch_refuses_hostname_that_resolves_to_loopback(monkeypatch)
     monkeypatch.setattr(web_fetch, "_resolve_host_addresses", resolve_host_addresses)
     monkeypatch.setattr(web_fetch, "AsyncSession", _fail_session)
 
-    result = await WebFetchTool().execute(WebFetchParams(url="http://local.test/"))
+    result = await WebFetchTool().execute(WebFetchParams(url="http://local.test/"), cwd="/tmp")
 
     assert result.success is False
     assert result.result == "Refused: host did not resolve to a public address"
@@ -133,7 +133,7 @@ async def test_web_fetch_pins_public_resolution_and_checks_connected_ip(monkeypa
     monkeypatch.setattr(web_fetch, "_resolve_host_addresses", resolve_host_addresses)
     monkeypatch.setattr(web_fetch, "AsyncSession", FakeSession)
 
-    result = await WebFetchTool().execute(WebFetchParams(url="https://example.test/"))
+    result = await WebFetchTool().execute(WebFetchParams(url="https://example.test/"), cwd="/tmp")
 
     assert result.success is False
     assert result.result == "Refused: non-public address (127.0.0.1)"

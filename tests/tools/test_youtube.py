@@ -23,7 +23,7 @@ async def test_youtube_transcript_success(monkeypatch):
 
     tool = YouTubeTranscriptTool()
     params = YouTubeTranscriptParams(video_url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -40,7 +40,7 @@ async def test_youtube_transcript_invalid_url():
 
     tool = YouTubeTranscriptTool()
     params = YouTubeTranscriptParams(video_url="https://example.com")
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is False
     assert result.result is not None
@@ -63,7 +63,7 @@ async def test_youtube_transcript_empty(monkeypatch):
 
     tool = YouTubeTranscriptTool()
     params = YouTubeTranscriptParams(video_url="https://www.youtube.com/watch?v=dQw4w9WgXcQ")
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None

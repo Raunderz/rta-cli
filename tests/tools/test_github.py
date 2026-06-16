@@ -34,7 +34,7 @@ async def test_github_search_repos_success(monkeypatch):
 
     tool = GitHubSearchTool()
     params = GitHubSearchParams(query="linux", search_type="repositories", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -71,7 +71,7 @@ async def test_github_search_code_success(monkeypatch):
 
     tool = GitHubSearchTool()
     params = GitHubSearchParams(query="main.c", search_type="code", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -107,7 +107,7 @@ async def test_github_search_issues_success(monkeypatch):
 
     tool = GitHubSearchTool()
     params = GitHubSearchParams(query="kernel bug", search_type="issues", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -125,7 +125,7 @@ async def test_github_search_rate_limit(monkeypatch):
 
     tool = GitHubSearchTool()
     params = GitHubSearchParams(query="test", search_type="repositories", max_results=1)
-    result = await tool.execute(params)
+    result = await tool.execute(params, cwd="/tmp")
 
     assert result.success is False
     assert result.result is not None

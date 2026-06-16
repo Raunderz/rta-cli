@@ -32,7 +32,7 @@ async def test_inline_output_truncates_without_temp_file_path(monkeypatch):
     line_count = 5000
     _patch_subprocess(monkeypatch, _FakeProcess(_stdout_with_lines(line_count)))
 
-    result = await BashTool().execute(BashParams(command="ignored"), inline_output=True)
+    result = await BashTool().execute(BashParams(command="ignored"), cwd="/tmp", inline_output=True)
 
     assert result.success is True
     assert result.result is not None
@@ -49,7 +49,7 @@ async def test_default_truncates_with_temp_file_path(monkeypatch):
     fake_path = f"{tempfile.gettempdir()}/kon-bash-fake.log"
     monkeypatch.setattr("kon.tools.bash._write_full_output_to_temp", lambda _: fake_path)
 
-    result = await BashTool().execute(BashParams(command="ignored"))
+    result = await BashTool().execute(BashParams(command="ignored"), cwd="/tmp")
 
     assert result.success is True
     assert result.result is not None
@@ -64,7 +64,7 @@ async def test_inline_output_keeps_excerpt_for_single_oversized_line(monkeypatch
     oversized_line = b"a" * (MAX_OUTPUT_BYTES + 1)
     _patch_subprocess(monkeypatch, _FakeProcess(oversized_line))
 
-    result = await BashTool().execute(BashParams(command="ignored"), inline_output=True)
+    result = await BashTool().execute(BashParams(command="ignored"), cwd="/tmp", inline_output=True)
 
     assert result.success is True
     assert result.result is not None
@@ -78,7 +78,7 @@ async def test_inline_output_keeps_excerpt_for_single_oversized_line(monkeypatch
 async def test_short_output_is_not_truncated(monkeypatch):
     _patch_subprocess(monkeypatch, _FakeProcess(b"hi\n"))
 
-    result = await BashTool().execute(BashParams(command="ignored"), inline_output=True)
+    result = await BashTool().execute(BashParams(command="ignored"), cwd="/tmp", inline_output=True)
 
     assert result.success is True
     assert result.result is not None
