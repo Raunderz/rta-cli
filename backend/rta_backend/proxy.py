@@ -15,6 +15,8 @@ from rta_backend.providers import (
     RateLimitError,
     call_cerebras,
     call_cerebras_stream,
+    call_cloudflare,
+    call_cloudflare_stream,
     call_gemini,
     call_gemini_stream,
     call_groq,
@@ -31,6 +33,7 @@ STREAM_DISPATCH = {
     "sambanova": call_sambanova_stream,
     "openrouter": call_openrouter_stream,
     "gemini": call_gemini_stream,
+    "cloudflare": call_cloudflare_stream,
 }
 
 from rta_backend.prompts import SYSTEM_PROMPT
@@ -129,6 +132,15 @@ def get_routing_sequence(
             {"provider": "openrouter", "model": "nvidia/nemotron-3-ultra-550b-a55b:free"},
             {"provider": "gemini", "model": "gemini-2.5-flash"},
             {"provider": "groq", "model": "llama-3.3-70b-versatile"},
+            {"provider": "cloudflare", "model": "@cf/openai/gpt-oss-120b"},
+            {"provider": "cloudflare", "model": "@cf/qwen/qwen3-30b-a3b-fp8"},
+            {"provider": "cloudflare", "model": "@cf/google/gemma-4-26b-a4b-it"},
+            {"provider": "cloudflare", "model": "@cf/meta/llama-4-scout-17b-16e-instruct"},
+            {"provider": "cloudflare", "model": "@cf/openai/gpt-oss-20b"},
+            {"provider": "cloudflare", "model": "@cf/mistralai/mistral-small-3.1-24b-instruct"},
+            {"provider": "cloudflare", "model": "@cf/qwen/qwen2.5-coder-32b-instruct"},
+            {"provider": "cloudflare", "model": "@cf/zhipu/glm-4.7-flash"},
+            {"provider": "cloudflare", "model": "@cf/meta/kimi-k2.7-code"},
         ]
 
     # Normalized model name for other cases
@@ -223,6 +235,7 @@ def get_provider_keys() -> Dict[str, str]:
         "sambanova": os.getenv("SAMBANOVA_API_KEY", ""),
         "openrouter": os.getenv("OPENROUTER_API_KEY", ""),
         "gemini": os.getenv("GEMINI_API_KEY", ""),
+        "cloudflare": os.getenv("CLOUDFLARE_API_TOKEN", ""),
     }
 
 
@@ -261,6 +274,7 @@ async def call_provider(name: str, **kwargs) -> dict:
         "sambanova": call_sambanova,
         "openrouter": call_openrouter,
         "gemini": call_gemini,
+        "cloudflare": call_cloudflare,
     }
     if name not in dispatch:
         raise ValueError(f"Unknown provider: {name}")
@@ -296,14 +310,16 @@ async def route_chat_request(
         logging.info(f"Attempting provider: {provider_name} with model: {model_to_use}")
         try:
             # Call provider module
-            result = await call_provider(
-                provider_name,
+            call_kwargs = dict(
                 messages=messages,
                 model=model_to_use,
                 tools=request.tools,
                 api_key=api_key,
                 max_tokens=max_tokens,
             )
+            if provider_name == "cloudflare":
+                call_kwargs["account_id"] = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+            result = await call_provider(provider_name, **call_kwargs)
 
             # Record success
             models_tried.append(f"{provider_name}/{model_to_use}")
@@ -410,13 +426,16 @@ async def route_chat_request_stream(request: ChatRequest, user_id: str, user_tie
                 }
 
                 has_yielded_content = False
-                async for event in stream_func(
+                stream_kwargs = dict(
                     messages=messages,
                     model=model_to_use,
                     tools=request.tools,
                     api_key=api_key,
                     max_tokens=max_tokens,
-                ):
+                )
+                if provider_name == "cloudflare":
+                    stream_kwargs["account_id"] = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+                async for event in stream_func(**stream_kwargs):
                     if event["type"] in ["text", "tool_calls", "usage"]:
                         has_yielded_content = True
                     yield event

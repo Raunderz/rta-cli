@@ -57,3 +57,4 @@ from .cerebras import call_cerebras, call_cerebras_stream
 from .sambanova import call_sambanova, call_sambanova_stream
 from .openrouter import call_openrouter, call_openrouter_stream
 from .gemini import call_gemini, call_gemini_stream
+from .cloudflare import call_cloudflare, call_cloudflare_stream
