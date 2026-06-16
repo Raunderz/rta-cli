@@ -19,8 +19,10 @@ RUN apt-get update && apt-get install -y \
 # ============================================================================
 
 RUN curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb \
+    && curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb.sha256 -o /tmp/fastfetch.deb.sha256 \
+    && echo "$(cat /tmp/fastfetch.deb.sha256)  /tmp/fastfetch.deb" | sha256sum -c - \
     && apt-get update && apt-get install -y /tmp/fastfetch.deb \
-    && rm /tmp/fastfetch.deb \
+    && rm /tmp/fastfetch.deb /tmp/fastfetch.deb.sha256 \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
@@ -29,7 +31,11 @@ RUN curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/downlo
 
 RUN curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64 \
     -o /usr/local/bin/ttyd && \
-    chmod +x /usr/local/bin/ttyd
+    curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64.sha256 \
+    -o /tmp/ttyd.sha256 && \
+    echo "$(awk '{print $1}' /tmp/ttyd.sha256)  /usr/local/bin/ttyd" | sha256sum -c - && \
+    chmod +x /usr/local/bin/ttyd && \
+    rm /tmp/ttyd.sha256
 
 # ============================================================================
 # Rta CLI
@@ -43,7 +49,11 @@ RUN curl -fsSL https://rta-three.vercel.app/rta -o /usr/local/bin/rta && chmod +
 
 RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
     -o /usr/local/bin/cloudflared && \
-    chmod +x /usr/local/bin/cloudflared
+    curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.sha256 \
+    -o /tmp/cloudflared.sha256 && \
+    echo "$(awk '{print $1}' /tmp/cloudflared.sha256)  /usr/local/bin/cloudflared" | sha256sum -c - && \
+    chmod +x /usr/local/bin/cloudflared && \
+    rm /tmp/cloudflared.sha256
 
 # ============================================================================
 # Security Hardening

@@ -315,11 +315,15 @@ func handleEnvAction(w http.ResponseWriter, r *http.Request) {
 		out.Close()
 
 		// Copy ZIP to container
-		exec.Command("docker", "cp", tmpPath, fmt.Sprintf("%s:/tmp/workspace.zip", env.Container)).Run()
+		if err := exec.Command("docker", "cp", tmpPath, fmt.Sprintf("%s:/tmp/workspace.zip", env.Container)).Run(); err != nil {
+			log.Printf("docker cp to container failed: %v", err)
+			http.Error(w, "Failed to copy workspace to container", http.StatusInternalServerError)
+			return
+		}
 		
-		// Extract inside container using Python
+		// Extract inside container using Python (zip-slip safe: validates all paths stay within /workspace)
 		unzipCmd := exec.Command("docker", "exec", "-u", "root", env.Container, "bash", "-c",
-			"mkdir -p /workspace && chown dev:dev /workspace && python3 -c 'import zipfile; zipfile.ZipFile(\"/tmp/workspace.zip\", \"r\").extractall(\"/workspace\")' && chown -R dev:dev /workspace && rm /tmp/workspace.zip")
+			"mkdir -p /workspace && chown dev:dev /workspace && python3 -c 'import zipfile, os; zf=zipfile.ZipFile(\"/tmp/workspace.zip\",\"r\"); dest=\"/workspace\"; [zf.extract(info,dest) for info in zf.infolist() if not os.path.realpath(os.path.join(dest,info.filename)).startswith(os.path.realpath(dest)+\"/\") and not os.path.realpath(os.path.join(dest,info.filename))==os.path.realpath(dest)]' && chown -R dev:dev /workspace && rm /tmp/workspace.zip")
 		if err := unzipCmd.Run(); err != nil {
 			log.Printf("Unzip failed: %v", err)
 			http.Error(w, "Failed to extract workspace in container", http.StatusInternalServerError)
@@ -353,7 +357,11 @@ if os.path.exists("/workspace"):
 		}
 		
 		// Copy zip out of container
-		exec.Command("docker", "cp", fmt.Sprintf("%s:/tmp/workspace_out.zip", env.Container), tmpPath).Run()
+		if err := exec.Command("docker", "cp", fmt.Sprintf("%s:/tmp/workspace_out.zip", env.Container), tmpPath).Run(); err != nil {
+			log.Printf("docker cp from container failed: %v", err)
+			http.Error(w, "Failed to copy workspace from container", http.StatusInternalServerError)
+			return
+		}
 		defer os.Remove(tmpPath)
 		
 		// Serve file
@@ -381,11 +389,15 @@ func deleteEnv(env *Env) {
 	logEventToBackend(env.APIKey, "env_deleted", env.ID, nil)
 
 	// Kill Docker container
-	exec.Command("docker", "rm", "-f", env.Container).Run()
+	if err := exec.Command("docker", "rm", "-f", env.Container).Run(); err != nil {
+		log.Printf("docker rm failed for env %s: %v", env.ID, err)
+	}
 
 	// Kill tunnel if exists
 	if env.TunnelPID > 0 {
-		exec.Command("kill", "-9", fmt.Sprintf("%d", env.TunnelPID)).Run()
+		if err := exec.Command("kill", "-9", fmt.Sprintf("%d", env.TunnelPID)).Run(); err != nil {
+			log.Printf("kill tunnel PID %d failed: %v", env.TunnelPID, err)
+		}
 	}
 
 	envs.Delete(env.ID)
@@ -541,7 +553,9 @@ func handleExpose(w http.ResponseWriter, r *http.Request) {
 
 	if r.Method == "DELETE" {
 		// Kill cloudflared in container
-		exec.Command("docker", "exec", env.Container, "pkill", "cloudflared").Run()
+		if err := exec.Command("docker", "exec", env.Container, "pkill", "cloudflared").Run(); err != nil {
+			log.Printf("pkill cloudflared failed for env %s: %v", env.ID, err)
+		}
 		env.TunnelURL = ""
 		log.Printf("🛑 Unexposed env %s", id)
 		w.WriteHeader(http.StatusNoContent)
