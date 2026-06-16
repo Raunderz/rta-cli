@@ -266,8 +266,8 @@ async def _run_chat(
                 case ToolStartEvent(tool_name=name):
                     _write_response({"type": "tool_start", "tool": name})
 
-                case ToolEndEvent(tool_name=name, display=display):
-                    _write_response({"type": "tool_end", "tool": name, "display": display})
+                case ToolEndEvent(tool_name=name, display=display, arguments=args):
+                    _write_response({"type": "tool_end", "tool": name, "display": display, "args": args or {}})
 
                 case ToolApprovalEvent(tool_name=name, display=display, future=future):
                     if future is None:
