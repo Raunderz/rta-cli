@@ -18,12 +18,7 @@ from kon import config, consume_config_warnings, update_available_binaries
 from kon.tools_manager import ensure_tools, get_tool_path
 from kon.version import PACKAGE_NAME, VERSION
 
-from ..context.skills import (
-    load_builtin_cmd_skills,
-    load_skills,
-    merge_registered_skills,
-    render_skill_prompt,
-)
+from ..context.skills import load_builtin_cmd_skills, load_skills, merge_registered_skills, render_skill_prompt
 from ..core.types import StopReason
 from ..events import (
     AgentEndEvent,
@@ -57,13 +52,7 @@ from ..session import Session
 from ..tools import DEFAULT_TOOLS, EXTRA_TOOLS, get_tool, get_tools
 from ..tools.bash import BashParams, BashTool
 from ..update_check import get_newer_pypi_version
-from .autocomplete import (
-    DEFAULT_COMMANDS,
-    FilePathProvider,
-    PullRequestProvider,
-    SlashCommand,
-    SlashCommandProvider,
-)
+from .autocomplete import DEFAULT_COMMANDS, FilePathProvider, PullRequestProvider, SlashCommand, SlashCommandProvider
 from .blocks import HandoffLinkBlock, LaunchWarning
 from .chat import ChatLog
 from .commands import CommandsMixin
@@ -126,21 +115,15 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         self._cwd = cwd or os.getcwd()
         initial_model = model or config.llm.default_model
         initial_model_provider = (
-            provider
-            if provider is not None
-            else (config.llm.default_provider if model is None else None)
+            provider if provider is not None else (config.llm.default_provider if model is None else None)
         )
         self._api_key = api_key
         self._base_url = base_url or config.llm.default_base_url or None
         self._resume_session = resume_session
         self._continue_recent = continue_recent
         initial_thinking_level = thinking_level or config.llm.default_thinking_level
-        self._openai_compat_auth_mode: AuthMode = (
-            openai_compat_auth_mode or config.llm.auth.openai_compat
-        )
-        self._anthropic_compat_auth_mode: AuthMode = (
-            anthropic_compat_auth_mode or config.llm.auth.anthropic_compat
-        )
+        self._openai_compat_auth_mode: AuthMode = openai_compat_auth_mode or config.llm.auth.openai_compat
+        self._anthropic_compat_auth_mode: AuthMode = anthropic_compat_auth_mode or config.llm.auth.anthropic_compat
         self._is_running = False
         self._last_ctrl_c_time = 0.0
         self._last_ctrl_d_time = 0.0
@@ -181,9 +164,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         extra = [n for n in merged if n in EXTRA_TOOLS]
         for name in merged:
             if name not in EXTRA_TOOLS:
-                self._launch_warnings.append(
-                    LaunchWarning(message=f"Unknown extra tool: {name!r}", severity="warning")
-                )
+                self._launch_warnings.append(LaunchWarning(message=f"Unknown extra tool: {name!r}", severity="warning"))
         self._tools = get_tools(DEFAULT_TOOLS + extra)
 
         self._runtime = ConversationRuntime(
@@ -295,9 +276,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                 cmd_description = skill.description[:32]
                 if len(skill.description) > 32:
                     cmd_description = f"{cmd_description}..."
-            commands.append(
-                SlashCommand(name=skill.name, description=cmd_description, is_skill=True)
-            )
+            commands.append(SlashCommand(name=skill.name, description=cmd_description, is_skill=True))
 
         input_box.set_commands(commands)
 
@@ -377,11 +356,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         info_bar.set_thinking_level(self._runtime.thinking_level)
         self._apply_thinking_level_style(self._runtime.thinking_level)
 
-        if (
-            (self._continue_recent or self._resume_session)
-            and self._runtime.session
-            and self._runtime.session.entries
-        ):
+        if (self._continue_recent or self._resume_session) and self._runtime.session and self._runtime.session.entries:
             self._render_session_entries(self._runtime.session)
             token_totals = self._runtime.session.token_totals()
             info_bar.set_tokens(
@@ -419,7 +394,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                 # Update runtime agent config
                 if context_window and self._runtime.agent:
                     self._runtime.agent.config.context_window = context_window
-                
+
                 # Update InfoBar UI
                 try:
                     info_bar = self.query_one("#info-bar", InfoBar)
@@ -445,6 +420,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
     async def _refresh_provider_metadata_retry(self) -> None:
         """Retry metadata fetch after a short delay (provider may not be ready on first call)."""
         import asyncio
+
         await asyncio.sleep(2)
         await self._refresh_provider_metadata()
 
@@ -465,9 +441,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         for pattern in patterns:
             for path in glob.glob(os.path.join(self._cwd, pattern), recursive=True):
                 rel_path = os.path.relpath(path, self._cwd)
-                if not rel_path.startswith(
-                    (".git", "node_modules", "__pycache__", ".venv", "venv")
-                ):
+                if not rel_path.startswith((".git", "node_modules", "__pycache__", ".venv", "venv")):
                     paths.append(rel_path)
         paths = sorted(paths)
         self.query_one("#input-box", InputBox).set_file_paths(paths)
@@ -495,15 +469,11 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
             return
 
         chat = self.query_one("#chat-log", ChatLog)
-        chat.add_update_available_message(
-            self._pending_update_notice_version, changelog_url=_CHANGELOG_URL
-        )
+        chat.add_update_available_message(self._pending_update_notice_version, changelog_url=_CHANGELOG_URL)
         self._update_notice_shown = True
         self._pending_update_notice_version = None
 
-    def _add_launch_warning(
-        self, message: str, *, severity: Literal["warning", "error"] = "warning"
-    ) -> None:
+    def _add_launch_warning(self, message: str, *, severity: Literal["warning", "error"] = "warning") -> None:
         cleaned = message.strip()
         if not cleaned:
             return
@@ -542,11 +512,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
             info_bar.remove_class("-completion-hidden")
 
     def _show_completion_list(
-        self,
-        items: list[ListItem],
-        *,
-        searchable: bool = False,
-        max_label_width: int | None = None,
+        self, items: list[ListItem], *, searchable: bool = False, max_label_width: int | None = None
     ) -> None:
         completion_list = self.query_one("#completion-list", FloatingList)
         self._set_bottom_info_displaced(True)
@@ -619,8 +585,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         if self._selection_mode is not None:
             selection_mode = self._selection_mode
             keeps_info_bar_displaced = selection_mode == SelectionMode.SETTINGS or (
-                selection_mode
-                in (SelectionMode.THEME, SelectionMode.THINKING, SelectionMode.THINKING_LINES)
+                selection_mode in (SelectionMode.THEME, SelectionMode.THINKING, SelectionMode.THINKING_LINES)
                 and self._settings_active
             )
             with self.batch_update():
@@ -795,9 +760,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
 
             if self._ctrl_c_timer:
                 self._ctrl_c_timer.stop()
-            self._ctrl_c_timer = self.set_timer(
-                self._ctrl_c_threshold, lambda: status.hide_exit_hint()
-            )
+            self._ctrl_c_timer = self.set_timer(self._ctrl_c_threshold, lambda: status.hide_exit_hint())
 
     def action_handle_ctrl_d(self) -> None:
         if self.delete_selected_queue_item():
@@ -825,9 +788,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         status.show_delete_session_hint()
         if self._ctrl_d_timer:
             self._ctrl_d_timer.stop()
-        self._ctrl_d_timer = self.set_timer(
-            self._ctrl_d_threshold, lambda: status.hide_exit_hint()
-        )
+        self._ctrl_d_timer = self.set_timer(self._ctrl_d_threshold, lambda: status.hide_exit_hint())
 
     def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
         if action in {"tree_page_up", "tree_page_down"}:
@@ -903,11 +864,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
             return
 
         levels = self._runtime.provider.thinking_levels
-        current_idx = (
-            levels.index(self._runtime.thinking_level)
-            if self._runtime.thinking_level in levels
-            else 0
-        )
+        current_idx = levels.index(self._runtime.thinking_level) if self._runtime.thinking_level in levels else 0
         new_level = levels[(current_idx + 1) % len(levels)]
         self._select_thinking_level(new_level)
 
@@ -954,9 +911,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
             )
             if self._approval_tool_id is not None:
                 chat = self.query_one("#chat-log", ChatLog)
-                chat.update_tool_approval_selection(
-                    self._approval_tool_id, self._approval_selection
-                )
+                chat.update_tool_approval_selection(self._approval_tool_id, self._approval_selection)
             event.prevent_default()
             event.stop()
             return
@@ -1003,9 +958,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                 )
                 display_text = skill_prompt
                 query_text = (
-                    render_skill_prompt(selected_skill, skill_query)
-                    if selected_skill.bundled
-                    else skill_prompt
+                    render_skill_prompt(selected_skill, skill_query) if selected_skill.bundled else skill_prompt
                 )
                 highlighted_skill = selected_skill.name
 
@@ -1032,14 +985,8 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
         self.run_worker(self._run_agent(query_text), exclusive=True)
 
     def _queue_items(self) -> list[tuple[bool, int, str, str]]:
-        steer = [
-            (True, index, display, query)
-            for index, (display, query) in enumerate(self._steer_queue)
-        ]
-        pending = [
-            (False, index, display, query)
-            for index, (display, query) in enumerate(self._pending_queue)
-        ]
+        steer = [(True, index, display, query) for index, (display, query) in enumerate(self._steer_queue)]
+        pending = [(False, index, display, query) for index, (display, query) in enumerate(self._pending_queue)]
         return steer + pending
 
     def _selected_queue_flat_index(self) -> int | None:
@@ -1252,14 +1199,10 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                         case ToolEndEvent(tool_call_id=id, display=display):
                             chat.update_tool_call_msg(id, display)
 
-                        case ToolApprovalEvent(
-                            tool_call_id=id, tool_name=name, display=disp, future=f
-                        ):
+                        case ToolApprovalEvent(tool_call_id=id, tool_name=name, display=disp, future=f):
                             self.app.bell()
                             self._approval_selection = ApprovalResponse.APPROVE
-                            chat.show_tool_approval(
-                                id, preview=disp or None, selected=self._approval_selection
-                            )
+                            chat.show_tool_approval(id, preview=disp or None, selected=self._approval_selection)
                             self._approval_future = f
                             self._approval_tool_id = id
 
@@ -1275,12 +1218,7 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                                     ui_details, ui_details_full = self._format_tool_result_text(r)
                                 success = not r.is_error
                                 chat.set_tool_result(
-                                    id,
-                                    ui_summary,
-                                    ui_details,
-                                    success,
-                                    markup=markup,
-                                    ui_details_full=ui_details_full,
+                                    id, ui_summary, ui_details, success, markup=markup, ui_details_full=ui_details_full
                                 )
                             if fc:
                                 info_bar.update_file_changes(fc.path, fc.added, fc.removed)
@@ -1439,19 +1377,13 @@ class Rta(CommandsMixin, SessionUIMixin, App[None]):
                 markup = True
 
             chat.set_tool_result(
-                tool_id,
-                ui_summary,
-                ui_details,
-                result.success,
-                markup=markup,
-                ui_details_full=result.ui_details_full,
+                tool_id, ui_summary, ui_details, result.success, markup=markup, ui_details_full=result.ui_details_full
             )
 
             # If using !!, send output to LLM for follow-up unless the command was interrupted.
             if send_to_llm and result.result and not cancel_event.is_set():
                 prompt = (
-                    "Shell command output:\n\n```\n"
-                    f"{result.result}\n```\n\nWhat would you like me to do with this?"
+                    f"Shell command output:\n\n```\n{result.result}\n```\n\nWhat would you like me to do with this?"
                 )
                 self._is_running = True
                 await self._run_agent(prompt)
@@ -1496,9 +1428,7 @@ def _print_exit_message(
     console = Console(highlight=False)
 
     for hint in hints:
-        console.print(
-            f"[{colors.muted}]Hint:[/{colors.muted}] [{colors.dim}]{hint}[/{colors.dim}]"
-        )
+        console.print(f"[{colors.muted}]Hint:[/{colors.muted}] [{colors.dim}]{hint}[/{colors.dim}]")
 
     t = colors.dim
     logo_color = colors.dim
@@ -1519,8 +1449,7 @@ def _print_exit_message(
 
     if session_id:
         info_lines.append(
-            f"[{colors.muted}]To resume:[/{colors.muted}] "
-            f"[{colors.accent}]rta -r {session_id}[/{colors.accent}]"
+            f"[{colors.muted}]To resume:[/{colors.muted}] [{colors.accent}]rta -r {session_id}[/{colors.accent}]"
         )
 
     if not info_lines:

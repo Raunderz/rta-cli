@@ -65,9 +65,7 @@ async def test_read_not_a_file_or_directory(read_tool, tmp_path):
 async def test_read_directory_uses_fd_with_depth_3_when_small(read_tool, tmp_path, monkeypatch):
     calls = []
 
-    async def mock_list_directory_entries(
-        self, fd_path, dir_path, max_depth, max_results, cancel_event
-    ):
+    async def mock_list_directory_entries(self, fd_path, dir_path, max_depth, max_results, cancel_event):
         calls.append((fd_path, Path(dir_path), max_depth, max_results))
         return [" 2 Apr 15:19  a.py", " 2 Apr 15:19  nested/", " 2 Apr 15:19  nested/file.py"]
 
@@ -82,9 +80,7 @@ async def test_read_directory_uses_fd_with_depth_3_when_small(read_tool, tmp_pat
 
     assert calls == [("fd", tmp_path, 3, 201)]
     assert tool_result.success is True
-    assert tool_result.result == (
-        " 2 Apr 15:19  a.py\n 2 Apr 15:19  nested/\n 2 Apr 15:19  nested/file.py"
-    )
+    assert tool_result.result == (" 2 Apr 15:19  a.py\n 2 Apr 15:19  nested/\n 2 Apr 15:19  nested/file.py")
     assert tool_result.ui_summary == "[dim](3 entries)[/dim]"
 
 
@@ -92,9 +88,7 @@ async def test_read_directory_uses_fd_with_depth_3_when_small(read_tool, tmp_pat
 async def test_read_directory_falls_back_to_depth_2(read_tool, tmp_path, monkeypatch):
     calls = []
 
-    async def mock_list_directory_entries(
-        self, fd_path, dir_path, max_depth, max_results, cancel_event
-    ):
+    async def mock_list_directory_entries(self, fd_path, dir_path, max_depth, max_results, cancel_event):
         calls.append(max_depth)
         if max_depth == 3:
             return [f"entry-{i}" for i in range(201)]
@@ -115,14 +109,10 @@ async def test_read_directory_falls_back_to_depth_2(read_tool, tmp_path, monkeyp
 
 
 @pytest.mark.asyncio
-async def test_read_directory_falls_back_to_depth_1_and_truncates(
-    read_tool, tmp_path, monkeypatch
-):
+async def test_read_directory_falls_back_to_depth_1_and_truncates(read_tool, tmp_path, monkeypatch):
     calls = []
 
-    async def mock_list_directory_entries(
-        self, fd_path, dir_path, max_depth, max_results, cancel_event
-    ):
+    async def mock_list_directory_entries(self, fd_path, dir_path, max_depth, max_results, cancel_event):
         calls.append((max_depth, max_results))
         if max_depth in (3, 2):
             return [f" 2 Apr 15:19  entry-{i}" for i in range(201)]
@@ -147,9 +137,7 @@ async def test_read_directory_falls_back_to_depth_1_and_truncates(
 
 @pytest.mark.asyncio
 async def test_read_directory_empty(read_tool, tmp_path, monkeypatch):
-    async def mock_list_directory_entries(
-        self, fd_path, dir_path, max_depth, max_results, cancel_event
-    ):
+    async def mock_list_directory_entries(self, fd_path, dir_path, max_depth, max_results, cancel_event):
         return []
 
     async def mock_ensure_tool(tool, silent=False):
@@ -174,7 +162,5 @@ async def test_read_directory_formats_modified_time(read_tool, tmp_path):
     _touch_with_timestamp(file_path, 2026, 4, 2, 15, 19)
     _touch_with_timestamp(dir_path, 2026, 4, 3, 9, 5)
 
-    assert (
-        read_tool._format_directory_entry(file_path, Path("alpha.py")) == " 2 Apr 15:19  alpha.py"
-    )
+    assert read_tool._format_directory_entry(file_path, Path("alpha.py")) == " 2 Apr 15:19  alpha.py"
     assert read_tool._format_directory_entry(dir_path, Path("nested")) == " 3 Apr 09:05  nested/"

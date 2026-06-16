@@ -53,11 +53,7 @@ class LSPManager:
 
     def _get_server_command(self, language: str) -> list | None:
         servers = {
-            "python": [
-                ["pyright-langserver", "--stdio"],
-                ["basedpyright-langserver", "--stdio"],
-                ["pylsp"],
-            ],
+            "python": [["pyright-langserver", "--stdio"], ["basedpyright-langserver", "--stdio"], ["pylsp"]],
             "javascript": [["typescript-language-server", "--stdio"]],
             "typescript": [["typescript-language-server", "--stdio"]],
             "go": [["gopls"]],

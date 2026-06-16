@@ -29,9 +29,7 @@ class FakeFloatingList:
         self.items: list[ListItem] = []
         self.searchable: bool | None = None
 
-    def show(
-        self, items: list[ListItem], searchable: bool = False, max_label_width: int | None = None
-    ) -> None:
+    def show(self, items: list[ListItem], searchable: bool = False, max_label_width: int | None = None) -> None:
         self.items = items
         self.searchable = searchable
 
@@ -82,11 +80,7 @@ class FakeCommands(CommandsMixin):
         pass
 
     def _show_completion_list(
-        self,
-        items: list[ListItem],
-        *,
-        searchable: bool = False,
-        max_label_width: int | None = None,
+        self, items: list[ListItem], *, searchable: bool = False, max_label_width: int | None = None
     ) -> None:
         self.completion_list.show(items, searchable=searchable, max_label_width=max_label_width)
 
@@ -94,9 +88,7 @@ class FakeCommands(CommandsMixin):
 @pytest.mark.asyncio
 async def test_openai_login_flow_skips_oauth_when_credentials_are_valid(monkeypatch):
     fake = FakeCommands()
-    creds = OpenAICredentials(
-        refresh="refresh", access="access", expires=9_999_999_999_999, account_id="account"
-    )
+    creds = OpenAICredentials(refresh="refresh", access="access", expires=9_999_999_999_999, account_id="account")
     login_calls: list[int] = []
 
     async def get_credentials() -> OpenAICredentials:
@@ -158,8 +150,7 @@ async def test_copilot_login_flow_starts_oauth_for_stale_saved_credentials(monke
     assert login_calls == [1]
     assert fake.chat.warnings == ["Your saved GitHub Copilot session is no longer valid."]
     assert fake.chat.infos == [
-        "Successfully logged in to GitHub Copilot!\n"
-        "You can now use /model to select Copilot models."
+        "Successfully logged in to GitHub Copilot!\nYou can now use /model to select Copilot models."
     ]
 
 
@@ -183,7 +174,4 @@ def test_login_picker_marks_saved_credentials_without_logged_in_checkmark(monkey
 
     assert fake._selection_mode == SelectionMode.LOGIN
     rows = [(item.value, item.label, item.description) for item in fake.completion_list.items]
-    assert rows == [
-        ("github-copilot", "GitHub Copilot", ""),
-        ("openai", "OpenAI (ChatGPT/Codex)", "saved credentials"),
-    ]
+    assert rows == [("github-copilot", "GitHub Copilot", ""), ("openai", "OpenAI (ChatGPT/Codex)", "saved credentials")]

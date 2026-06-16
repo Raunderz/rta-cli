@@ -3,9 +3,7 @@ import subprocess
 
 def _run_git_command(cwd: str, args: list[str], timeout: int = 5) -> str:
     try:
-        result = subprocess.run(
-            ["git", *args], cwd=cwd, check=False, capture_output=True, text=True, timeout=timeout
-        )
+        result = subprocess.run(["git", *args], cwd=cwd, check=False, capture_output=True, text=True, timeout=timeout)
     except Exception:
         return ""
 

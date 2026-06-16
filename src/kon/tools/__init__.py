@@ -110,10 +110,6 @@ def get_tool(tool_name: str) -> BaseTool | None:
 
 def get_tool_definitions(tools: list[BaseTool]) -> list[ToolDefinition]:
     return [
-        ToolDefinition(
-            name=tool.name,
-            description=tool.description,
-            parameters=tool.params.model_json_schema(),
-        )
+        ToolDefinition(name=tool.name, description=tool.description, parameters=tool.params.model_json_schema())
         for tool in tools
     ]

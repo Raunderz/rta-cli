@@ -82,9 +82,7 @@ class GetDiagnosticsTool(BaseTool[GetDiagnosticsParams]):
 
             res_text = "\n".join(output) if output else "No issues found."
             return ToolResult(
-                success=True,
-                result=res_text,
-                ui_summary=f"Found {len(output)} issues" if output else "No issues found",
+                success=True, result=res_text, ui_summary=f"Found {len(output)} issues" if output else "No issues found"
             )
         except Exception as e:
             return ToolResult(success=False, result=f"LSP Error: {e}")
@@ -116,10 +114,7 @@ class GoToDefinitionTool(BaseTool[GoToDefinitionParams]):
         try:
             result = client.send_request(
                 "textDocument/definition",
-                {
-                    "textDocument": {"uri": uri},
-                    "position": {"line": params.line - 1, "character": params.character},
-                },
+                {"textDocument": {"uri": uri}, "position": {"line": params.line - 1, "character": params.character}},
             )
 
             if not result:

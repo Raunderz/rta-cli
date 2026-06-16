@@ -81,25 +81,17 @@ def resize_image(data: bytes, mime_type: str) -> tuple[bytes, str, str | None]:
     for quality in JPEG_QUALITY_STEPS:
         jpeg_data, jpeg_mime = encode_image("JPEG", quality)
         if len(jpeg_data) <= MAX_BYTES:
-            resize_note = (
-                f"[{width}x{height}, resized from "
-                f"{original_width}x{original_height}, quality={quality}]"
-            )
+            resize_note = f"[{width}x{height}, resized from {original_width}x{original_height}, quality={quality}]"
             return jpeg_data, jpeg_mime, resize_note
 
-    resize_note = (
-        f"[{width}x{height}, resized from "
-        f"{original_width}x{original_height}, may exceed size limit]"
-    )
+    resize_note = f"[{width}x{height}, resized from {original_width}x{original_height}, may exceed size limit]"
     return jpeg_data, jpeg_mime, resize_note
 
 
 def read_and_process_image(path: str) -> tuple[str, str, str | None]:
     mime_type = get_mime_type(path)
     if not mime_type:
-        raise ValueError(
-            f"Unsupported image format. Supported: {', '.join(IMAGE_EXTENSIONS.keys())}"
-        )
+        raise ValueError(f"Unsupported image format. Supported: {', '.join(IMAGE_EXTENSIONS.keys())}")
     with open(path, "rb") as f:
         data = f.read()
     data, mime_type, resize_note = resize_image(data, mime_type)

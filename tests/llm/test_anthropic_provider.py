@@ -69,18 +69,9 @@ def test_convert_assistant_message_keeps_signed_thinking(anthropic_provider: Ant
     assistant_content = converted[1]["content"]
     assert isinstance(assistant_content, list)
 
-    assert assistant_content[0] == {
-        "type": "thinking",
-        "thinking": "valid reasoning",
-        "signature": "sig_123",
-    }
+    assert assistant_content[0] == {"type": "thinking", "thinking": "valid reasoning", "signature": "sig_123"}
     assert assistant_content[1] == {"type": "text", "text": "result"}
-    assert assistant_content[2] == {
-        "type": "tool_use",
-        "id": "tool_1",
-        "name": "read",
-        "input": {"path": "a.txt"},
-    }
+    assert assistant_content[2] == {"type": "tool_use", "id": "tool_1", "name": "read", "input": {"path": "a.txt"}}
 
 
 def test_supports_adaptive_thinking_detection():
@@ -120,10 +111,7 @@ async def test_process_stream_uses_tool_use_input_as_initial_arguments():
             type="content_block_start",
             index=0,
             content_block=ToolUseBlock(
-                type="tool_use",
-                id="tool_1",
-                name="write",
-                input={"path": "/tmp/test.txt", "content": "hello"},
+                type="tool_use", id="tool_1", name="write", input={"path": "/tmp/test.txt", "content": "hello"}
             ),
         )
         yield MessageDeltaEvent(
@@ -241,9 +229,7 @@ async def test_stream_uses_budget_thinking_for_non_adaptive_models():
     # Non-adaptive thinking budgets bumped to match pi-mono (high=16384).
     assert kwargs["thinking"] == ThinkingConfigEnabledParam(type="enabled", budget_tokens=16384)
     # Interleaved-thinking beta header added for legacy thinking models.
-    assert (
-        kwargs.get("extra_headers", {}).get("anthropic-beta") == "interleaved-thinking-2025-05-14"
-    )
+    assert kwargs.get("extra_headers", {}).get("anthropic-beta") == "interleaved-thinking-2025-05-14"
 
 
 @pytest.mark.asyncio
@@ -264,12 +250,7 @@ async def test_stream_disables_thinking_explicitly_on_adaptive_models():
 def test_convert_assistant_message_emits_redacted_thinking(anthropic_provider: AnthropicProvider):
     messages = [
         UserMessage(content="hi"),
-        AssistantMessage(
-            content=[
-                ThinkingContent(thinking="", signature="opaque-payload"),
-                TextContent(text="ok"),
-            ]
-        ),
+        AssistantMessage(content=[ThinkingContent(thinking="", signature="opaque-payload"), TextContent(text="ok")]),
     ]
 
     converted = anthropic_provider._convert_messages(messages)
@@ -282,23 +263,16 @@ def test_anthropic_provider_uses_placeholder_for_local_auto_auth_mode():
     with patch.dict(os.environ, {}, clear=True):
         provider = AnthropicProvider(
             ProviderConfig(
-                model="claude-sonnet-4.6",
-                base_url="http://127.0.0.1:8001",
-                anthropic_compat_auth_mode="auto",
+                model="claude-sonnet-4.6", base_url="http://127.0.0.1:8001", anthropic_compat_auth_mode="auto"
             )
         )
         assert provider._client.api_key == "kon-local"
 
 
 def test_anthropic_provider_requires_key_for_remote_required_mode():
-    with (
-        patch.dict(os.environ, {}, clear=True),
-        pytest.raises(ValueError, match="No API key found"),
-    ):
+    with patch.dict(os.environ, {}, clear=True), pytest.raises(ValueError, match="No API key found"):
         AnthropicProvider(
             ProviderConfig(
-                model="claude-sonnet-4.6",
-                base_url="https://api.anthropic.com",
-                anthropic_compat_auth_mode="required",
+                model="claude-sonnet-4.6", base_url="https://api.anthropic.com", anthropic_compat_auth_mode="required"
             )
         )

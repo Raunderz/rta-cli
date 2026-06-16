@@ -68,11 +68,7 @@ def list_pull_requests(cwd: str = ".") -> list[PullRequest]:
         return []
 
     prs = [
-        PullRequest(
-            number=int(pr["number"]),
-            branch=str(pr.get("headRefName") or ""),
-            title=str(pr.get("title") or ""),
-        )
+        PullRequest(number=int(pr["number"]), branch=str(pr.get("headRefName") or ""), title=str(pr.get("title") or ""))
         for pr in raw_prs
         if "number" in pr
     ]

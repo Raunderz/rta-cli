@@ -47,9 +47,7 @@ from .tools import BaseTool
 from .turn import run_single_turn
 
 
-def build_system_prompt(
-    cwd: str, context: Context | None = None, tools: list[BaseTool] | None = None
-) -> str:
+def build_system_prompt(cwd: str, context: Context | None = None, tools: list[BaseTool] | None = None) -> str:
     """Assemble the system prompt from config, AGENTS.md, skills, git context, and tool guidelines."""
     now = datetime.now()
     date_time = now.strftime("%A, %B %d, %Y at %I:%M %p %Z").strip()
@@ -113,9 +111,7 @@ class Agent:
         self.config = config or AgentConfig()
         self._cwd = cwd or os.getcwd()
         self._context = context or Context.load(self._cwd)
-        self._system_prompt = system_prompt or build_system_prompt(
-            self._cwd, self._context, tools=tools
-        )
+        self._system_prompt = system_prompt or build_system_prompt(self._cwd, self._context, tools=tools)
         self._run_usage = Usage()
 
     @property
@@ -224,9 +220,7 @@ class Agent:
                         break
 
                     did_compact = False
-                    async for compaction_event in self._check_compaction(
-                        stop_reason, system_prompt, cancel_event
-                    ):
+                    async for compaction_event in self._check_compaction(stop_reason, system_prompt, cancel_event):
                         yield compaction_event
                         if isinstance(compaction_event, CompactionEndEvent):
                             did_compact = True
@@ -238,20 +232,14 @@ class Agent:
                     if stop_reason != StopReason.TOOL_USE:
                         break
 
-                if (
-                    turn >= max_turns
-                    and not was_interrupted
-                    and stop_reason == StopReason.TOOL_USE
-                ):
+                if turn >= max_turns and not was_interrupted and stop_reason == StopReason.TOOL_USE:
                     stop_reason = StopReason.LENGTH
 
             except Exception as e:
                 yield ErrorEvent(error=str(e))
                 stop_reason = StopReason.ERROR
 
-            yield AgentEndEvent(
-                stop_reason=stop_reason, total_turns=turn, total_usage=self._run_usage
-            )
+            yield AgentEndEvent(stop_reason=stop_reason, total_turns=turn, total_usage=self._run_usage)
         finally:
             current_session_id.reset(token)
 
@@ -297,9 +285,7 @@ class Agent:
 
         try:
             # Use all_messages (uncompacted) for summarization so LLM sees full history
-            summary = await generate_summary(
-                self.session.all_messages, self.provider, system_prompt
-            )
+            summary = await generate_summary(self.session.all_messages, self.provider, system_prompt)
 
             # Everything before is summarized, nothing "kept"
             first_kept_id = self.session.leaf_id or ""

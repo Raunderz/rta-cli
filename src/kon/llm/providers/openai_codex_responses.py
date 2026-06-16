@@ -119,17 +119,13 @@ def _retry_delay_seconds(response: aiohttp.ClientResponse, attempt: int) -> floa
 
 
 def _request_body_without_input(body: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: value for key, value in body.items() if key not in {"input", "previous_response_id"}
-    }
+    return {key: value for key, value in body.items() if key not in {"input", "previous_response_id"}}
 
 
 def _get_cached_websocket_input_delta(
     body: dict[str, Any], continuation: _CachedWebSocketContinuation
 ) -> list[dict[str, Any]] | None:
-    if _request_body_without_input(body) != _request_body_without_input(
-        continuation.last_request_body
-    ):
+    if _request_body_without_input(body) != _request_body_without_input(continuation.last_request_body):
         return None
 
     current_input = body.get("input") or []
@@ -151,9 +147,7 @@ def _get_cached_websocket_input_delta(
     return delta if all(isinstance(item, dict) for item in delta) else None
 
 
-def _build_cached_websocket_request_body(
-    entry: _CachedWebSocketConnection, body: dict[str, Any]
-) -> dict[str, Any]:
+def _build_cached_websocket_request_body(entry: _CachedWebSocketConnection, body: dict[str, Any]) -> dict[str, Any]:
     continuation = entry.continuation
     if continuation is None:
         return body
@@ -242,9 +236,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
         )
         return llm_stream
 
-    def _build_input(
-        self, messages: list[Message], system_prompt: str | None
-    ) -> list[dict[str, Any]]:
+    def _build_input(self, messages: list[Message], system_prompt: str | None) -> list[dict[str, Any]]:
         from .openai_responses import OpenAIResponsesProvider
 
         helper = OpenAIResponsesProvider(self.config)
@@ -274,13 +266,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
 
     def _resolve_websocket_url(self) -> str:
         parsed = urlsplit(self._resolve_url())
-        scheme = (
-            "wss"
-            if parsed.scheme == "https"
-            else "ws"
-            if parsed.scheme == "http"
-            else parsed.scheme
-        )
+        scheme = "wss" if parsed.scheme == "https" else "ws" if parsed.scheme == "http" else parsed.scheme
         return urlunsplit((scheme, parsed.netloc, parsed.path, parsed.query, parsed.fragment))
 
     def _build_request_body(
@@ -418,9 +404,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
             if final_args == current_args:
                 return None
             call_data["arguments"] = final_args
-            return ToolCallDelta(
-                index=call_data["index"], arguments_delta=final_args, replace=True
-            )
+            return ToolCallDelta(index=call_data["index"], arguments_delta=final_args, replace=True)
 
         async for event in events:
             event_type = event.get("type")
@@ -447,18 +431,13 @@ class OpenAICodexResponsesProvider(BaseProvider):
                         full_id = f"{call_id}|{item_id}" if isinstance(item_id, str) else call_id
                         initial_args = item.get("arguments")
                         initial_args_text = initial_args if isinstance(initial_args, str) else ""
-                        current_tool_calls[full_id] = {
-                            "arguments": initial_args_text,
-                            "index": tool_call_index,
-                        }
+                        current_tool_calls[full_id] = {"arguments": initial_args_text, "index": tool_call_index}
                         if isinstance(item_id, str) and item_id:
                             call_key_by_item_id[item_id] = full_id
                         last_tool_call_id = full_id
                         yield ToolCallStart(index=tool_call_index, id=full_id, name=name)
                         if initial_args_text:
-                            yield ToolCallDelta(
-                                index=tool_call_index, arguments_delta=initial_args_text
-                            )
+                            yield ToolCallDelta(index=tool_call_index, arguments_delta=initial_args_text)
                         tool_call_index += 1
 
             elif event_type == "response.function_call_arguments.delta":
@@ -528,9 +507,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
                 err_msg = msg if isinstance(msg, str) and msg else "Codex response failed"
                 raise CodexNonTransportError(err_msg)
 
-    def _apply_response_metadata(
-        self, response_obj: dict[str, Any], llm_stream: LLMStream
-    ) -> None:
+    def _apply_response_metadata(self, response_obj: dict[str, Any], llm_stream: LLMStream) -> None:
         usage = response_obj.get("usage")
         if isinstance(usage, dict):
             input_details = usage.get("input_tokens_details")
@@ -555,9 +532,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
         if isinstance(rid, str):
             llm_stream._id = rid
 
-    async def _stream_sse_events(
-        self, body: dict[str, Any], headers: dict[str, str]
-    ) -> AsyncIterator[dict[str, Any]]:
+    async def _stream_sse_events(self, body: dict[str, Any], headers: dict[str, str]) -> AsyncIterator[dict[str, Any]]:
         last_error: str | None = None
         timeout = aiohttp.ClientTimeout(
             sock_connect=_CONNECT_TIMEOUT_SECONDS, sock_read=kon_config.llm.request_timeout_seconds
@@ -579,9 +554,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
                     break
                 error_text = await response.text()
                 last_error = f"Codex API error ({response.status}): {error_text}"
-                if attempt < _MAX_RETRIES and _is_retryable_response_error(
-                    response.status, error_text
-                ):
+                if attempt < _MAX_RETRIES and _is_retryable_response_error(response.status, error_text):
                     delay = _retry_delay_seconds(response, attempt)
                     await asyncio.sleep(delay)
                     continue
@@ -593,9 +566,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
             async for event in self._parse_sse(response):
                 yield event
 
-    async def _new_websocket_connection(
-        self, headers: dict[str, str]
-    ) -> _CachedWebSocketConnection:
+    async def _new_websocket_connection(self, headers: dict[str, str]) -> _CachedWebSocketConnection:
         timeout = aiohttp.ClientTimeout(
             sock_connect=_CONNECT_TIMEOUT_SECONDS, sock_read=kon_config.llm.request_timeout_seconds
         )
@@ -684,21 +655,14 @@ class OpenAICodexResponsesProvider(BaseProvider):
                     if part.get("type") == "output_text":
                         text = part.get("text")
                         if isinstance(text, str):
-                            content.append(
-                                {"type": "output_text", "text": text, "annotations": []}
-                            )
+                            content.append({"type": "output_text", "text": text, "annotations": []})
                     elif part.get("type") == "refusal":
                         refusal = part.get("refusal")
                         if isinstance(refusal, str):
                             content.append({"type": "refusal", "refusal": refusal})
             if not content:
                 return None
-            return {
-                "type": "message",
-                "role": "assistant",
-                "content": content,
-                "status": "completed",
-            }
+            return {"type": "message", "role": "assistant", "content": content, "status": "completed"}
 
         if item_type == "function_call":
             call_id = item.get("call_id")
@@ -738,11 +702,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
             async for msg in entry.ws:
                 if msg.type in {aiohttp.WSMsgType.TEXT, aiohttp.WSMsgType.BINARY}:
                     try:
-                        raw = (
-                            msg.data.decode()
-                            if isinstance(msg.data, bytes | bytearray)
-                            else msg.data
-                        )
+                        raw = msg.data.decode() if isinstance(msg.data, bytes | bytearray) else msg.data
                         event = json.loads(raw)
                     except Exception as e:
                         raise CodexNonTransportError(f"Invalid Codex WebSocket JSON: {e}") from e
@@ -753,9 +713,7 @@ class OpenAICodexResponsesProvider(BaseProvider):
                     event_type = event.get("type")
                     if event_type == "response.created":
                         response_obj = event.get("response")
-                        if isinstance(response_obj, dict) and isinstance(
-                            response_obj.get("id"), str
-                        ):
+                        if isinstance(response_obj, dict) and isinstance(response_obj.get("id"), str):
                             response_id = response_obj["id"]
                     elif event_type == "response.output_item.done":
                         item = event.get("item")
@@ -763,24 +721,16 @@ class OpenAICodexResponsesProvider(BaseProvider):
                             response_item = self._response_item_for_cache(item)
                             if response_item is not None:
                                 response_items.append(response_item)
-                    if event_type in {
-                        "response.completed",
-                        "response.done",
-                        "response.incomplete",
-                    }:
+                    if event_type in {"response.completed", "response.done", "response.incomplete"}:
                         saw_completion = True
                         response_obj = event.get("response")
-                        if isinstance(response_obj, dict) and isinstance(
-                            response_obj.get("id"), str
-                        ):
+                        if isinstance(response_obj, dict) and isinstance(response_obj.get("id"), str):
                             response_id = response_obj["id"]
                     yield event
                     if saw_completion:
                         if response_id and response_items:
                             entry.continuation = _CachedWebSocketContinuation(
-                                last_request_body=body,
-                                last_response_id=response_id,
-                                last_response_items=response_items,
+                                last_request_body=body, last_response_id=response_id, last_response_items=response_items
                             )
                         return
                 elif msg.type == aiohttp.WSMsgType.ERROR:

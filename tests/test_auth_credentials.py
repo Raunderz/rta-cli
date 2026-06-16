@@ -1,13 +1,9 @@
 import os
-import pytest
 from unittest.mock import patch
-from kon.auth import (
-    save_credential,
-    load_credential,
-    delete_credential,
-    _rta_dir,
-    _credentials_file,
-)
+
+import pytest
+
+from kon.auth import delete_credential, load_credential, save_credential
 
 
 @pytest.fixture

@@ -260,8 +260,7 @@ class TestEscapeXml:
 
     def test_escapes_multiple_special_chars(self):
         assert (
-            escape_xml('<script>alert("AT&T")</script>')
-            == "&lt;script&gt;alert(&quot;AT&amp;T&quot;)&lt;/script&gt;"
+            escape_xml('<script>alert("AT&T")</script>') == "&lt;script&gt;alert(&quot;AT&amp;T&quot;)&lt;/script&gt;"
         )
 
     def test_preserves_normal_text(self):

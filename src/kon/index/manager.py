@@ -88,15 +88,10 @@ class BM25Indexer:
 
         for root, dirs, files in os.walk(self.workspace_path):
             dirs[:] = [
-                d
-                for d in dirs
-                if not d.startswith(".")
-                and d not in ("node_modules", "dist", "build", "venv", ".venv")
+                d for d in dirs if not d.startswith(".") and d not in ("node_modules", "dist", "build", "venv", ".venv")
             ]
             for file in files:
-                if file.startswith(".") or file.endswith(
-                    (".pyc", ".png", ".jpg", ".zip", ".bin", ".exe", ".lock")
-                ):
+                if file.startswith(".") or file.endswith((".pyc", ".png", ".jpg", ".zip", ".bin", ".exe", ".lock")):
                     continue
 
                 rel_path = os.path.relpath(os.path.join(root, file), self.workspace_path)
@@ -161,20 +156,7 @@ class BM25Indexer:
 
         for file_path, chunks in files_to_chunks.items():
             if not file_path.endswith(
-                (
-                    ".py",
-                    ".js",
-                    ".ts",
-                    ".jsx",
-                    ".tsx",
-                    ".go",
-                    ".rs",
-                    ".cs",
-                    ".c",
-                    ".cpp",
-                    ".h",
-                    ".hpp",
-                )
+                (".py", ".js", ".ts", ".jsx", ".tsx", ".go", ".rs", ".cs", ".c", ".cpp", ".h", ".hpp")
             ):
                 continue
 

@@ -71,11 +71,7 @@ def save_credentials(creds: CopilotCredentials) -> None:
     path = get_copilot_auth_path()
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    data = {
-        "github_token": creds.github_token,
-        "copilot_token": creds.copilot_token,
-        "expires_at": creds.expires_at,
-    }
+    data = {"github_token": creds.github_token, "copilot_token": creds.copilot_token, "expires_at": creds.expires_at}
     if creds.enterprise_domain:
         data["enterprise_domain"] = creds.enterprise_domain
 
@@ -151,11 +147,7 @@ async def start_device_flow(domain: str = "github.com") -> DeviceCodeResponse:
 
 
 async def poll_for_github_token(
-    device_code: str,
-    interval: int,
-    expires_in: int,
-    domain: str = "github.com",
-    on_poll: Any | None = None,
+    device_code: str, interval: int, expires_in: int, domain: str = "github.com", on_poll: Any | None = None
 ) -> str:
     """
     Poll GitHub for the access token after user authorizes.
@@ -208,9 +200,7 @@ async def poll_for_github_token(
     raise TimeoutError("Device code flow timed out")
 
 
-async def exchange_for_copilot_token(
-    github_token: str, domain: str = "github.com"
-) -> tuple[str, int]:
+async def exchange_for_copilot_token(github_token: str, domain: str = "github.com") -> tuple[str, int]:
     """
     Exchange GitHub OAuth token for Copilot API token.
 
@@ -222,17 +212,12 @@ async def exchange_for_copilot_token(
         aiohttp.ClientSession() as session,
         session.get(
             urls["copilot_token"],
-            headers={
-                "Accept": "application/json",
-                "Authorization": f"Bearer {github_token}",
-                **COPILOT_HEADERS,
-            },
+            headers={"Accept": "application/json", "Authorization": f"Bearer {github_token}", **COPILOT_HEADERS},
         ) as response,
     ):
         if response.status == 401:
             raise RuntimeError(
-                "GitHub Copilot subscription not found. "
-                "Make sure you have an active Copilot subscription."
+                "GitHub Copilot subscription not found. Make sure you have an active Copilot subscription."
             )
         response.raise_for_status()
         data = await response.json()
@@ -281,9 +266,7 @@ async def get_valid_token() -> str | None:
     return creds.copilot_token
 
 
-async def _enable_copilot_model(
-    token: str, model_id: str, enterprise_domain: str | None = None
-) -> bool:
+async def _enable_copilot_model(token: str, model_id: str, enterprise_domain: str | None = None) -> bool:
     base_url = get_base_url_from_token(token, enterprise_domain)
     url = f"{base_url}/models/{model_id}/policy"
 
@@ -315,9 +298,7 @@ async def enable_all_copilot_models(token: str, enterprise_domain: str | None = 
     await asyncio.gather(*tasks, return_exceptions=True)
 
 
-async def login(
-    on_user_code: Any | None = None, enterprise_domain: str | None = None
-) -> CopilotCredentials:
+async def login(on_user_code: Any | None = None, enterprise_domain: str | None = None) -> CopilotCredentials:
     """
     Perform the full Copilot login flow.
 
@@ -338,9 +319,7 @@ async def login(
         on_user_code(device.verification_uri, device.user_code)
 
     # Poll for GitHub token
-    github_token = await poll_for_github_token(
-        device.device_code, device.interval, device.expires_in, domain
-    )
+    github_token = await poll_for_github_token(device.device_code, device.interval, device.expires_in, domain)
 
     # Exchange for Copilot token
     copilot_token, expires_at = await exchange_for_copilot_token(github_token, domain)

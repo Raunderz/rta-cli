@@ -44,9 +44,7 @@ def test_handoff_slash_command_selection_inserts_text_not_submit() -> None:
     input_box = _TestableInputBox("/")
     input_box._completion_prefix = "/"
 
-    handoff_cmd = SlashCommand(
-        "handoff", "Start focused handoff in new session", submit_on_select=False
-    )
+    handoff_cmd = SlashCommand("handoff", "Start focused handoff in new session", submit_on_select=False)
     input_box.apply_slash_command(ListItem(value=handoff_cmd, label="/handoff", description=""))
 
     assert input_box.posted == []

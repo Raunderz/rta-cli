@@ -30,23 +30,14 @@ def test_resolve_git_branch_supports_worktrees(tmp_path: Path):
     assert resolve_git_branch(str(worktree)) == "feature"
 
 
-def test_resolve_git_branch_falls_back_to_git_for_reftable_invalid_head(
-    tmp_path: Path, monkeypatch
-):
+def test_resolve_git_branch_falls_back_to_git_for_reftable_invalid_head(tmp_path: Path, monkeypatch):
     repo = tmp_path / "repo"
     git_dir = repo / ".git"
     git_dir.mkdir(parents=True)
     (git_dir / "HEAD").write_text("ref: refs/heads/.invalid\n")
 
     def fake_run(*args, **kwargs):
-        assert args[0] == [
-            "git",
-            "--no-optional-locks",
-            "symbolic-ref",
-            "--quiet",
-            "--short",
-            "HEAD",
-        ]
+        assert args[0] == ["git", "--no-optional-locks", "symbolic-ref", "--quiet", "--short", "HEAD"]
         assert kwargs["cwd"] == str(repo)
         return subprocess.CompletedProcess(args[0], 0, stdout="main\n", stderr="")
 
@@ -55,9 +46,7 @@ def test_resolve_git_branch_falls_back_to_git_for_reftable_invalid_head(
     assert resolve_git_branch(str(repo)) == "main"
 
 
-def test_resolve_git_branch_treats_unresolved_reftable_head_as_detached(
-    tmp_path: Path, monkeypatch
-):
+def test_resolve_git_branch_treats_unresolved_reftable_head_as_detached(tmp_path: Path, monkeypatch):
     repo = tmp_path / "repo"
     git_dir = repo / ".git"
     git_dir.mkdir(parents=True)

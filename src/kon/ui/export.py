@@ -420,11 +420,7 @@ def _tool_definition_parts(tool_item: Any) -> tuple[str, str | None, list[str]]:
     if isinstance(tool_item, str):
         tool = tools_by_name.get(tool_item)
         if tool:
-            return (
-                tool_item,
-                tool.description,
-                _schema_param_lines(tool.params.model_json_schema()),
-            )
+            return (tool_item, tool.description, _schema_param_lines(tool.params.model_json_schema()))
         return tool_item, None, []
 
     if not isinstance(tool_item, dict):
@@ -477,11 +473,7 @@ class HtmlBuilder:
         if session.tokens.cache_write_tokens:
             token_parts.append(f"W{session.tokens.cache_write_tokens:,}")
 
-        model_str = (
-            session.model_id
-            if session.provider == "unknown"
-            else f"{session.model_id} ({session.provider})"
-        )
+        model_str = session.model_id if session.provider == "unknown" else f"{session.model_id} ({session.provider})"
         created = session.created_at or "unknown"
         if "T" in created:
             with suppress(ValueError):
@@ -498,9 +490,7 @@ class HtmlBuilder:
 
     def user_message(self, message: dict[str, Any]) -> None:
         self._before_chat_block()
-        self._append(
-            f'<div class="msg-user">&gt; {_render_message_content(message.get("content"))}</div>'
-        )
+        self._append(f'<div class="msg-user">&gt; {_render_message_content(message.get("content"))}</div>')
 
     def assistant_text(self, text: str) -> None:
         self.open_assistant()
@@ -579,8 +569,7 @@ class ExportRenderer:
     def _flush_pending_tool_calls(self) -> None:
         for tool_call in self.pending_tool_calls.values():
             self.builder.tool_block(
-                _format_name(str(tool_call.get("name") or "tool")),
-                _format_tool_call_args(tool_call),
+                _format_name(str(tool_call.get("name") or "tool")), _format_tool_call_args(tool_call)
             )
         self.pending_tool_calls.clear()
 
@@ -636,11 +625,7 @@ class ExportRenderer:
                 tool_call_id = str(message.get("tool_call_id") or "")
                 tool_call = self._pop_pending_tool_call(tool_call_id)
                 tool_name = str(message.get("tool_name") or "tool")
-                name = (
-                    _format_name(str(tool_call.get("name") or tool_name))
-                    if tool_call
-                    else _format_name(tool_name)
-                )
+                name = _format_name(str(tool_call.get("name") or tool_name)) if tool_call else _format_name(tool_name)
                 args = _format_tool_call_args(tool_call)
 
                 if message.get("is_error"):
@@ -662,9 +647,7 @@ class ExportRenderer:
             provider = entry.get("provider") or "unknown"
             self.builder.system_message(f"Model changed to {model_id} ({provider})")
         elif entry_type == "thinking_level_change":
-            self.builder.system_message(
-                f"Thinking level: {entry.get('thinking_level') or 'unknown'}"
-            )
+            self.builder.system_message(f"Thinking level: {entry.get('thinking_level') or 'unknown'}")
         elif entry_type == "compaction":
             self.builder.system_message("Context compacted")
         elif entry_type == "custom_message" and entry.get("display", True):

@@ -180,9 +180,7 @@ async def test_agent_max_turns_limit(tools, in_memory_session, max_turns_one):
 
 
 @pytest.mark.asyncio
-async def test_agent_steer_stop_reason_is_not_overwritten_by_length(
-    tools, in_memory_session, max_turns_one
-):
+async def test_agent_steer_stop_reason_is_not_overwritten_by_length(tools, in_memory_session, max_turns_one):
     provider = MockProvider(scenario="default")
     agent = Agent(provider, tools, in_memory_session)
     steer_event = asyncio.Event()
@@ -391,9 +389,7 @@ async def test_run_single_turn_retries_scenario(sample_messages, tools):
     provider = MockProvider(scenario="retries")
     events = []
 
-    async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0], cwd="/tmp"
-    ):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0], cwd="/tmp"):
         events.append(event)
 
     # Should have 2 retry events
@@ -418,9 +414,7 @@ async def test_run_single_turn_retry_exhausted_scenario(sample_messages, tools):
     provider = MockProvider(scenario="retry_exhausted")
     events = []
 
-    async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0], cwd="/tmp"
-    ):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, retry_delays=[0, 0, 0], cwd="/tmp"):
         events.append(event)
 
     # Should have 3 retry events
@@ -480,9 +474,7 @@ async def test_run_single_turn_stream_error_scenario(sample_messages, tools):
 
 
 @pytest.mark.asyncio
-async def test_run_single_turn_drops_leading_empty_newlines_before_thinking(
-    sample_messages, tools
-):
+async def test_run_single_turn_drops_leading_empty_newlines_before_thinking(sample_messages, tools):
     provider = MockProvider(scenario="leading_empty_text_then_think")
     events = []
 
@@ -555,13 +547,8 @@ async def test_run_single_turn_routes_indexed_tool_call_deltas(sample_messages):
 
     turn_end = next(e for e in events if isinstance(e, TurnEndEvent))
     assert turn_end.assistant_message is not None
-    tool_calls = [
-        part for part in turn_end.assistant_message.content if isinstance(part, ToolCall)
-    ]
-    assert [(call.id, call.arguments) for call in tool_calls] == [
-        ("call_A", {"x": 1}),
-        ("call_B", {"y": 2}),
-    ]
+    tool_calls = [part for part in turn_end.assistant_message.content if isinstance(part, ToolCall)]
+    assert [(call.id, call.arguments) for call in tool_calls] == [("call_A", {"x": 1}), ("call_B", {"y": 2})]
 
 
 @pytest.mark.asyncio
@@ -610,9 +597,7 @@ async def test_run_single_turn_tool_hang_timeout_fallback(sample_messages, tools
 
 
 @pytest.mark.asyncio
-async def test_run_single_turn_skips_tool_on_invalid_partial_json_arguments(
-    sample_messages, tools
-):
+async def test_run_single_turn_skips_tool_on_invalid_partial_json_arguments(sample_messages, tools):
     set_config(Config({"llm": {"tool_call_idle_timeout_seconds": 0.01}}))
     try:
         provider = MockProvider(scenario="tool_hang_invalid_json")
@@ -639,9 +624,7 @@ async def test_run_single_turn_pre_cancelled(sample_messages, tools):
     provider = MockProvider(scenario="default")
     events = []
 
-    async for event in run_single_turn(
-        provider, sample_messages, tools, turn=1, cancel_event=cancel_event, cwd="/tmp"
-    ):
+    async for event in run_single_turn(provider, sample_messages, tools, turn=1, cancel_event=cancel_event, cwd="/tmp"):
         events.append(event)
 
     # Should immediately interrupt

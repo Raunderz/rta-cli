@@ -1,12 +1,5 @@
 from .base import DEFAULT_THINKING_LEVELS, BaseProvider, LLMStream, ProviderConfig
-from .models import (
-    ApiType,
-    Model,
-    get_all_models,
-    get_max_tokens,
-    get_model,
-    get_models_by_provider,
-)
+from .models import ApiType, Model, get_all_models, get_max_tokens, get_model, get_models_by_provider
 from .oauth import clear_credentials as clear_copilot_credentials
 from .oauth import (
     clear_openai_credentials,

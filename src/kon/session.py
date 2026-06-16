@@ -28,15 +28,7 @@ from pydantic import BaseModel
 
 from kon import get_config_dir
 
-from .core.types import (
-    AssistantMessage,
-    Message,
-    StopReason,
-    TextContent,
-    ToolCall,
-    ToolResultMessage,
-    UserMessage,
-)
+from .core.types import AssistantMessage, Message, StopReason, TextContent, ToolCall, ToolResultMessage, UserMessage
 
 current_session_id: ContextVar[str | None] = ContextVar("current_session_id", default=None)
 CURRENT_VERSION = 1
@@ -146,12 +138,7 @@ class SessionTokenTotals:
 
     @property
     def total_tokens(self) -> int:
-        return (
-            self.input_tokens
-            + self.output_tokens
-            + self.cache_read_tokens
-            + self.cache_write_tokens
-        )
+        return self.input_tokens + self.output_tokens + self.cache_read_tokens + self.cache_write_tokens
 
 
 @dataclass(frozen=True)
@@ -318,27 +305,19 @@ class Session:
 
     def append_message(self, message: Message) -> str:
         entry = MessageEntry(
-            id=self._generate_entry_id(),
-            parent_id=self._leaf_id,
-            timestamp=_now_iso(),
-            message=message,
+            id=self._generate_entry_id(), parent_id=self._leaf_id, timestamp=_now_iso(), message=message
         )
         self._append_entry(entry)
         return entry.id
 
     def append_thinking_level_change(self, thinking_level: str) -> str:
         entry = ThinkingLevelChangeEntry(
-            id=self._generate_entry_id(),
-            parent_id=self._leaf_id,
-            timestamp=_now_iso(),
-            thinking_level=thinking_level,
+            id=self._generate_entry_id(), parent_id=self._leaf_id, timestamp=_now_iso(), thinking_level=thinking_level
         )
         self._append_entry(entry)
         return entry.id
 
-    def append_model_change(
-        self, provider: str, model_id: str, base_url: str | None = None
-    ) -> str:
+    def append_model_change(self, provider: str, model_id: str, base_url: str | None = None) -> str:
         entry = ModelChangeEntry(
             id=self._generate_entry_id(),
             parent_id=self._leaf_id,
@@ -351,11 +330,7 @@ class Session:
         return entry.id
 
     def append_compaction(
-        self,
-        summary: str,
-        first_kept_entry_id: str,
-        tokens_before: int,
-        details: dict[str, Any] | None = None,
+        self, summary: str, first_kept_entry_id: str, tokens_before: int, details: dict[str, Any] | None = None
     ) -> str:
         entry = CompactionEntry(
             id=self._generate_entry_id(),
@@ -370,11 +345,7 @@ class Session:
         return entry.id
 
     def append_custom_message(
-        self,
-        custom_type: str,
-        content: str,
-        display: bool = True,
-        details: dict[str, Any] | None = None,
+        self, custom_type: str, content: str, display: bool = True, details: dict[str, Any] | None = None
     ) -> str:
         entry = CustomMessageEntry(
             id=self._generate_entry_id(),
@@ -389,9 +360,7 @@ class Session:
         return entry.id
 
     def append_session_info(self, name: str) -> str:
-        entry = SessionInfoEntry(
-            id=self._generate_entry_id(), parent_id=self._leaf_id, timestamp=_now_iso(), name=name
-        )
+        entry = SessionInfoEntry(id=self._generate_entry_id(), parent_id=self._leaf_id, timestamp=_now_iso(), name=name)
         self._append_entry(entry)
         return entry.id
 
@@ -399,10 +368,7 @@ class Session:
         if entry_id is not None and entry_id not in self._by_id:
             raise ValueError(f"Entry not found: {entry_id}")
         entry = LeafEntry(
-            id=self._generate_entry_id(),
-            parent_id=self._leaf_id,
-            timestamp=_now_iso(),
-            target_id=entry_id,
+            id=self._generate_entry_id(), parent_id=self._leaf_id, timestamp=_now_iso(), target_id=entry_id
         )
         self._append_entry(entry)
 
@@ -466,9 +432,7 @@ class Session:
         # 3. All MessageEntry entries after the compaction entry
         result: list[Message] = [
             UserMessage(content="What did we do so far?"),
-            AssistantMessage(
-                content=[TextContent(text=last_compaction.summary)], stop_reason=StopReason.STOP
-            ),
+            AssistantMessage(content=[TextContent(text=last_compaction.summary)], stop_reason=StopReason.STOP),
         ]
 
         # Find the compaction entry's position and include messages after it
@@ -494,9 +458,7 @@ class Session:
             if message.stop_reason == StopReason.INTERRUPTED and not message.content:
                 continue
 
-            text = "".join(
-                part.text for part in message.content if isinstance(part, TextContent)
-            ).strip()
+            text = "".join(part.text for part in message.content if isinstance(part, TextContent)).strip()
             return text or None
 
         return None
@@ -518,10 +480,7 @@ class Session:
                 cache_read_tokens += usage.cache_read_tokens
                 cache_write_tokens += usage.cache_write_tokens
                 context_tokens = (
-                    usage.input_tokens
-                    + usage.output_tokens
-                    + usage.cache_read_tokens
-                    + usage.cache_write_tokens
+                    usage.input_tokens + usage.output_tokens + usage.cache_read_tokens + usage.cache_write_tokens
                 )
 
         return SessionTokenTotals(
@@ -593,12 +552,7 @@ class Session:
 
     def set_model(self, provider: str, model_id: str, base_url: str | None = None) -> None:
         current = self.model
-        if (
-            current
-            and current[0] == provider
-            and current[1] == model_id
-            and current[2] == base_url
-        ):
+        if current and current[0] == provider and current[1] == model_id and current[2] == base_url:
             return
         self.append_model_change(provider, model_id, base_url)
 
@@ -719,11 +673,7 @@ class Session:
         jsonl_files = list(sessions_dir.glob("*.jsonl"))
         if not jsonl_files:
             return cls.create(
-                cwd,
-                provider=provider,
-                model_id=model_id,
-                thinking_level=thinking_level,
-                system_prompt=system_prompt,
+                cwd, provider=provider, model_id=model_id, thinking_level=thinking_level, system_prompt=system_prompt
             )
 
         most_recent = max(jsonl_files, key=lambda p: p.stat().st_mtime)
@@ -782,9 +732,7 @@ class Session:
             return text
 
         skill_name = header_match.group(1)
-        query_marker_index = next(
-            (i for i, line in enumerate(lines[1:], start=1) if line.lower() == "[query]"), -1
-        )
+        query_marker_index = next((i for i, line in enumerate(lines[1:], start=1) if line.lower() == "[query]"), -1)
         if query_marker_index == -1:
             return f"/{skill_name}"
 
@@ -825,13 +773,8 @@ class Session:
                         elif isinstance(content, list) and content:
                             first_item = content[0]
                             if isinstance(first_item, dict) and first_item.get("type") == "text":
-                                first_message = cls._extract_preview_from_user_message(
-                                    first_item.get("text", "")
-                                )[:100]
-                elif (
-                    entry_type == "custom_message"
-                    and data.get("custom_type") == "handoff_backlink"
-                ):
+                                first_message = cls._extract_preview_from_user_message(first_item.get("text", ""))[:100]
+                elif entry_type == "custom_message" and data.get("custom_type") == "handoff_backlink":
                     details = data.get("details") or {}
                     parent_session_id = details.get("target_session_id")
 

@@ -857,204 +857,79 @@ _THEMES: dict[str, ThemeConfig] = {
 
 _SYNTAX_COLORS: dict[str, SyntaxColorConfig] = {
     "gruvbox-dark": SyntaxColorConfig(
-        command="#689d6a",
-        arg="#ebdbb2",
-        option="#83a598",
-        operator="#d3869b",
-        string="#b8bb26",
-        variable="#d3869b",
+        command="#689d6a", arg="#ebdbb2", option="#83a598", operator="#d3869b", string="#b8bb26", variable="#d3869b"
     ),
     "gruvbox-light": SyntaxColorConfig(
-        command="#427b58",
-        arg="#3c3836",
-        option="#076678",
-        operator="#b16286",
-        string="#79740e",
-        variable="#8f3f71",
+        command="#427b58", arg="#3c3836", option="#076678", operator="#b16286", string="#79740e", variable="#8f3f71"
     ),
     "catppuccin-mocha": SyntaxColorConfig(
-        command="#94e2d5",
-        arg="#cdd6f4",
-        option="#89b4fa",
-        operator="#cba6f7",
-        string="#a6e3a1",
-        variable="#cba6f7",
+        command="#94e2d5", arg="#cdd6f4", option="#89b4fa", operator="#cba6f7", string="#a6e3a1", variable="#cba6f7"
     ),
     "catppuccin-latte": SyntaxColorConfig(
-        command="#179299",
-        arg="#4c4f69",
-        option="#1e66f5",
-        operator="#8839ef",
-        string="#40a02b",
-        variable="#8839ef",
+        command="#179299", arg="#4c4f69", option="#1e66f5", operator="#8839ef", string="#40a02b", variable="#8839ef"
     ),
     "catppuccin-frappe": SyntaxColorConfig(
-        command="#a6d189",
-        arg="#c6d0f5",
-        option="#8caaee",
-        operator="#ca9ee6",
-        string="#a6d189",
-        variable="#ca9ee6",
+        command="#a6d189", arg="#c6d0f5", option="#8caaee", operator="#ca9ee6", string="#a6d189", variable="#ca9ee6"
     ),
     "catppuccin-macchiato": SyntaxColorConfig(
-        command="#a6da95",
-        arg="#cad3f5",
-        option="#8aadf4",
-        operator="#c6a0f6",
-        string="#a6da95",
-        variable="#c6a0f6",
+        command="#a6da95", arg="#cad3f5", option="#8aadf4", operator="#c6a0f6", string="#a6da95", variable="#c6a0f6"
     ),
     "dracula": SyntaxColorConfig(
-        command="#50fa7b",
-        arg="#f8f8f2",
-        option="#8be9fd",
-        operator="#bd93f9",
-        string="#50fa7b",
-        variable="#bd93f9",
+        command="#50fa7b", arg="#f8f8f2", option="#8be9fd", operator="#bd93f9", string="#50fa7b", variable="#bd93f9"
     ),
     "everforest": SyntaxColorConfig(
-        command="#83c092",
-        arg="#d3c6aa",
-        option="#7fbbb3",
-        operator="#7fbbb3",
-        string="#a7c080",
-        variable="#d699b6",
+        command="#83c092", arg="#d3c6aa", option="#7fbbb3", operator="#7fbbb3", string="#a7c080", variable="#d699b6"
     ),
     "flexoki": SyntaxColorConfig(
-        command="#3AA99F",
-        arg="#CECDC3",
-        option="#4385BE",
-        operator="#4385BE",
-        string="#879A39",
-        variable="#8B7EC8",
+        command="#3AA99F", arg="#CECDC3", option="#4385BE", operator="#4385BE", string="#879A39", variable="#8B7EC8"
     ),
     "github-dark": SyntaxColorConfig(
-        command="#a5d6ff",
-        arg="#c9d1d9",
-        option="#58a6ff",
-        operator="#bc8cff",
-        string="#7ee787",
-        variable="#bc8cff",
+        command="#a5d6ff", arg="#c9d1d9", option="#58a6ff", operator="#bc8cff", string="#7ee787", variable="#bc8cff"
     ),
     "github-light": SyntaxColorConfig(
-        command="#1a7f37",
-        arg="#1f2328",
-        option="#0969da",
-        operator="#8250df",
-        string="#1a7f37",
-        variable="#8250df",
+        command="#1a7f37", arg="#1f2328", option="#0969da", operator="#8250df", string="#1a7f37", variable="#8250df"
     ),
     "tokyo-night": SyntaxColorConfig(
-        command="#73daca",
-        arg="#c0caf5",
-        option="#7aa2f7",
-        operator="#bb9af7",
-        string="#9ece6a",
-        variable="#bb9af7",
+        command="#73daca", arg="#c0caf5", option="#7aa2f7", operator="#bb9af7", string="#9ece6a", variable="#bb9af7"
     ),
     "tokyo-day": SyntaxColorConfig(
-        command="#007197",
-        arg="#3760bf",
-        option="#2e7de9",
-        operator="#9854f1",
-        string="#587539",
-        variable="#7847bd",
+        command="#007197", arg="#3760bf", option="#2e7de9", operator="#9854f1", string="#587539", variable="#7847bd"
     ),
     "kanagawa": SyntaxColorConfig(
-        command="#98BB6C",
-        arg="#DCD7BA",
-        option="#7E9CD8",
-        operator="#957FB8",
-        string="#98BB6C",
-        variable="#957FB8",
+        command="#98BB6C", arg="#DCD7BA", option="#7E9CD8", operator="#957FB8", string="#98BB6C", variable="#957FB8"
     ),
     "kanagawa-dragon": SyntaxColorConfig(
-        command="#8a9a7b",
-        arg="#c5c9c5",
-        option="#8ba4b0",
-        operator="#a292a3",
-        string="#8a9a7b",
-        variable="#a292a3",
+        command="#8a9a7b", arg="#c5c9c5", option="#8ba4b0", operator="#a292a3", string="#8a9a7b", variable="#a292a3"
     ),
     "one-dark": SyntaxColorConfig(
-        command="#56b6c2",
-        arg="#abb2bf",
-        option="#61afef",
-        operator="#c678dd",
-        string="#98c379",
-        variable="#c678dd",
+        command="#56b6c2", arg="#abb2bf", option="#61afef", operator="#c678dd", string="#98c379", variable="#c678dd"
     ),
     "one-light": SyntaxColorConfig(
-        command="#0184bc",
-        arg="#383a42",
-        option="#4078f2",
-        operator="#a626a4",
-        string="#50a14f",
-        variable="#a626a4",
+        command="#0184bc", arg="#383a42", option="#4078f2", operator="#a626a4", string="#50a14f", variable="#a626a4"
     ),
     "nord": SyntaxColorConfig(
-        command="#a3be8c",
-        arg="#d8dee9",
-        option="#81a1c1",
-        operator="#b48ead",
-        string="#a3be8c",
-        variable="#b48ead",
+        command="#a3be8c", arg="#d8dee9", option="#81a1c1", operator="#b48ead", string="#a3be8c", variable="#b48ead"
     ),
     "nightowl": SyntaxColorConfig(
-        command="#c5e478",
-        arg="#d6deeb",
-        option="#82AAFF",
-        operator="#7fdbca",
-        string="#c5e478",
-        variable="#c792ea",
+        command="#c5e478", arg="#d6deeb", option="#82AAFF", operator="#7fdbca", string="#c5e478", variable="#c792ea"
     ),
     "monokai": SyntaxColorConfig(
-        command="#a6e22e",
-        arg="#f8f8f2",
-        option="#66d9ef",
-        operator="#ae81ff",
-        string="#a6e22e",
-        variable="#ae81ff",
+        command="#a6e22e", arg="#f8f8f2", option="#66d9ef", operator="#ae81ff", string="#a6e22e", variable="#ae81ff"
     ),
     "solarized-dark": SyntaxColorConfig(
-        command="#2aa198",
-        arg="#93a1a1",
-        option="#268bd2",
-        operator="#6c71c4",
-        string="#859900",
-        variable="#6c71c4",
+        command="#2aa198", arg="#93a1a1", option="#268bd2", operator="#6c71c4", string="#859900", variable="#6c71c4"
     ),
     "solarized-light": SyntaxColorConfig(
-        command="#2aa198",
-        arg="#586e75",
-        option="#268bd2",
-        operator="#6c71c4",
-        string="#859900",
-        variable="#6c71c4",
+        command="#2aa198", arg="#586e75", option="#268bd2", operator="#6c71c4", string="#859900", variable="#6c71c4"
     ),
     "ayu": SyntaxColorConfig(
-        command="#AAD94C",
-        arg="#BFBDB6",
-        option="#59C2FF",
-        operator="#D2A6FF",
-        string="#AAD94C",
-        variable="#D2A6FF",
+        command="#AAD94C", arg="#BFBDB6", option="#59C2FF", operator="#D2A6FF", string="#AAD94C", variable="#D2A6FF"
     ),
     "palenight": SyntaxColorConfig(
-        command="#c3e88d",
-        arg="#a6accd",
-        option="#82aaff",
-        operator="#c792ea",
-        string="#c3e88d",
-        variable="#c792ea",
+        command="#c3e88d", arg="#a6accd", option="#82aaff", operator="#c792ea", string="#c3e88d", variable="#c792ea"
     ),
     "rosepine": SyntaxColorConfig(
-        command="#31748f",
-        arg="#e0def4",
-        option="#9ccfd8",
-        operator="#c4a7e7",
-        string="#31748f",
-        variable="#c4a7e7",
+        command="#31748f", arg="#e0def4", option="#9ccfd8", operator="#c4a7e7", string="#31748f", variable="#c4a7e7"
     ),
 }
 

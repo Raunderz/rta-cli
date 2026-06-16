@@ -4,15 +4,7 @@ import pytest
 
 from kon.config import Config
 from kon.core.compaction import is_overflow
-from kon.core.types import (
-    AssistantMessage,
-    StopReason,
-    TextContent,
-    ToolCall,
-    ToolResultMessage,
-    Usage,
-    UserMessage,
-)
+from kon.core.types import AssistantMessage, StopReason, TextContent, ToolCall, ToolResultMessage, Usage, UserMessage
 from kon.llm.providers.mock import MockProvider
 from kon.loop import Agent, AgentConfig
 from kon.runtime import ConversationRuntime
@@ -27,68 +19,45 @@ from kon.ui.commands import CommandsMixin
 class TestIsOverflow:
     def test_below_threshold(self):
         usage = Usage(input_tokens=100_000, output_tokens=5_000)
-        assert not is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        assert not is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
     def test_at_threshold(self):
         # usable = 200_000 - min(20_000, 16_000) = 200_000 - 16_000 = 184_000
         usage = Usage(input_tokens=180_000, output_tokens=4_000)
-        assert is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        assert is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
     def test_above_threshold(self):
         usage = Usage(input_tokens=190_000, output_tokens=5_000)
-        assert is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        assert is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
     def test_cache_tokens_counted(self):
         # total = 100k + 5k + 50k + 30k = 185k, usable = 184k -> overflow
-        usage = Usage(
-            input_tokens=100_000,
-            output_tokens=5_000,
-            cache_read_tokens=50_000,
-            cache_write_tokens=30_000,
-        )
-        assert is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        usage = Usage(input_tokens=100_000, output_tokens=5_000, cache_read_tokens=50_000, cache_write_tokens=30_000)
+        assert is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
     def test_buffer_smaller_than_max_output(self):
         # reserved = min(10_000, 32_000) = 10_000, usable = 200_000 - 10_000 = 190_000
         usage = Usage(input_tokens=185_000, output_tokens=5_000)
-        assert is_overflow(
-            usage, context_window=200_000, max_output_tokens=32_000, buffer_tokens=10_000
-        )
+        assert is_overflow(usage, context_window=200_000, max_output_tokens=32_000, buffer_tokens=10_000)
 
     def test_buffer_larger_than_max_output(self):
         # reserved = min(20_000, 8_000) = 8_000, usable = 128_000 - 8_000 = 120_000
         usage = Usage(input_tokens=115_000, output_tokens=5_000)
-        assert is_overflow(
-            usage, context_window=128_000, max_output_tokens=8_000, buffer_tokens=20_000
-        )
+        assert is_overflow(usage, context_window=128_000, max_output_tokens=8_000, buffer_tokens=20_000)
 
     def test_zero_usage_no_overflow(self):
         usage = Usage()
-        assert not is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        assert not is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
     def test_exact_boundary(self):
         # usable = 200_000 - min(20_000, 16_000) = 184_000
         # exactly at boundary -> overflow
         usage = Usage(input_tokens=184_000)
-        assert is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        assert is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
     def test_one_below_boundary(self):
         usage = Usage(input_tokens=183_999)
-        assert not is_overflow(
-            usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000
-        )
+        assert not is_overflow(usage, context_window=200_000, max_output_tokens=16_000, buffer_tokens=20_000)
 
 
 # ---------------------------------------------------------------------------
@@ -149,9 +118,7 @@ class TestSessionCompactedMessages:
         session.append_message(UserMessage(content="Old question"))
         session.append_message(AssistantMessage(content=[TextContent(text="Old answer")]))
 
-        session.append_compaction(
-            summary="Summary", first_kept_entry_id=session.leaf_id or "", tokens_before=50_000
-        )
+        session.append_compaction(summary="Summary", first_kept_entry_id=session.leaf_id or "", tokens_before=50_000)
 
         session.append_message(UserMessage(content="New question"))
 
@@ -166,9 +133,7 @@ class TestSessionCompactedMessages:
         session.append_message(UserMessage(content="Question"))
         session.append_message(AssistantMessage(content=[TextContent(text="Answer")]))
 
-        session.append_compaction(
-            summary="Had a Q&A.", first_kept_entry_id=session.leaf_id or "", tokens_before=30_000
-        )
+        session.append_compaction(summary="Had a Q&A.", first_kept_entry_id=session.leaf_id or "", tokens_before=30_000)
 
         messages = session.messages
 
@@ -188,18 +153,14 @@ class TestSessionCompactedMessages:
         session.append_message(AssistantMessage(content=[TextContent(text="A1")]))
 
         session.append_compaction(
-            summary="First summary",
-            first_kept_entry_id=session.leaf_id or "",
-            tokens_before=30_000,
+            summary="First summary", first_kept_entry_id=session.leaf_id or "", tokens_before=30_000
         )
 
         session.append_message(UserMessage(content="Q2"))
         session.append_message(AssistantMessage(content=[TextContent(text="A2")]))
 
         session.append_compaction(
-            summary="Second summary (includes first)",
-            first_kept_entry_id=session.leaf_id or "",
-            tokens_before=60_000,
+            summary="Second summary (includes first)", first_kept_entry_id=session.leaf_id or "", tokens_before=60_000
         )
 
         session.append_message(UserMessage(content="Q3"))
@@ -222,21 +183,15 @@ class TestSessionCompactedMessages:
         session.append_message(UserMessage(content="Old"))
         session.append_message(AssistantMessage(content=[TextContent(text="Old answer")]))
 
-        session.append_compaction(
-            summary="Summary", first_kept_entry_id=session.leaf_id or "", tokens_before=40_000
-        )
+        session.append_compaction(summary="Summary", first_kept_entry_id=session.leaf_id or "", tokens_before=40_000)
 
         # New turn with tool calls
         session.append_message(UserMessage(content="Read file.txt"))
         session.append_message(
-            AssistantMessage(
-                content=[ToolCall(id="t1", name="read", arguments={"path": "file.txt"})]
-            )
+            AssistantMessage(content=[ToolCall(id="t1", name="read", arguments={"path": "file.txt"})])
         )
         session.append_message(
-            ToolResultMessage(
-                tool_call_id="t1", tool_name="read", content=[TextContent(text="file contents")]
-            )
+            ToolResultMessage(tool_call_id="t1", tool_name="read", content=[TextContent(text="file contents")])
         )
 
         messages = session.messages
@@ -289,9 +244,7 @@ class TestCompactionPersistence:
         session.append_message(AssistantMessage(content=[TextContent(text="Old reply")]))
 
         session.append_compaction(
-            summary="We discussed old stuff.",
-            first_kept_entry_id=session.leaf_id or "",
-            tokens_before=50_000,
+            summary="We discussed old stuff.", first_kept_entry_id=session.leaf_id or "", tokens_before=50_000
         )
 
         session.append_message(UserMessage(content="New"))
@@ -323,9 +276,7 @@ class TestCompactionPersistence:
 
 
 class _TestCommandsApp(CommandsMixin):
-    def __init__(
-        self, session: Session, provider: MockProvider, chat, system_prompt: str = "test"
-    ) -> None:
+    def __init__(self, session: Session, provider: MockProvider, chat, system_prompt: str = "test") -> None:
         self._session = session
         self._provider = provider
         self._agent = SimpleNamespace(system_prompt=system_prompt)
@@ -366,25 +317,17 @@ class TestCompactionUsageBacktracking:
         assert fake_chat.infos == []
 
     @pytest.mark.asyncio
-    async def test_manual_compaction_uses_latest_assistant_with_usage(
-        self, monkeypatch, fake_chat
-    ):
+    async def test_manual_compaction_uses_latest_assistant_with_usage(self, monkeypatch, fake_chat):
         session = Session.in_memory()
         session.append_message(UserMessage(content="hi"))
         session.append_message(
             AssistantMessage(
                 content=[TextContent(text="usable")],
-                usage=Usage(
-                    input_tokens=100, output_tokens=50, cache_read_tokens=10, cache_write_tokens=5
-                ),
+                usage=Usage(input_tokens=100, output_tokens=50, cache_read_tokens=10, cache_write_tokens=5),
             )
         )
         session.append_message(
-            AssistantMessage(
-                content=[TextContent(text="interrupted")],
-                usage=None,
-                stop_reason=StopReason.INTERRUPTED,
-            )
+            AssistantMessage(content=[TextContent(text="interrupted")], usage=None, stop_reason=StopReason.INTERRUPTED)
         )
 
         provider = MockProvider()
@@ -410,20 +353,11 @@ class TestCompactionUsageBacktracking:
         session.append_message(
             AssistantMessage(
                 content=[TextContent(text="usable")],
-                usage=Usage(
-                    input_tokens=3000,
-                    output_tokens=500,
-                    cache_read_tokens=100,
-                    cache_write_tokens=50,
-                ),
+                usage=Usage(input_tokens=3000, output_tokens=500, cache_read_tokens=100, cache_write_tokens=50),
             )
         )
         session.append_message(
-            AssistantMessage(
-                content=[TextContent(text="interrupted")],
-                usage=None,
-                stop_reason=StopReason.INTERRUPTED,
-            )
+            AssistantMessage(content=[TextContent(text="interrupted")], usage=None, stop_reason=StopReason.INTERRUPTED)
         )
 
         provider = MockProvider()

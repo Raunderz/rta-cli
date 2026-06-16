@@ -25,9 +25,7 @@ async def test_login_raises_runtime_error_when_server_fails_and_no_manual_input(
 async def test_get_valid_openai_credentials_returns_unexpired_credentials(tmp_path, monkeypatch):
     auth_path = tmp_path / "openai_auth.json"
     monkeypatch.setattr(openai_oauth, "get_openai_auth_path", lambda: auth_path)
-    creds = OpenAICredentials(
-        refresh="refresh", access="access", expires=9_999_999_999_999, account_id="account"
-    )
+    creds = OpenAICredentials(refresh="refresh", access="access", expires=9_999_999_999_999, account_id="account")
     save_openai_credentials(creds)
 
     assert await get_valid_openai_credentials() == creds
@@ -37,9 +35,7 @@ async def test_get_valid_openai_credentials_returns_unexpired_credentials(tmp_pa
 async def test_get_valid_openai_credentials_refreshes_expired_credentials(tmp_path, monkeypatch):
     auth_path = tmp_path / "openai_auth.json"
     monkeypatch.setattr(openai_oauth, "get_openai_auth_path", lambda: auth_path)
-    expired = OpenAICredentials(
-        refresh="old-refresh", access="old-access", expires=0, account_id="old"
-    )
+    expired = OpenAICredentials(refresh="old-refresh", access="old-access", expires=0, account_id="old")
     refreshed = OpenAICredentials(
         refresh="new-refresh", access="new-access", expires=9_999_999_999_999, account_id="new"
     )
@@ -60,9 +56,7 @@ async def test_get_valid_openai_credentials_refreshes_expired_credentials(tmp_pa
 async def test_get_valid_openai_credentials_returns_none_when_refresh_fails(tmp_path, monkeypatch):
     auth_path = tmp_path / "openai_auth.json"
     monkeypatch.setattr(openai_oauth, "get_openai_auth_path", lambda: auth_path)
-    save_openai_credentials(
-        OpenAICredentials(refresh="refresh", access="access", expires=0, account_id="account")
-    )
+    save_openai_credentials(OpenAICredentials(refresh="refresh", access="access", expires=0, account_id="account"))
 
     async def fail_refresh(creds: OpenAICredentials) -> OpenAICredentials:
         raise RuntimeError("refresh failed")
@@ -74,9 +68,7 @@ async def test_get_valid_openai_credentials_returns_none_when_refresh_fails(tmp_
 
 @pytest.mark.asyncio
 async def test_get_valid_openai_token_returns_access_from_valid_credentials(monkeypatch):
-    creds = OpenAICredentials(
-        refresh="refresh", access="access-token", expires=9_999_999_999_999, account_id="account"
-    )
+    creds = OpenAICredentials(refresh="refresh", access="access-token", expires=9_999_999_999_999, account_id="account")
 
     async def fake_get_credentials() -> OpenAICredentials:
         return creds

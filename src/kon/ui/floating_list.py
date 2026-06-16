@@ -145,20 +145,13 @@ class FloatingList[T](Widget):
         max_desc_width = max(0, available_width - reserved)
         return min(max_desc_len, max_desc_width)
 
-    def show(
-        self,
-        items: list[ListItem[T]],
-        searchable: bool = False,
-        max_label_width: int | None = None,
-    ) -> None:
+    def show(self, items: list[ListItem[T]], searchable: bool = False, max_label_width: int | None = None) -> None:
         self._search_enabled = searchable
         self._search_query = ""
         self._all_items = items if searchable else []
         self._items = items
         self._selected_index = 0
-        self._max_label_width = (
-            max_label_width if max_label_width is not None else self._default_max_label_width
-        )
+        self._max_label_width = max_label_width if max_label_width is not None else self._default_max_label_width
         self._label_width = self._compute_label_width()
         self._description_width = self._compute_description_width()
         self._visible = True

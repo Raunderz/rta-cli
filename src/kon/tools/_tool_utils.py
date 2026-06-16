@@ -29,9 +29,7 @@ async def communicate_or_cancel(
 
     cancel = asyncio.create_task(cancel_event.wait())
     try:
-        done, pending = await asyncio.wait(
-            [comm_task, cancel], return_when=asyncio.FIRST_COMPLETED
-        )
+        done, pending = await asyncio.wait([comm_task, cancel], return_when=asyncio.FIRST_COMPLETED)
 
         if cancel in done and cancel_event.is_set():
             if proc.returncode is None:
@@ -41,9 +39,7 @@ async def communicate_or_cancel(
                     await asyncio.wait_for(proc.wait(), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS)
             if not comm_task.done():
                 with suppress(asyncio.CancelledError, TimeoutError):
-                    await asyncio.wait_for(
-                        asyncio.shield(comm_task), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS
-                    )
+                    await asyncio.wait_for(asyncio.shield(comm_task), _SUBPROCESS_DRAIN_TIMEOUT_SECONDS)
                 if not comm_task.done():
                     comm_task.cancel()
                     with suppress(asyncio.CancelledError):
@@ -65,6 +61,7 @@ async def communicate_or_cancel(
 
 from pathlib import Path
 
+
 def verify_path_sandbox(path: str, cwd: str) -> None:
     """
     Ensures that the given path is within the current working directory.
@@ -74,6 +71,7 @@ def verify_path_sandbox(path: str, cwd: str) -> None:
     base = Path(cwd).resolve()
     if not p.is_relative_to(base):
         raise ValueError(f"Access denied: path '{path}' is outside the project directory.")
+
 
 def shorten_path(path: str) -> str:
     """Replace home directory prefix with ~ for display purposes."""

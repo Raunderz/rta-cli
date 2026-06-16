@@ -1,18 +1,8 @@
-import json
-
 import pytest
 import respx
 from httpx import Response
 
-from kon.core.types import (
-    StopReason,
-    StreamDone,
-    TextPart,
-    ThinkPart,
-    ToolCallDelta,
-    ToolCallStart,
-    UserMessage,
-)
+from kon.core.types import StopReason, StreamDone, TextPart, ThinkPart, ToolCallDelta, ToolCallStart, UserMessage
 from kon.llm.base import ProviderConfig
 from kon.llm.providers.rta import RtaProvider
 
@@ -28,12 +18,7 @@ async def test_rta_provider_streams_response():
         {"type": "text", "content": "How can I help?"},
         {
             "type": "tool_calls",
-            "content": [
-                {
-                    "id": "call_123",
-                    "function": {"name": "read_file", "arguments": '{"path": "test.txt"}'},
-                }
-            ],
+            "content": [{"id": "call_123", "function": {"name": "read_file", "arguments": '{"path": "test.txt"}'}}],
         },
         {"type": "usage", "content": {"prompt_tokens": 10, "completion_tokens": 20}},
         {"type": "meta", "content": {"id": "msg_abc"}},
@@ -42,12 +27,8 @@ async def test_rta_provider_streams_response():
     poll_response = {"chunks": chunks, "next_index": len(chunks), "done": True, "status": "completed"}
 
     with respx.mock:
-        respx.post("http://api.rta.test/v1/chat/async").mock(
-            return_value=Response(200, json={"job_id": "job_123"})
-        )
-        respx.get("http://api.rta.test/v1/chat/job/job_123").mock(
-            return_value=Response(200, json=poll_response)
-        )
+        respx.post("http://api.rta.test/v1/chat/async").mock(return_value=Response(200, json={"job_id": "job_123"}))
+        respx.get("http://api.rta.test/v1/chat/job/job_123").mock(return_value=Response(200, json=poll_response))
 
         stream = await provider.stream([UserMessage(content="Hi")])
         parts = []
@@ -81,9 +62,7 @@ async def test_rta_provider_error_handling():
     provider = RtaProvider(config)
 
     with respx.mock:
-        respx.post("http://api.rta.test/v1/chat/async").mock(
-            return_value=Response(401, content="Unauthorized")
-        )
+        respx.post("http://api.rta.test/v1/chat/async").mock(return_value=Response(401, content="Unauthorized"))
 
         stream = await provider.stream([UserMessage(content="Hi")])
 

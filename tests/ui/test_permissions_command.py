@@ -28,9 +28,7 @@ class FakeFloatingList:
         self.items: list[ListItem] = []
         self.searchable: bool | None = None
 
-    def show(
-        self, items: list[ListItem], searchable: bool = False, max_label_width: int | None = None
-    ) -> None:
+    def show(self, items: list[ListItem], searchable: bool = False, max_label_width: int | None = None) -> None:
         self.items = items
         self.searchable = searchable
 
@@ -80,11 +78,7 @@ class FakeCommands(CommandsMixin):
         self.selected_modes.append(mode)
 
     def _show_completion_list(
-        self,
-        items: list[ListItem],
-        *,
-        searchable: bool = False,
-        max_label_width: int | None = None,
+        self, items: list[ListItem], *, searchable: bool = False, max_label_width: int | None = None
     ) -> None:
         self.completion_list.show(items, searchable=searchable, max_label_width=max_label_width)
 

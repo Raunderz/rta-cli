@@ -82,9 +82,7 @@ async def test_render_run_suppresses_text_when_not_stop():
         [
             TurnEndEvent(
                 turn=1,
-                assistant_message=AssistantMessage(
-                    content=[TextContent(text="partial")], stop_reason=StopReason.ERROR
-                ),
+                assistant_message=AssistantMessage(content=[TextContent(text="partial")], stop_reason=StopReason.ERROR),
                 tool_results=[],
                 stop_reason=StopReason.ERROR,
             ),
@@ -119,8 +117,7 @@ async def test_render_run_composition_stream_error():
 async def test_run_headless_prints_and_restores_permissions(monkeypatch, capsys):
     get_config().permissions.mode = "prompt"
     monkeypatch.setattr(
-        "kon.runtime.create_provider",
-        lambda api_type, config: MockProvider(config, scenario="simple_text"),
+        "kon.runtime.create_provider", lambda api_type, config: MockProvider(config, scenario="simple_text")
     )
     code = await _run_headless("hi")
     assert code == 0
@@ -132,8 +129,7 @@ async def test_run_headless_prints_and_restores_permissions(monkeypatch, capsys)
 async def test_run_headless_sets_auto_during_run_and_restores(monkeypatch):
     get_config().permissions.mode = "prompt"
     monkeypatch.setattr(
-        "kon.runtime.create_provider",
-        lambda api_type, config: MockProvider(config, scenario="simple_text"),
+        "kon.runtime.create_provider", lambda api_type, config: MockProvider(config, scenario="simple_text")
     )
 
     async def fake_render_run(events):
@@ -150,8 +146,7 @@ async def test_run_headless_sets_auto_during_run_and_restores(monkeypatch):
 @pytest.mark.asyncio
 async def test_run_headless_warns_on_unknown_extra_tool(monkeypatch, capsys):
     monkeypatch.setattr(
-        "kon.runtime.create_provider",
-        lambda api_type, config: MockProvider(config, scenario="simple_text"),
+        "kon.runtime.create_provider", lambda api_type, config: MockProvider(config, scenario="simple_text")
     )
     code = await _run_headless("hi", extra_tools=["bogus"])
     assert code == 0
@@ -188,9 +183,7 @@ async def test_render_run_denies_tool_approval():
     out, err = StringIO(), StringIO()
     events = _emit(
         [
-            ToolApprovalEvent(
-                tool_call_id="t1", tool_name="bash", display="rm -rf /", future=future
-            ),
+            ToolApprovalEvent(tool_call_id="t1", tool_name="bash", display="rm -rf /", future=future),
             AgentEndEvent(stop_reason=StopReason.STOP),
         ]
     )

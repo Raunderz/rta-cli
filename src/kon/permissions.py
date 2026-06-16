@@ -41,18 +41,7 @@ SAFE_COMMANDS: frozenset[str] = frozenset(
 )
 
 SAFE_GIT_SUBCOMMANDS: frozenset[str] = frozenset(
-    {
-        "status",
-        "diff",
-        "log",
-        "show",
-        "rev-parse",
-        "describe",
-        "ls-files",
-        "ls-tree",
-        "blame",
-        "shortlog",
-    }
+    {"status", "diff", "log", "show", "rev-parse", "describe", "ls-files", "ls-tree", "blame", "shortlog"}
 )
 
 _PUNCTUATION_CHARS = frozenset(";|&()><")

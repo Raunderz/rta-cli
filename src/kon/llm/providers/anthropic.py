@@ -54,9 +54,7 @@ _MIN_OUTPUT_TOKENS = 1024
 _INTERLEAVED_THINKING_BETA = "interleaved-thinking-2025-05-14"
 
 
-def _adjust_max_tokens_for_thinking(
-    caller_max_tokens: int | None, thinking_budget: int
-) -> tuple[int, int]:
+def _adjust_max_tokens_for_thinking(caller_max_tokens: int | None, thinking_budget: int) -> tuple[int, int]:
     """Return (max_tokens, adjusted_budget).
 
     Inspired by pi-mono's `adjustMaxTokensForThinking`: the thinking budget
@@ -89,9 +87,7 @@ class AnthropicProvider(BaseProvider):
                 'or configure llm.auth.anthropic_compat = "auto"/"none" for local endpoints.'
             )
 
-        self._client = AsyncAnthropic(
-            api_key=api_key, base_url=config.base_url, http_client=make_http_client()
-        )
+        self._client = AsyncAnthropic(api_key=api_key, base_url=config.base_url, http_client=make_http_client())
 
     async def _stream_impl(
         self,
@@ -116,11 +112,7 @@ class AnthropicProvider(BaseProvider):
         if system_prompt:
             # Use text block with cache_control for prompt caching
             create_kwargs["system"] = [
-                {
-                    "type": "text",
-                    "text": sanitize_surrogates(system_prompt),
-                    "cache_control": {"type": "ephemeral"},
-                }
+                {"type": "text", "text": sanitize_surrogates(system_prompt), "cache_control": {"type": "ephemeral"}}
             ]
 
         # Add temperature if specified and not using thinking
@@ -128,9 +120,7 @@ class AnthropicProvider(BaseProvider):
         thinking_level = self.config.thinking_level
         caps = lookup_capabilities(self.config.model)
         thinking_budget = caps.thinking_budgets.get(thinking_level, 0)
-        thinking_enabled = thinking_level != "none" and (
-            thinking_budget > 0 or caps.adaptive_thinking
-        )
+        thinking_enabled = thinking_level != "none" and (thinking_budget > 0 or caps.adaptive_thinking)
 
         if thinking_enabled:
             if caps.adaptive_thinking:
@@ -141,13 +131,9 @@ class AnthropicProvider(BaseProvider):
             else:
                 # Budget-based thinking for older models. Couple max_tokens with budget
                 # so the response isn't starved.
-                adjusted_max, adjusted_budget = _adjust_max_tokens_for_thinking(
-                    max_tok, thinking_budget
-                )
+                adjusted_max, adjusted_budget = _adjust_max_tokens_for_thinking(max_tok, thinking_budget)
                 create_kwargs["max_tokens"] = adjusted_max
-                create_kwargs["thinking"] = ThinkingConfigEnabledParam(
-                    type="enabled", budget_tokens=adjusted_budget
-                )
+                create_kwargs["thinking"] = ThinkingConfigEnabledParam(type="enabled", budget_tokens=adjusted_budget)
                 if caps.supports_interleaved_thinking_beta:
                     create_kwargs["extra_headers"] = {
                         **create_kwargs.get("extra_headers", {}),
@@ -170,9 +156,7 @@ class AnthropicProvider(BaseProvider):
         llm_stream.set_iterator(self._process_stream(response, llm_stream))
         return llm_stream
 
-    async def _process_stream(
-        self, response: Any, llm_stream: LLMStream
-    ) -> AsyncIterator[StreamPart]:
+    async def _process_stream(self, response: Any, llm_stream: LLMStream) -> AsyncIterator[StreamPart]:
         stop_reason: StopReason = StopReason.STOP
         current_tool_index: int = -1
         tool_use_blocks: dict[int, dict[str, Any]] = {}  # index -> {id, name, input}
@@ -183,12 +167,8 @@ class AnthropicProvider(BaseProvider):
                     if event.message.id:
                         llm_stream._id = event.message.id
                     if event.message.usage:
-                        cache_read = (
-                            getattr(event.message.usage, "cache_read_input_tokens", 0) or 0
-                        )
-                        cache_write = (
-                            getattr(event.message.usage, "cache_creation_input_tokens", 0) or 0
-                        )
+                        cache_read = getattr(event.message.usage, "cache_read_input_tokens", 0) or 0
+                        cache_write = getattr(event.message.usage, "cache_creation_input_tokens", 0) or 0
                         llm_stream._usage = Usage(
                             input_tokens=event.message.usage.input_tokens,
                             output_tokens=event.message.usage.output_tokens,
@@ -200,16 +180,9 @@ class AnthropicProvider(BaseProvider):
                     block = event.content_block
                     if isinstance(block, ToolUseBlock):
                         current_tool_index += 1
-                        tool_use_blocks[event.index] = {
-                            "id": block.id,
-                            "name": block.name,
-                            "input": block.input,
-                        }
+                        tool_use_blocks[event.index] = {"id": block.id, "name": block.name, "input": block.input}
                         yield ToolCallStart(
-                            id=block.id,
-                            name=block.name,
-                            index=current_tool_index,
-                            arguments=block.input,
+                            id=block.id, name=block.name, index=current_tool_index, arguments=block.input
                         )
                     elif isinstance(block, ThinkingBlock):
                         # Thinking block start - content comes in deltas
@@ -299,9 +272,7 @@ class AnthropicProvider(BaseProvider):
         content = last_message["content"]
         if isinstance(content, str):
             # Convert string to text block with cache_control
-            last_message["content"] = [
-                {"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}
-            ]
+            last_message["content"] = [{"type": "text", "text": content, "cache_control": {"type": "ephemeral"}}]
         elif isinstance(content, list) and content:
             # Add cache_control to the last block
             last_block = content[-1]
@@ -360,9 +331,7 @@ class AnthropicProvider(BaseProvider):
             elif isinstance(item, TextContent):
                 parts.append({"type": "text", "text": sanitize_surrogates(item.text)})
             elif isinstance(item, ToolCall):
-                parts.append(
-                    {"type": "tool_use", "id": item.id, "name": item.name, "input": item.arguments}
-                )
+                parts.append({"type": "tool_use", "id": item.id, "name": item.name, "input": item.arguments})
 
         return {"role": "assistant", "content": parts}
 
@@ -376,11 +345,7 @@ class AnthropicProvider(BaseProvider):
                 content_parts.append(
                     {
                         "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": cast(Any, item.mime_type),
-                            "data": item.data,
-                        },
+                        "source": {"type": "base64", "media_type": cast(Any, item.mime_type), "data": item.data},
                     }
                 )
 
@@ -397,11 +362,7 @@ class AnthropicProvider(BaseProvider):
 
     def _convert_tools(self, tools: list[ToolDefinition]) -> list[ToolParam]:
         return [
-            {
-                "name": tool.name,
-                "description": tool.description,
-                "input_schema": cast(Any, tool.parameters),
-            }
+            {"name": tool.name, "description": tool.description, "input_schema": cast(Any, tool.parameters)}
             for tool in tools
         ]
 

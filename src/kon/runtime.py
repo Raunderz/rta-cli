@@ -85,9 +85,7 @@ class ConversationRuntime:
         self.agent: Agent | None = None
         self.context: Context | None = None
 
-    def resolve_system_prompt(
-        self, session: Session | None = None, context: Context | None = None
-    ) -> str:
+    def resolve_system_prompt(self, session: Session | None = None, context: Context | None = None) -> str:
         return (session.system_prompt if session else None) or build_system_prompt(
             self.cwd, context=context, tools=self.tools
         )
@@ -113,18 +111,14 @@ class ConversationRuntime:
             anthropic_compat_auth_mode=self.anthropic_compat_auth_mode,
         )
 
-    def _model_api_and_base_url(
-        self, model: str, provider: str | None
-    ) -> tuple[ApiType, str | None]:
+    def _model_api_and_base_url(self, model: str, provider: str | None) -> tuple[ApiType, str | None]:
         model_info = get_model(model, provider)
         if model_info:
             return model_info.api, self.base_url or model_info.base_url
         api_type = resolve_provider_api_type(provider)
         return api_type, self.base_url or default_base_url_for_api(api_type)
 
-    def _new_agent(
-        self, provider: BaseProvider, session: Session, context: Context | None = None
-    ) -> Agent:
+    def _new_agent(self, provider: BaseProvider, session: Session, context: Context | None = None) -> Agent:
         context = context or Context.load(self.cwd)
         return Agent(
             provider=provider,
@@ -135,9 +129,7 @@ class ConversationRuntime:
             system_prompt=self.resolve_system_prompt(session, context=context),
         )
 
-    def initialize(
-        self, *, resume_session: str | None = None, continue_recent: bool = False
-    ) -> RuntimeInitResult:
+    def initialize(self, *, resume_session: str | None = None, continue_recent: bool = False) -> RuntimeInitResult:
         session: Session | None = None
         context = Context.load(self.cwd)
         self.context = context
@@ -199,9 +191,7 @@ class ConversationRuntime:
         if not continue_recent and not resume_session:
             selected_model = get_model(model, model_provider)
             model_provider = (
-                selected_model.provider
-                if selected_model
-                else (provider.name if provider else model_provider)
+                selected_model.provider if selected_model else (provider.name if provider else model_provider)
             )
             session = Session.create(
                 self.cwd,
@@ -276,14 +266,10 @@ class ConversationRuntime:
     def switch_model(self, model: Model) -> None:
         current_api_type = self._current_provider_api_type()
         current_provider = (
-            self.provider.config.provider or self.model_provider
-            if self.provider
-            else self.model_provider
+            self.provider.config.provider or self.model_provider if self.provider else self.model_provider
         )
         current_base_url = self.provider.config.base_url if self.provider else None
-        base_url_changed = (current_base_url or "").rstrip("/") != (model.base_url or "").rstrip(
-            "/"
-        )
+        base_url_changed = (current_base_url or "").rstrip("/") != (model.base_url or "").rstrip("/")
         provider_changed = current_provider != model.provider
         replacement_provider: BaseProvider | None = None
 
@@ -331,9 +317,7 @@ class ConversationRuntime:
         if model_info:
             model_provider, model, session_base_url = model_info
             restored_model = get_model(model, model_provider)
-            restored_base_url = session_base_url or (
-                restored_model.base_url if restored_model else None
-            )
+            restored_base_url = session_base_url or (restored_model.base_url if restored_model else None)
 
             if restored_model:
                 current_api_type = self._current_provider_api_type()
@@ -401,9 +385,7 @@ class ConversationRuntime:
             if isinstance(content, str):
                 editor_text = content
             else:
-                editor_text = "".join(
-                    part.text for part in content if isinstance(part, TextContent)
-                )
+                editor_text = "".join(part.text for part in content if isinstance(part, TextContent))
         elif isinstance(entry, CustomMessageEntry):
             self.session.move_to(entry.parent_id)
             editor_text = entry.content
@@ -444,12 +426,7 @@ class ConversationRuntime:
                 usage = entry.message.usage
                 if usage is None:
                     continue
-                return (
-                    usage.input_tokens
-                    + usage.output_tokens
-                    + usage.cache_read_tokens
-                    + usage.cache_write_tokens
-                )
+                return usage.input_tokens + usage.output_tokens + usage.cache_read_tokens + usage.cache_write_tokens
         return 0
 
     async def compact_now(self) -> CompactionResult:
@@ -461,9 +438,7 @@ class ConversationRuntime:
             self.session.all_messages, self.provider, system_prompt=self.agent.system_prompt
         )
         self.session.append_compaction(
-            summary=summary,
-            first_kept_entry_id=self.session.leaf_id or "",
-            tokens_before=tokens_before,
+            summary=summary, first_kept_entry_id=self.session.leaf_id or "", tokens_before=tokens_before
         )
         return CompactionResult(tokens_before=tokens_before)
 
@@ -473,10 +448,7 @@ class ConversationRuntime:
 
         source_session = self.session
         prompt = await generate_handoff_prompt(
-            source_session.all_messages,
-            self.provider,
-            system_prompt=self.agent.system_prompt,
-            query=query,
+            source_session.all_messages, self.provider, system_prompt=self.agent.system_prompt, query=query
         )
 
         source_session_id = source_session.id

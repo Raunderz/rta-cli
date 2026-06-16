@@ -1,7 +1,8 @@
 import asyncio
+import contextlib
 import logging
 from collections.abc import AsyncIterator
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 
@@ -45,13 +46,8 @@ async def _heartbeat_loop(server_url: str, api_key: str) -> None:
     try:
         while True:
             await asyncio.sleep(20)
-            try:
-                await client.get(
-                    f"{server_url}/v1/heartbeat",
-                    headers={"X-API-KEY": api_key},
-                )
-            except Exception:
-                pass
+            with contextlib.suppress(Exception):
+                await client.get(f"{server_url}/v1/heartbeat", headers={"X-API-KEY": api_key})
     finally:
         await client.aclose()
 
@@ -66,10 +62,8 @@ async def stop_heartbeat() -> None:
     global _heartbeat_task
     if _heartbeat_task is not None:
         _heartbeat_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await _heartbeat_task
-        except asyncio.CancelledError:
-            pass
         _heartbeat_task = None
 
 
@@ -80,13 +74,11 @@ async def stop_heartbeat() -> None:
 
 class RtaProvider(BaseProvider):
     name = "rta"
-    thinking_levels: list[str] = []  # RTA provider doesn't support reasoning/thinking
+    thinking_levels: ClassVar[list[str]] = []  # RTA provider doesn't support reasoning/thinking
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
-        self.api_key = (
-            config.api_key or kon_config.rta.api_key or kon_auth.load_credential("rta_api_key")
-        )
+        self.api_key = config.api_key or kon_config.rta.api_key or kon_auth.load_credential("rta_api_key")
         self.server_url = config.base_url or kon_config.rta.server_url
         self.device_id = kon_config.rta.device_id or kon_auth.get_device_id()
 
@@ -103,20 +95,11 @@ class RtaProvider(BaseProvider):
                     tier = data.get("tier", "free").lower()
 
                     # Context windows per tier (aligned with backend TIER_CAPS)
-                    context_windows = {
-                        "free": 2000,
-                        "basic": 4000,
-                        "pro": 10000,
-                        "enterprise": 32000
-                    }
+                    context_windows = {"free": 2000, "basic": 4000, "pro": 10000, "enterprise": 32000}
 
                     window = context_windows.get(tier, 2000)
 
-                    return {
-                        "context_window": window,
-                        "tier": tier,
-                        "usage": data
-                    }
+                    return {"context_window": window, "tier": tier, "usage": data}
         except Exception:
             pass
         return {}
@@ -161,9 +144,7 @@ class RtaProvider(BaseProvider):
             # 1. Enqueue job
             async with httpx.AsyncClient(timeout=30.0) as client:
                 logger.debug("Connecting to %s/v1/chat/async", self.server_url)
-                response = await client.post(
-                    f"{self.server_url}/v1/chat/async", json=payload, headers=headers
-                )
+                response = await client.post(f"{self.server_url}/v1/chat/async", json=payload, headers=headers)
                 if response.status_code not in (200, 202):
                     error_text = await response.aread()
                     raise httpx.HTTPStatusError(
@@ -182,20 +163,13 @@ class RtaProvider(BaseProvider):
             while True:
                 try:
                     async with httpx.AsyncClient(timeout=10.0) as client:
-                        poll_url = (
-                            f"{self.server_url}/v1/chat/job/{job_id}"
-                            f"?after_index={next_index}"
-                        )
+                        poll_url = f"{self.server_url}/v1/chat/job/{job_id}?after_index={next_index}"
                         poll_resp = await client.get(poll_url, headers=headers)
 
                         if poll_resp.status_code != 200:
                             consecutive_errors += 1
                             err_body = await poll_resp.aread()
-                            logger.debug(
-                                "Polling failed (%d): %s",
-                                poll_resp.status_code,
-                                err_body.decode(),
-                            )
+                            logger.debug("Polling failed (%d): %s", poll_resp.status_code, err_body.decode())
                             if consecutive_errors > 5:
                                 yield StreamError(error=f"Polling failed: {poll_resp.status_code}")
                                 return
@@ -232,11 +206,7 @@ class RtaProvider(BaseProvider):
                                     input_tokens=content.get("prompt_tokens", 0),
                                     output_tokens=content.get("completion_tokens", 0),
                                 )
-                            elif (
-                                event_type == "meta"
-                                and isinstance(content, dict)
-                                and "id" in content
-                            ):
+                            elif event_type == "meta" and isinstance(content, dict) and "id" in content:
                                 llm_stream._id = content["id"]
 
                         next_index = status_data.get("next_index", next_index)
@@ -267,10 +237,7 @@ class RtaProvider(BaseProvider):
         except Exception as e:
             yield StreamError(error=f"Connection Error: {e!s}")
 
-
-    def _convert_messages(
-        self, messages: list[Message], system_prompt: str | None
-    ) -> list[dict[str, Any]]:
+    def _convert_messages(self, messages: list[Message], system_prompt: str | None) -> list[dict[str, Any]]:
         result = []
         if system_prompt:
             result.append({"role": "system", "content": system_prompt})
@@ -286,12 +253,7 @@ class RtaProvider(BaseProvider):
                             parts.append({"type": "text", "text": item.text})
                         elif isinstance(item, ImageContent):
                             parts.append(
-                                {
-                                    "type": "image_url",
-                                    "image_url": {
-                                        "url": f"data:{item.mime_type};base64,{item.data}"
-                                    },
-                                }
+                                {"type": "image_url", "image_url": {"url": f"data:{item.mime_type};base64,{item.data}"}}
                             )
                     result.append({"role": "user", "content": parts})
             elif isinstance(msg, AssistantMessage):
@@ -313,10 +275,7 @@ class RtaProvider(BaseProvider):
                             }
                         )
 
-                res_msg = {
-                    "role": "assistant",
-                    "content": "".join(content_parts) if content_parts else None,
-                }
+                res_msg = {"role": "assistant", "content": "".join(content_parts) if content_parts else None}
                 if tool_calls:
                     res_msg["tool_calls"] = tool_calls
                 result.append(res_msg)
@@ -333,24 +292,12 @@ class RtaProvider(BaseProvider):
 
     def _convert_tools(self, tools: list[ToolDefinition]) -> list[dict[str, Any]]:
         return [
-            {
-                "type": "function",
-                "function": {
-                    "name": t.name,
-                    "description": t.description,
-                    "parameters": t.parameters,
-                },
-            }
+            {"type": "function", "function": {"name": t.name, "description": t.description, "parameters": t.parameters}}
             for t in tools
         ]
 
     def should_retry_for_error(self, error: Exception) -> bool:
-        retryable = (
-            httpx.ConnectError,
-            httpx.ConnectTimeout,
-            httpx.ReadTimeout,
-            httpx.WriteTimeout,
-        )
+        retryable = (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout)
         return isinstance(error, retryable) or (
             isinstance(error, httpx.HTTPStatusError) and error.response.status_code >= 500
         )

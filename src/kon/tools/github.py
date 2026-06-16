@@ -12,10 +12,7 @@ from .base import BaseTool
 
 
 class GitHubSearchParams(BaseModel):
-    query: str = Field(
-        ...,
-        description="The search query (e.g., 'machine learning rust', 'user:torvalds repo:linux')",
-    )
+    query: str = Field(..., description="The search query (e.g., 'machine learning rust', 'user:torvalds repo:linux')")
     search_type: Literal["repositories", "code", "issues"] = Field(
         "repositories", description="What to search: 'repositories', 'code', or 'issues'"
     )
@@ -45,11 +42,7 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
 
             def _fetch():
                 req = urllib.request.Request(
-                    url,
-                    headers={
-                        "Accept": "application/vnd.github.v3+json",
-                        "User-Agent": "kon-agent",
-                    },
+                    url, headers={"Accept": "application/vnd.github.v3+json", "User-Agent": "kon-agent"}
                 )
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     return json.loads(resp.read().decode("utf-8"))
@@ -58,9 +51,7 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
 
             items = data.get("items", [])[: params.max_results]
             if not items:
-                return ToolResult(
-                    success=True, result=f"No GitHub {params.search_type} results found."
-                )
+                return ToolResult(success=True, result=f"No GitHub {params.search_type} results found.")
 
             output = f"GitHub {params.search_type.capitalize()} results for: {params.query}\n\n"
             for i, item in enumerate(items, 1):
@@ -87,15 +78,11 @@ class GitHubSearchTool(BaseTool[GitHubSearchParams]):
                     output += f"{i}. **{title}** ({state}, {comments} comments)\n   Repo: {repo}\n   {url_link}\n\n"
 
             return ToolResult(
-                success=True,
-                result=output.strip(),
-                ui_summary=f"Found {len(items)} {params.search_type}",
+                success=True, result=output.strip(), ui_summary=f"Found {len(items)} {params.search_type}"
             )
         except urllib.error.HTTPError as e:
             if e.code == 403:
-                return ToolResult(
-                    success=False, result="GitHub API rate limit exceeded. Try again later."
-                )
+                return ToolResult(success=False, result="GitHub API rate limit exceeded. Try again later.")
             return ToolResult(success=False, result=f"Error searching GitHub: HTTP {e.code}")
         except Exception as e:
             return ToolResult(success=False, result=f"Error searching GitHub: {e}")

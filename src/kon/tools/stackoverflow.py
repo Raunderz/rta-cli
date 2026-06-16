@@ -34,9 +34,7 @@ class StackOverflowTool(BaseTool[StackOverflowParams]):
             loop = asyncio.get_event_loop()
 
             def _fetch():
-                req = urllib.request.Request(
-                    url, headers={"Accept-Encoding": "gzip", "User-Agent": "kon-agent"}
-                )
+                req = urllib.request.Request(url, headers={"Accept-Encoding": "gzip", "User-Agent": "kon-agent"})
                 with urllib.request.urlopen(req, timeout=10) as resp:
                     content = resp.read()
                     if resp.info().get("Content-Encoding") == "gzip":
@@ -47,12 +45,7 @@ class StackOverflowTool(BaseTool[StackOverflowParams]):
 
             results = []
             for item in data.get("items", [])[: params.max_results]:
-                title = (
-                    item.get("title", "")
-                    .replace("&quot;", '"')
-                    .replace("&#39;", "'")
-                    .replace("&amp;", "&")
-                )
+                title = item.get("title", "").replace("&quot;", '"').replace("&#39;", "'").replace("&amp;", "&")
                 link = item.get("link", "")
                 tags = ", ".join(item.get("tags", []))
                 score = item.get("score", 0)
@@ -73,9 +66,7 @@ class StackOverflowTool(BaseTool[StackOverflowParams]):
             for i, r in enumerate(results, 1):
                 output += f"{i}. **{r['title']}**\n   {r['snippet']}\n   {r['url']}\n\n"
 
-            return ToolResult(
-                success=True, result=output.strip(), ui_summary=f"Found {len(results)} results"
-            )
+            return ToolResult(success=True, result=output.strip(), ui_summary=f"Found {len(results)} results")
         except Exception as e:
             return ToolResult(success=False, result=f"Error searching Stack Overflow: {e}")
 

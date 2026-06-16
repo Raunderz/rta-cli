@@ -34,9 +34,7 @@ def copy_to_clipboard(text: str) -> None:
 
 
 def _is_wayland_session() -> bool:
-    return (
-        bool(os.environ.get("WAYLAND_DISPLAY")) or os.environ.get("XDG_SESSION_TYPE") == "wayland"
-    )
+    return bool(os.environ.get("WAYLAND_DISPLAY")) or os.environ.get("XDG_SESSION_TYPE") == "wayland"
 
 
 def _try_run(command: list[str], text: str) -> bool:
@@ -45,13 +43,7 @@ def _try_run(command: list[str], text: str) -> bool:
 
     try:
         subprocess.run(
-            command,
-            input=text,
-            text=True,
-            check=True,
-            timeout=5,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            command, input=text, text=True, check=True, timeout=5, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
     except (OSError, subprocess.SubprocessError):
         return False

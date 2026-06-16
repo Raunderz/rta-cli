@@ -80,6 +80,7 @@ async def test_so_search_no_results(monkeypatch):
     assert result.result is not None
     assert "No Stack Overflow results found." in result.result
 
+
 @pytest.mark.asyncio
 async def test_so_search_error(monkeypatch):
     def mock_urlopen_error(req, timeout=None):
@@ -94,5 +95,3 @@ async def test_so_search_error(monkeypatch):
     assert result.success is False
     assert result.result is not None
     assert "Error searching Stack Overflow: SO error" in result.result
-
-

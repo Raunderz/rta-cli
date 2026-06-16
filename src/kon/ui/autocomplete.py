@@ -35,9 +35,7 @@ class AutocompleteProvider(ABC):
     def get_suggestions(self, text: str, cursor_col: int) -> CompletionResult | None: ...
 
     @abstractmethod
-    def apply_completion(
-        self, text: str, cursor_col: int, item: ListItem, prefix: str
-    ) -> tuple[str, int]:
+    def apply_completion(self, text: str, cursor_col: int, item: ListItem, prefix: str) -> tuple[str, int]:
         """
         Apply the selected completion.
 
@@ -205,9 +203,7 @@ class SlashCommandProvider(AutocompleteProvider):
 
         return CompletionResult(items=items, prefix=token, replace_start=prefix_start)
 
-    def apply_completion(
-        self, text: str, cursor_col: int, item: ListItem, prefix: str
-    ) -> tuple[str, int]:
+    def apply_completion(self, text: str, cursor_col: int, item: ListItem, prefix: str) -> tuple[str, int]:
         cmd: SlashCommand = item.value
         text_before = text[:cursor_col]
         prefix_start = cursor_col - len(prefix)
@@ -262,16 +258,12 @@ class PullRequestProvider(AutocompleteProvider):
                 scored.append((score, pr, label))
         scored.sort(key=lambda item: (-item[0], item[1].number))
 
-        items = [
-            ListItem(value=pr, label=label, description=pr.title) for _, pr, label in scored[:20]
-        ]
+        items = [ListItem(value=pr, label=label, description=pr.title) for _, pr, label in scored[:20]]
         if not items:
             return None
         return CompletionResult(items=items, prefix=token, replace_start=token_start)
 
-    def apply_completion(
-        self, text: str, cursor_col: int, item: ListItem, prefix: str
-    ) -> tuple[str, int]:
+    def apply_completion(self, text: str, cursor_col: int, item: ListItem, prefix: str) -> tuple[str, int]:
         pr: gh_cli.PullRequest = item.value
         text_before = text[:cursor_col]
         prefix_start = cursor_col - len(prefix)
@@ -363,25 +355,13 @@ class FilePathProvider(AutocompleteProvider):
         import subprocess
 
         try:
-            cmd = [
-                self._fd_path,
-                "--full-path",
-                "--color=never",
-                "--max-results",
-                "50",
-                "-t",
-                "f",
-                "-t",
-                "d",
-            ]
+            cmd = [self._fd_path, "--full-path", "--color=never", "--max-results", "50", "-t", "f", "-t", "d"]
             if query:
                 cmd.append(query)
             else:
                 cmd.append(".")
 
-            result = subprocess.run(
-                cmd, cwd=self._cwd, capture_output=True, text=True, timeout=0.3
-            )
+            result = subprocess.run(cmd, cwd=self._cwd, capture_output=True, text=True, timeout=0.3)
 
             if result.returncode == 0:
                 return [p for p in result.stdout.strip().split("\n") if p]
@@ -403,9 +383,7 @@ class FilePathProvider(AutocompleteProvider):
         scored.sort(key=lambda x: -x[0])
         return [p for _, p in scored[:50]]
 
-    def apply_completion(
-        self, text: str, cursor_col: int, item: ListItem, prefix: str
-    ) -> tuple[str, int]:
+    def apply_completion(self, text: str, cursor_col: int, item: ListItem, prefix: str) -> tuple[str, int]:
         path: str = item.value
         text_before = text[:cursor_col]
         prefix_start = cursor_col - len(prefix)

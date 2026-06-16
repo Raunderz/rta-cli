@@ -32,9 +32,7 @@ class FakeChat:
         else:
             self.infos.append(message)
 
-    def add_update_available_message(
-        self, latest_version: str, changelog_url: str | None = None
-    ) -> None:
+    def add_update_available_message(self, latest_version: str, changelog_url: str | None = None) -> None:
         self.versions.append(latest_version)
         self.changelog_urls.append(changelog_url)
 

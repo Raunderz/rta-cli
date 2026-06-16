@@ -1,12 +1,4 @@
-from kon.core.types import (
-    AssistantMessage,
-    FileChanges,
-    TextContent,
-    ToolCall,
-    ToolResultMessage,
-    Usage,
-    UserMessage,
-)
+from kon.core.types import AssistantMessage, FileChanges, TextContent, ToolCall, ToolResultMessage, Usage, UserMessage
 from kon.session import Session
 
 
@@ -16,9 +8,7 @@ def test_session_token_totals_file_changes_and_message_counts() -> None:
     session.append_message(
         AssistantMessage(
             content=[ToolCall(id="t1", name="read", arguments={"path": "a.txt"})],
-            usage=Usage(
-                input_tokens=100, output_tokens=50, cache_read_tokens=10, cache_write_tokens=5
-            ),
+            usage=Usage(input_tokens=100, output_tokens=50, cache_read_tokens=10, cache_write_tokens=5),
         )
     )
     session.append_message(
@@ -32,9 +22,7 @@ def test_session_token_totals_file_changes_and_message_counts() -> None:
     session.append_message(
         AssistantMessage(
             content=[TextContent(text="done")],
-            usage=Usage(
-                input_tokens=20, output_tokens=30, cache_read_tokens=0, cache_write_tokens=2
-            ),
+            usage=Usage(input_tokens=20, output_tokens=30, cache_read_tokens=0, cache_write_tokens=2),
         )
     )
 

@@ -68,9 +68,7 @@ def fd_available():
         ("@", 0, False),
     ],
 )
-def test_should_trigger(
-    provider: FilePathProvider, text: str, cursor_col: int, should_trigger: bool
-):
+def test_should_trigger(provider: FilePathProvider, text: str, cursor_col: int, should_trigger: bool):
     assert provider.should_trigger(text, cursor_col) == should_trigger
 
 

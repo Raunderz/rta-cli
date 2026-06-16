@@ -255,48 +255,26 @@ def _replace_command_with_groups(text: str, name: str, n_args: int, fn) -> str:
 def _convert_math(tex: str) -> str:
     s = tex
     for _ in range(3):
-        for cmd in (
-            "text",
-            "mathrm",
-            "mathbf",
-            "mathit",
-            "mathsf",
-            "mathtt",
-            "operatorname",
-            "textbf",
-            "textit",
-        ):
+        for cmd in ("text", "mathrm", "mathbf", "mathit", "mathsf", "mathtt", "operatorname", "textbf", "textit"):
             s = _replace_command_with_groups(s, cmd, 1, lambda a: a[0])
     for _ in range(4):
         s = _replace_command_with_groups(
             s,
             "frac",
             2,
-            lambda a: (
-                f"({a[0]})/({a[1]})"
-                if any(c in a[0] + a[1] for c in "+-**·× ")
-                else f"{a[0]}/{a[1]}"
-            ),
+            lambda a: f"({a[0]})/({a[1]})" if any(c in a[0] + a[1] for c in "+-**·× ") else f"{a[0]}/{a[1]}",
         )
         s = _replace_command_with_groups(
             s,
             "dfrac",
             2,
-            lambda a: (
-                f"({a[0]})/({a[1]})"
-                if any(c in a[0] + a[1] for c in "+-**·× ")
-                else f"{a[0]}/{a[1]}"
-            ),
+            lambda a: f"({a[0]})/({a[1]})" if any(c in a[0] + a[1] for c in "+-**·× ") else f"{a[0]}/{a[1]}",
         )
         s = _replace_command_with_groups(
             s,
             "tfrac",
             2,
-            lambda a: (
-                f"({a[0]})/({a[1]})"
-                if any(c in a[0] + a[1] for c in "+-**·× ")
-                else f"{a[0]}/{a[1]}"
-            ),
+            lambda a: f"({a[0]})/({a[1]})" if any(c in a[0] + a[1] for c in "+-**·× ") else f"{a[0]}/{a[1]}",
         )
     s = _SQRT_INDEX_RE.sub(lambda m: _to_super(m.group(1)) + "√(" + m.group(2) + ")", s)
     s = _replace_command_with_groups(s, "sqrt", 1, lambda a: "√(" + a[0] + ")")

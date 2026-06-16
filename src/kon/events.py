@@ -213,11 +213,4 @@ StreamEvent = (
 )
 
 # All events yielded by Agent.run() (loop.py)
-Event = (
-    AgentStartEvent
-    | AgentEndEvent
-    | TurnStartEvent
-    | CompactionStartEvent
-    | CompactionEndEvent
-    | StreamEvent
-)
+Event = AgentStartEvent | AgentEndEvent | TurnStartEvent | CompactionStartEvent | CompactionEndEvent | StreamEvent

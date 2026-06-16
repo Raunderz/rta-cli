@@ -95,9 +95,7 @@ def _validate_skill(
     warnings: list[SkillWarning] = []
 
     if name != parent_dir_name:
-        warnings.append(
-            SkillWarning(file_path, f'name "{name}" does not match directory "{parent_dir_name}"')
-        )
+        warnings.append(SkillWarning(file_path, f'name "{name}" does not match directory "{parent_dir_name}"'))
 
     if len(name) > MAX_NAME_LENGTH:
         warnings.append(SkillWarning(file_path, f"name exceeds {MAX_NAME_LENGTH} characters"))
@@ -115,14 +113,10 @@ def _validate_skill(
         warnings.append(SkillWarning(file_path, "description is required"))
 
     if len(description) > MAX_DESCRIPTION_LENGTH:
-        warnings.append(
-            SkillWarning(file_path, f"description exceeds {MAX_DESCRIPTION_LENGTH} characters")
-        )
+        warnings.append(SkillWarning(file_path, f"description exceeds {MAX_DESCRIPTION_LENGTH} characters"))
 
     if len(cmd_info) > MAX_CMD_INFO_LENGTH:
-        warnings.append(
-            SkillWarning(file_path, f"cmd_info exceeds {MAX_CMD_INFO_LENGTH} characters")
-        )
+        warnings.append(SkillWarning(file_path, f"cmd_info exceeds {MAX_CMD_INFO_LENGTH} characters"))
 
     return warnings
 
@@ -145,29 +139,19 @@ def _load_skill_from_dir(skill_dir: Path) -> tuple[Skill | None, list[SkillWarni
         register_cmd = _parse_bool(frontmatter.get("register_cmd"))
         cmd_info = str(frontmatter.get("cmd_info", "")).strip()
 
-        warnings = _validate_skill(
-            name, description, parent_dir_name, file_path, cmd_info=cmd_info
-        )
+        warnings = _validate_skill(name, description, parent_dir_name, file_path, cmd_info=cmd_info)
 
         if not description or not description.strip():
             return None, warnings
 
-        skill = Skill(
-            name=name,
-            description=description,
-            path=file_path,
-            register_cmd=register_cmd,
-            cmd_info=cmd_info,
-        )
+        skill = Skill(name=name, description=description, path=file_path, register_cmd=register_cmd, cmd_info=cmd_info)
         return skill, warnings
 
     except Exception as e:
         return None, [SkillWarning(file_path, str(e))]
 
 
-def _load_skills_from_dir(
-    directory: Path, *, legacy_warning: str | None = None
-) -> LoadSkillsResult:
+def _load_skills_from_dir(directory: Path, *, legacy_warning: str | None = None) -> LoadSkillsResult:
     skills: list[Skill] = []
     warnings: list[SkillWarning] = []
 

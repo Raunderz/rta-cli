@@ -31,9 +31,7 @@ def test_make_http_client_skips_verify_when_enabled():
 
 
 def test_make_http_client_honors_request_timeout():
-    set_config(
-        Config({"llm": {"tls": {"insecure_skip_verify": True}, "request_timeout_seconds": 1234}})
-    )
+    set_config(Config({"llm": {"tls": {"insecure_skip_verify": True}, "request_timeout_seconds": 1234}}))
 
     client = make_http_client()
     try:

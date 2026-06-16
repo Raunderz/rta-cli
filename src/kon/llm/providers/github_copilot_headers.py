@@ -23,18 +23,13 @@ def has_copilot_vision_input(messages: list[Message]) -> bool:
             and any(isinstance(c, ImageContent) for c in msg.content)
         ):
             return True
-        if isinstance(msg, ToolResultMessage) and any(
-            isinstance(c, ImageContent) for c in msg.content
-        ):
+        if isinstance(msg, ToolResultMessage) and any(isinstance(c, ImageContent) for c in msg.content):
             return True
     return False
 
 
 def build_copilot_dynamic_headers(messages: list[Message]) -> dict[str, str]:
-    headers: dict[str, str] = {
-        "X-Initiator": infer_copilot_initiator(messages),
-        "Openai-Intent": "conversation-edits",
-    }
+    headers: dict[str, str] = {"X-Initiator": infer_copilot_initiator(messages), "Openai-Intent": "conversation-edits"}
 
     if has_copilot_vision_input(messages):
         headers["Copilot-Vision-Request"] = "true"

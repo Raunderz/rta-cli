@@ -1,13 +1,9 @@
-import pytest
 import os
-import asyncio
 from unittest.mock import MagicMock
-from kon.tools.lsp import (
-    GetDiagnosticsTool,
-    GetDiagnosticsParams,
-    GoToDefinitionTool,
-    GoToDefinitionParams,
-)
+
+import pytest
+
+from kon.tools.lsp import GetDiagnosticsParams, GetDiagnosticsTool, GoToDefinitionParams, GoToDefinitionTool
 
 
 # Helper to avoid the 1s sleep in tests
@@ -92,11 +88,7 @@ async def test_get_diagnostics_with_errors(mock_all, monkeypatch, tmp_path):
         {
             "uri": uri,
             "diagnostics": [
-                {
-                    "range": {"start": {"line": 0, "character": 3}},
-                    "message": "Expected expression",
-                    "severity": 1,
-                }
+                {"range": {"start": {"line": 0, "character": 3}}, "message": "Expected expression", "severity": 1}
             ],
         }
     ]
@@ -122,9 +114,7 @@ async def test_go_to_definition_success(mock_all, monkeypatch, tmp_path):
     uri = path_to_uri(abs_path)
 
     mock_all.send_request.side_effect = lambda m, p: (
-        {"uri": uri, "range": {"start": {"line": 10, "character": 0}}}
-        if m == "textDocument/definition"
-        else None
+        {"uri": uri, "range": {"start": {"line": 10, "character": 0}}} if m == "textDocument/definition" else None
     )
 
     monkeypatch.setattr("os.path.exists", lambda p: True)

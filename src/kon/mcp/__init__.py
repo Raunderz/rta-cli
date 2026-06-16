@@ -27,11 +27,7 @@ def load_mcp_config() -> dict[str, Any]:
     if not MCP_CONFIG_PATH.exists():
         template = {
             "mcpServers": {
-                "search": {
-                    "command": "npx",
-                    "args": ["-y", "@modelcontextprotocol/server-duckduckgo"],
-                    "env": {},
-                }
+                "search": {"command": "npx", "args": ["-y", "@modelcontextprotocol/server-duckduckgo"], "env": {}}
             }
         }
         save_mcp_config(template)
@@ -131,9 +127,7 @@ def _send_rpc_http(sc: dict, request: dict) -> Any:
         import httpx
 
         with httpx.Client() as client:
-            resp = client.post(
-                sc["url"], json=request, headers=sc.get("headers", {}), timeout=30.0
-            )
+            resp = client.post(sc["url"], json=request, headers=sc.get("headers", {}), timeout=30.0)
             resp.raise_for_status()
             return resp.json().get("result") or resp.json().get("error")
     except Exception as e:
@@ -162,12 +156,7 @@ def call_mcp_tool(server_name: str, tool_name: str, arguments: dict[str, Any]) -
     if server_name not in server_configs:
         return {"error": f"MCP server '{server_name}' not configured"}
     sc = server_configs[server_name]
-    request = {
-        "jsonrpc": "2.0",
-        "id": 1,
-        "method": "tools/call",
-        "params": {"name": tool_name, "arguments": arguments},
-    }
+    request = {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": tool_name, "arguments": arguments}}
     if "command" in sc:
         return _send_rpc_stdio(server_name, sc, request)
     elif "url" in sc:

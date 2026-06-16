@@ -54,8 +54,7 @@ async def test_default_truncates_with_temp_file_path(monkeypatch):
     assert result.success is True
     assert result.result is not None
     assert (
-        f"[output truncated to last {MAX_OUTPUT_LINES} lines of {line_count}; "
-        f"full output: {fake_path}]"
+        f"[output truncated to last {MAX_OUTPUT_LINES} lines of {line_count}; full output: {fake_path}]"
     ) in result.result
 
 

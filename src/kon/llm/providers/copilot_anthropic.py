@@ -80,17 +80,13 @@ class CopilotAnthropicProvider(AnthropicProvider):
         }
 
         if system_prompt:
-            create_kwargs["system"] = [
-                {"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}
-            ]
+            create_kwargs["system"] = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
 
         temp = temperature if temperature is not None else self.config.temperature
         thinking_level = self.config.thinking_level
         caps = lookup_capabilities(self.config.model)
         thinking_budget = caps.thinking_budgets.get(thinking_level, 0)
-        thinking_enabled = thinking_level != "none" and (
-            thinking_budget > 0 or caps.adaptive_thinking
-        )
+        thinking_enabled = thinking_level != "none" and (thinking_budget > 0 or caps.adaptive_thinking)
 
         if thinking_enabled:
             if caps.adaptive_thinking:
@@ -98,13 +94,9 @@ class CopilotAnthropicProvider(AnthropicProvider):
                 effort = caps.effort_map.get(thinking_level, "high")
                 create_kwargs["output_config"] = {"effort": effort}
             else:
-                adjusted_max, adjusted_budget = _adjust_max_tokens_for_thinking(
-                    max_tok, thinking_budget
-                )
+                adjusted_max, adjusted_budget = _adjust_max_tokens_for_thinking(max_tok, thinking_budget)
                 create_kwargs["max_tokens"] = adjusted_max
-                create_kwargs["thinking"] = ThinkingConfigEnabledParam(
-                    type="enabled", budget_tokens=adjusted_budget
-                )
+                create_kwargs["thinking"] = ThinkingConfigEnabledParam(type="enabled", budget_tokens=adjusted_budget)
                 # NB: the interleaved-thinking beta header is already set on
                 # the client for all Copilot Anthropic traffic.
         else:

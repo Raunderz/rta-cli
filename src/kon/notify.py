@@ -68,18 +68,7 @@ def _play_linux(sound_path: Path, volume: float) -> None:
                 ]
             )
         case "ffplay":
-            _run(
-                [
-                    "ffplay",
-                    "-nodisp",
-                    "-autoexit",
-                    "-loglevel",
-                    "quiet",
-                    "-volume",
-                    str(round(volume * 100)),
-                    sound,
-                ]
-            )
+            _run(["ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", "-volume", str(round(volume * 100)), sound])
 
 
 def notify(event: NotificationEvent) -> None:

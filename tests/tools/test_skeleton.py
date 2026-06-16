@@ -41,9 +41,7 @@ async def test_skeleton_triggers_indexing_when_corpus_empty(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_skeleton_error(monkeypatch):
-    monkeypatch.setattr(
-        "kon.tools.skeleton.BM25Indexer", MagicMock(side_effect=RuntimeError("boom"))
-    )
+    monkeypatch.setattr("kon.tools.skeleton.BM25Indexer", MagicMock(side_effect=RuntimeError("boom")))
 
     tool = SkeletonTool()
     result = await tool.execute(SkeletonParams(), cwd="/tmp")

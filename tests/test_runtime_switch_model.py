@@ -82,9 +82,7 @@ def test_initialize_creates_openai_codex_agent_without_credentials(tmp_path, mon
 
 def test_switch_model_recreates_provider_when_openai_compatible_base_url_changes(monkeypatch):
     initial_provider = _FakeProvider(
-        ProviderConfig(
-            provider="zhipu", base_url="https://api.z.ai/api/coding/paas/v4", model="glm-5.1"
-        )
+        ProviderConfig(provider="zhipu", base_url="https://api.z.ai/api/coding/paas/v4", model="glm-5.1")
     )
     runtime = _runtime_with_provider(initial_provider)
     target = get_model("deepseek-v4-flash", "deepseek")
@@ -113,9 +111,7 @@ def test_switch_model_recreates_provider_when_openai_compatible_base_url_changes
 
 def test_switch_model_reuses_provider_when_openai_compatible_base_url_is_unchanged(monkeypatch):
     initial_provider = _FakeProvider(
-        ProviderConfig(
-            provider="deepseek", base_url="https://api.deepseek.com", model="deepseek-v4-pro"
-        )
+        ProviderConfig(provider="deepseek", base_url="https://api.deepseek.com", model="deepseek-v4-pro")
     )
     runtime = _runtime_with_provider(initial_provider)
     target = get_model("deepseek-v4-flash", "deepseek")
@@ -185,11 +181,7 @@ def test_load_session_reuses_existing_provider_for_unknown_session_provider(tmp_
     saved.ensure_persisted()
 
     initial_provider = _FakeProvider(
-        ProviderConfig(
-            provider="custom-unknown",
-            base_url="https://example.invalid",
-            model="custom-unknown-model",
-        )
+        ProviderConfig(provider="custom-unknown", base_url="https://example.invalid", model="custom-unknown-model")
     )
     runtime = _runtime_with_provider(initial_provider)
 
@@ -206,9 +198,7 @@ def test_load_session_reuses_existing_provider_for_unknown_session_provider(tmp_
     assert runtime.model_provider == "custom-unknown"
 
 
-def test_load_session_reuses_provider_when_runtime_provider_unknown_and_apis_match(
-    tmp_path, monkeypatch
-):
+def test_load_session_reuses_provider_when_runtime_provider_unknown_and_apis_match(tmp_path, monkeypatch):
     monkeypatch.setattr("kon.session.Session.get_sessions_dir", lambda cwd: tmp_path)
 
     target = get_model("deepseek-v4-flash", "deepseek")
@@ -216,11 +206,7 @@ def test_load_session_reuses_provider_when_runtime_provider_unknown_and_apis_mat
     assert target.api == ApiType.OPENAI_COMPLETIONS
 
     saved = Session.create(
-        "/test/project",
-        provider=target.provider,
-        model_id=target.id,
-        thinking_level="high",
-        system_prompt="prompt",
+        "/test/project", provider=target.provider, model_id=target.id, thinking_level="high", system_prompt="prompt"
     )
     saved.append_model_change(target.provider, target.id, None)
     assert saved.session_file is not None
@@ -236,11 +222,7 @@ def test_load_session_reuses_provider_when_runtime_provider_unknown_and_apis_mat
         tools=[],
     )
     initial_provider = _FakeProvider(
-        ProviderConfig(
-            provider="custom-unknown",
-            base_url="https://example.invalid",
-            model="custom-unknown-model",
-        )
+        ProviderConfig(provider="custom-unknown", base_url="https://example.invalid", model="custom-unknown-model")
     )
     runtime.provider = initial_provider
 

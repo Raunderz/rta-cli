@@ -8,12 +8,7 @@ from pydantic import BaseModel, Field
 from ..core.types import ImageContent
 from ..tools_manager import ensure_tool
 from ._read_image import is_image_file, read_and_process_image
-from ._tool_utils import (
-    ToolCancelledError,
-    communicate_or_cancel,
-    shorten_path,
-    verify_path_sandbox,
-)
+from ._tool_utils import ToolCancelledError, communicate_or_cancel, shorten_path, verify_path_sandbox
 from .base import BaseTool, ToolResult
 
 MAX_CHARS_PER_LINE = 2000
@@ -25,14 +20,11 @@ MAX_DIRECTORY_ROWS = 1000
 class ReadParams(BaseModel):
     path: str = Field(description="Absolute path of the file or directory to read")
     offset: int | None = Field(
-        description="Line number to start reading from. "
-        "Only provide if the file is too large to read at once.",
+        description="Line number to start reading from. Only provide if the file is too large to read at once.",
         default=None,
     )
     limit: int | None = Field(
-        description="Number of lines to read. "
-        "Only provide if the file is too large to read at once.",
-        default=None,
+        description="Number of lines to read. Only provide if the file is too large to read at once.", default=None
     )
 
 
@@ -75,10 +67,7 @@ class ReadTool(BaseTool):
                     break
 
                 if len(line) > MAX_CHARS_PER_LINE:
-                    line = (
-                        line[:MAX_CHARS_PER_LINE]
-                        + f" [output truncated after {MAX_CHARS_PER_LINE} chars]\n"
-                    )
+                    line = line[:MAX_CHARS_PER_LINE] + f" [output truncated after {MAX_CHARS_PER_LINE} chars]\n"
                 lines.append(f"{line_number:6d}\t{line}")
 
         return "".join(lines)
@@ -92,12 +81,7 @@ class ReadTool(BaseTool):
         return f"{timestamp}  {display}"
 
     async def _list_directory_entries(
-        self,
-        fd_path: str,
-        dir_path: Path,
-        max_depth: int,
-        max_results: int,
-        cancel_event: asyncio.Event | None,
+        self, fd_path: str, dir_path: Path, max_depth: int, max_results: int, cancel_event: asyncio.Event | None
     ) -> list[str]:
         proc = await asyncio.create_subprocess_exec(
             fd_path,
@@ -142,9 +126,7 @@ class ReadTool(BaseTool):
 
         return entries
 
-    async def read_directory(
-        self, dir_path: Path, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def read_directory(self, dir_path: Path, cancel_event: asyncio.Event | None = None) -> ToolResult:
         fd_path = await ensure_tool("fd", silent=True)
         if not fd_path:
             msg = "fd is not available and could not be downloaded"
@@ -161,23 +143,13 @@ class ReadTool(BaseTool):
                 )
                 if len(entries) <= DIRECTORY_DEPTH_ROW_LIMIT:
                     result = "\n".join(entries) if entries else "(empty directory)"
-                    return ToolResult(
-                        success=True,
-                        result=result,
-                        ui_summary=f"[dim]({len(entries)} entries)[/dim]",
-                    )
+                    return ToolResult(success=True, result=result, ui_summary=f"[dim]({len(entries)} entries)[/dim]")
 
             entries = await self._list_directory_entries(
-                fd_path,
-                dir_path,
-                max_depth=1,
-                max_results=MAX_DIRECTORY_ROWS + 1,
-                cancel_event=cancel_event,
+                fd_path, dir_path, max_depth=1, max_results=MAX_DIRECTORY_ROWS + 1, cancel_event=cancel_event
             )
         except ToolCancelledError:
-            return ToolResult(
-                success=False, result="Read aborted", ui_summary="[yellow]Read aborted[/yellow]"
-            )
+            return ToolResult(success=False, result="Read aborted", ui_summary="[yellow]Read aborted[/yellow]")
         except RuntimeError as e:
             msg = str(e)
             return ToolResult(success=False, result=msg, ui_summary=f"[red]{msg}[/red]")
@@ -189,13 +161,9 @@ class ReadTool(BaseTool):
             result += f"\n[output truncated after {MAX_DIRECTORY_ROWS} lines]"
 
         shown = min(len(entries), MAX_DIRECTORY_ROWS)
-        return ToolResult(
-            success=True, result=result, ui_summary=f"[dim]({shown} entries shown)[/dim]"
-        )
+        return ToolResult(success=True, result=result, ui_summary=f"[dim]({shown} entries shown)[/dim]")
 
-    async def execute(
-        self, params: ReadParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: ReadParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         verify_path_sandbox(params.path, cwd)
         file_path = Path(params.path)
 
@@ -239,6 +207,4 @@ class ReadTool(BaseTool):
             return ToolResult(success=False, result=msg, ui_summary=f"[red]{msg}[/red]")
 
         lines_read = len(content.splitlines()) if content else 0
-        return ToolResult(
-            success=True, result=content, ui_summary=f"[dim]({lines_read} lines)[/dim]"
-        )
+        return ToolResult(success=True, result=content, ui_summary=f"[dim]({lines_read} lines)[/dim]")

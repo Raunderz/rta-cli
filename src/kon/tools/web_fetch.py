@@ -86,9 +86,7 @@ async def _resolve_host_addresses(host: str, port: int) -> list[str]:
 
 
 def _curl_resolve_entry(host: str, port: int, addresses: list[str]) -> str:
-    formatted_addresses = ",".join(
-        f"[{ip}]" if ipaddress.ip_address(ip).version == 6 else ip for ip in addresses
-    )
+    formatted_addresses = ",".join(f"[{ip}]" if ipaddress.ip_address(ip).version == 6 else ip for ip in addresses)
     return f"{host}:{port}:{formatted_addresses}"
 
 
@@ -159,9 +157,7 @@ class WebFetchTool(BaseTool):
     tool_icon = "%"
     mutating = False
     params = WebFetchParams
-    prompt_guidelines = (
-        "Use web_search first to find relevant URLs (if not provided by the user)",
-    )
+    prompt_guidelines = ("Use web_search first to find relevant URLs (if not provided by the user)",)
     description = (
         "Fetch a web page and extract its main content as clean markdown. "
         "Strips navigation, ads, and boilerplate. "
@@ -171,9 +167,7 @@ class WebFetchTool(BaseTool):
     def format_call(self, params: WebFetchParams) -> str:
         return params.url
 
-    async def execute(
-        self, params: WebFetchParams, cwd: str, cancel_event: asyncio.Event | None = None
-    ) -> ToolResult:
+    async def execute(self, params: WebFetchParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         try:
             curl_resolve = await _prepare_curl_resolve(params.url, cancel_event)
         except ToolCancelledError:

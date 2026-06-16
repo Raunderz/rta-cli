@@ -29,9 +29,7 @@ def test_detect_compat_disables_developer_role_for_local_api() -> None:
 
 
 def test_detect_compat_uses_llama_gemma_for_local_gemma_models() -> None:
-    compat = _detect_compat(
-        "openai", "http://127.0.0.1:1234/v1", "unsloth/gemma-4-26B-A4B-it-GGUF"
-    )
+    compat = _detect_compat("openai", "http://127.0.0.1:1234/v1", "unsloth/gemma-4-26B-A4B-it-GGUF")
 
     assert compat.supports_developer_role is False
     assert compat.supports_reasoning_effort is False
@@ -119,8 +117,7 @@ async def test_openai_completions_sends_enable_thinking_for_local_gemma() -> Non
     )
     dummy_chat = _DummyChatCompletions()
     provider._client = cast(
-        Any,
-        type("DummyClient", (), {"chat": type("DummyChat", (), {"completions": dummy_chat})()})(),
+        Any, type("DummyClient", (), {"chat": type("DummyChat", (), {"completions": dummy_chat})()})()
     )
 
     stream = await provider._stream_impl(messages=[], system_prompt="You are helpful")
@@ -136,10 +133,7 @@ async def test_openai_completions_sends_enable_thinking_for_local_gemma() -> Non
 def test_openai_responses_uses_system_for_local_api() -> None:
     provider = OpenAIResponsesProvider(
         ProviderConfig(
-            api_key="test-key",
-            base_url="http://127.0.0.1:1234/v1",
-            model="qwen/qwen3.5-35b-a3b",
-            provider="openai",
+            api_key="test-key", base_url="http://127.0.0.1:1234/v1", model="qwen/qwen3.5-35b-a3b", provider="openai"
         )
     )
 
@@ -150,12 +144,7 @@ def test_openai_responses_uses_system_for_local_api() -> None:
 
 def test_openai_responses_uses_developer_for_openai_api() -> None:
     provider = OpenAIResponsesProvider(
-        ProviderConfig(
-            api_key="test-key",
-            base_url="https://api.openai.com/v1",
-            model="gpt-5",
-            provider="openai",
-        )
+        ProviderConfig(api_key="test-key", base_url="https://api.openai.com/v1", model="gpt-5", provider="openai")
     )
 
     messages = provider._convert_messages([], "You are helpful")
@@ -183,9 +172,7 @@ def test_openai_codex_request_uses_session_for_prompt_caching() -> None:
 
 def test_openai_codex_request_omits_prompt_cache_fields_without_session() -> None:
     provider = OpenAICodexResponsesProvider(
-        ProviderConfig(
-            base_url="https://chatgpt.com/backend-api", model="gpt-5.5", provider="openai-codex"
-        )
+        ProviderConfig(base_url="https://chatgpt.com/backend-api", model="gpt-5.5", provider="openai-codex")
     )
 
     body = provider._build_request_body([], "You are helpful", None, None)
@@ -213,12 +200,7 @@ def test_is_local_base_url(base_url: str | None, expected: bool) -> None:
 def test_resolve_api_key_uses_placeholder_for_local_auto(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert (
-        resolve_api_key(
-            None,
-            env_vars=("OPENAI_API_KEY",),
-            base_url="http://127.0.0.1:8080/v1",
-            auth_mode="auto",
-        )
+        resolve_api_key(None, env_vars=("OPENAI_API_KEY",), base_url="http://127.0.0.1:8080/v1", auth_mode="auto")
         == "kon-local"
     )
 
@@ -226,12 +208,7 @@ def test_resolve_api_key_uses_placeholder_for_local_auto(monkeypatch: pytest.Mon
 def test_resolve_api_key_requires_key_for_remote_auto(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     assert (
-        resolve_api_key(
-            None,
-            env_vars=("OPENAI_API_KEY",),
-            base_url="https://api.openai.com/v1",
-            auth_mode="auto",
-        )
+        resolve_api_key(None, env_vars=("OPENAI_API_KEY",), base_url="https://api.openai.com/v1", auth_mode="auto")
         is None
     )
 

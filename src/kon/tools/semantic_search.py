@@ -1,5 +1,4 @@
 import asyncio
-import os
 
 from pydantic import BaseModel, Field
 
@@ -9,9 +8,7 @@ from .base import BaseTool
 
 
 class SemanticSearchParams(BaseModel):
-    query: str = Field(
-        ..., description="The natural language query (e.g., 'how is authentication handled?')"
-    )
+    query: str = Field(..., description="The natural language query (e.g., 'how is authentication handled?')")
     limit: int = Field(5, description="Number of results to return (default 5)")
 
 
@@ -38,14 +35,11 @@ class SemanticSearchTool(BaseTool[SemanticSearchParams]):
             formatted = []
             for res in results:
                 formatted.append(
-                    f"--- {res['file_path']} (lines {res['start_line']}-{res['end_line']}) ---\n"
-                    f"{res['text']}\n"
+                    f"--- {res['file_path']} (lines {res['start_line']}-{res['end_line']}) ---\n{res['text']}\n"
                 )
 
             res_text = "\n".join(formatted)
-            return ToolResult(
-                success=True, result=res_text, ui_summary=f"Found {len(results)} relevant snippets"
-            )
+            return ToolResult(success=True, result=res_text, ui_summary=f"Found {len(results)} relevant snippets")
         except Exception as e:
             return ToolResult(success=False, result=f"Error during semantic search: {e}")
 

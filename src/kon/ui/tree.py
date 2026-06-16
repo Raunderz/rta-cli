@@ -86,15 +86,11 @@ class TreeSelector(Widget):
         self._tool_calls_by_id = self._collect_tool_calls(tree)
         self._multiple_roots = len(tree) > 1
         self._flat_nodes = self._flatten_tree(tree)
-        self._filtered_nodes = [
-            node for node in self._flat_nodes if self._should_show_entry(node.node.entry)
-        ]
+        self._filtered_nodes = [node for node in self._flat_nodes if self._should_show_entry(node.node.entry)]
         self._build_active_path()
         self._selected_index = self._find_nearest_visible_index(current_leaf_id)
         self._last_selected_id = (
-            self._filtered_nodes[self._selected_index].node.entry.id
-            if self._filtered_nodes
-            else None
+            self._filtered_nodes[self._selected_index].node.entry.id if self._filtered_nodes else None
         )
         self._visible = True
         self._render_key += 1
@@ -141,9 +137,7 @@ class TreeSelector(Widget):
         for root in roots:
             mark(root)
 
-        ordered_roots = sorted(
-            roots, key=lambda n: contains_active.get(n.entry.id, False), reverse=True
-        )
+        ordered_roots = sorted(roots, key=lambda n: contains_active.get(n.entry.id, False), reverse=True)
         multiple_roots = len(roots) > 1
         stack: list[tuple[TreeNode, int, bool, bool, bool, list[GutterInfo], bool]] = []
         for index in range(len(ordered_roots) - 1, -1, -1):
@@ -160,18 +154,8 @@ class TreeSelector(Widget):
             )
 
         while stack:
-            (
-                node,
-                indent,
-                just_branched,
-                show_connector,
-                is_last,
-                gutters,
-                is_virtual_root_child,
-            ) = stack.pop()
-            result.append(
-                FlatNode(node, indent, show_connector, is_last, gutters, is_virtual_root_child)
-            )
+            (node, indent, just_branched, show_connector, is_last, gutters, is_virtual_root_child) = stack.pop()
+            result.append(FlatNode(node, indent, show_connector, is_last, gutters, is_virtual_root_child))
 
             children = node.children
             multiple_children = len(children) > 1
@@ -187,11 +171,7 @@ class TreeSelector(Widget):
             connector_displayed = show_connector and not is_virtual_root_child
             display_indent = max(0, indent - 1) if self._multiple_roots else indent
             connector_position = max(0, display_indent - 1)
-            child_gutters = (
-                [*gutters, GutterInfo(connector_position, not is_last)]
-                if connector_displayed
-                else gutters
-            )
+            child_gutters = [*gutters, GutterInfo(connector_position, not is_last)] if connector_displayed else gutters
 
             for index in range(len(ordered_children) - 1, -1, -1):
                 stack.append(
@@ -237,9 +217,7 @@ class TreeSelector(Widget):
         if isinstance(message, UserMessage | ToolResultMessage):
             return True
         if isinstance(message, AssistantMessage):
-            return any(
-                isinstance(part, TextContent) and part.text.strip() for part in message.content
-            )
+            return any(isinstance(part, TextContent) and part.text.strip() for part in message.content)
         return False
 
     def _entry_plain_text(self, entry: SessionEntry) -> str:
@@ -248,14 +226,9 @@ class TreeSelector(Widget):
             if isinstance(message, UserMessage):
                 if isinstance(message.content, str):
                     return message.content
-                return "".join(
-                    part.text if isinstance(part, TextContent) else "[image]"
-                    for part in message.content
-                )
+                return "".join(part.text if isinstance(part, TextContent) else "[image]" for part in message.content)
             if isinstance(message, AssistantMessage):
-                return "".join(
-                    part.text for part in message.content if isinstance(part, TextContent)
-                )
+                return "".join(part.text for part in message.content if isinstance(part, TextContent))
             if isinstance(message, ToolResultMessage):
                 return message.tool_name
         return ""
@@ -289,9 +262,7 @@ class TreeSelector(Widget):
             except Exception:
                 pass
         if call and call.arguments:
-            return self._normalize(
-                f"[{name}: {self._format_tool_args(call.arguments)}]", max_len=120
-            )
+            return self._normalize(f"[{name}: {self._format_tool_args(call.arguments)}]", max_len=120)
         return f"[{name}]"
 
     def _format_tool_args(self, args: dict[str, object]) -> str:
@@ -331,8 +302,7 @@ class TreeSelector(Widget):
         start = max(
             0,
             min(
-                self._selected_index - self._max_visible_lines // 2,
-                len(self._filtered_nodes) - self._max_visible_lines,
+                self._selected_index - self._max_visible_lines // 2, len(self._filtered_nodes) - self._max_visible_lines
             ),
         )
         end = min(start + self._max_visible_lines, len(self._filtered_nodes))
@@ -388,9 +358,7 @@ class TreeSelector(Widget):
     def action_move_up(self) -> None:
         if self._filtered_nodes:
             self._selected_index = (
-                len(self._filtered_nodes) - 1
-                if self._selected_index == 0
-                else self._selected_index - 1
+                len(self._filtered_nodes) - 1 if self._selected_index == 0 else self._selected_index - 1
             )
             self._last_selected_id = self._filtered_nodes[self._selected_index].node.entry.id
             self._render_key += 1
@@ -398,9 +366,7 @@ class TreeSelector(Widget):
     def action_move_down(self) -> None:
         if self._filtered_nodes:
             self._selected_index = (
-                0
-                if self._selected_index == len(self._filtered_nodes) - 1
-                else self._selected_index + 1
+                0 if self._selected_index == len(self._filtered_nodes) - 1 else self._selected_index + 1
             )
             self._last_selected_id = self._filtered_nodes[self._selected_index].node.entry.id
             self._render_key += 1
@@ -418,9 +384,7 @@ class TreeSelector(Widget):
         index = self._selected_index + step
         while 0 <= index < len(self._filtered_nodes):
             entry = self._filtered_nodes[index].node.entry
-            if isinstance(entry, MessageEntry) and isinstance(
-                entry.message, UserMessage | AssistantMessage
-            ):
+            if isinstance(entry, MessageEntry) and isinstance(entry.message, UserMessage | AssistantMessage):
                 self._selected_index = index
                 self._last_selected_id = entry.id
                 self._render_key += 1
@@ -429,9 +393,7 @@ class TreeSelector(Widget):
 
     def action_select(self) -> None:
         if self._filtered_nodes:
-            self.post_message(
-                self.Selected(self._filtered_nodes[self._selected_index].node.entry.id)
-            )
+            self.post_message(self.Selected(self._filtered_nodes[self._selected_index].node.entry.id))
 
     def action_cancel(self) -> None:
         self.post_message(self.Cancelled())

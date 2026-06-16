@@ -12,9 +12,7 @@ from .base import BaseTool
 
 
 class YouTubeTranscriptParams(BaseModel):
-    video_url: str = Field(
-        ..., description="The full YouTube video URL (e.g., 'https://www.youtube.com/watch?v=...')"
-    )
+    video_url: str = Field(..., description="The full YouTube video URL (e.g., 'https://www.youtube.com/watch?v=...')")
     language: str = Field("en", description="Language code for subtitles (default: 'en')")
 
 
@@ -31,9 +29,7 @@ class YouTubeTranscriptTool(BaseTool[YouTubeTranscriptParams]):
 
         video_id = self._extract_youtube_id(params.video_url)
         if not video_id:
-            return ToolResult(
-                success=False, result="Error: Could not extract YouTube video ID from URL."
-            )
+            return ToolResult(success=False, result="Error: Could not extract YouTube video ID from URL.")
 
         try:
             api_url = f"https://youtubetranscript.com/api?vid={video_id}&lang={params.language}"
@@ -64,9 +60,7 @@ class YouTubeTranscriptTool(BaseTool[YouTubeTranscriptParams]):
                 return ToolResult(success=True, result="No transcript available for this video.")
 
             output = f"Transcript for video: {params.video_url}\n\n" + "\n".join(lines)
-            return ToolResult(
-                success=True, result=output.strip(), ui_summary=f"Fetched {len(lines)} lines"
-            )
+            return ToolResult(success=True, result=output.strip(), ui_summary=f"Fetched {len(lines)} lines")
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return ToolResult(success=False, result="No transcript available for this video.")

@@ -44,10 +44,7 @@ async def render_run(
                 print(f"error: {error}", file=err)
             case ToolApprovalEvent(tool_name=tool_name, future=future) if future is not None:
                 future.set_result(ApprovalResponse.DENY)
-                print(
-                    f"error: {tool_name!r} requires approval, denied (non-interactive mode)",
-                    file=err,
-                )
+                print(f"error: {tool_name!r} requires approval, denied (non-interactive mode)", file=err)
             case _:
                 pass
     if stop == StopReason.STOP and final_text:
@@ -79,9 +76,7 @@ async def run_headless(
     try:
         initial_model = model or config.llm.default_model
         initial_provider = (
-            provider
-            if provider is not None
-            else (config.llm.default_provider if model is None else None)
+            provider if provider is not None else (config.llm.default_provider if model is None else None)
         )
         base = base_url or config.llm.default_base_url or None
         thinking = config.llm.default_thinking_level

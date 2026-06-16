@@ -90,11 +90,7 @@ class CommandsMixin:
         def _apply_theme(self, theme_id: str) -> None: ...
         def _apply_thinking_level_style(self, level: str) -> None: ...
         def _show_completion_list(
-            self,
-            items: list[ListItem],
-            *,
-            searchable: bool = False,
-            max_label_width: int | None = None,
+            self, items: list[ListItem], *, searchable: bool = False, max_label_width: int | None = None
         ) -> None: ...
         def _hide_completion_list(self, *, restore_info_bar: bool = True) -> None: ...
         def _is_chat_at_bottom(self) -> bool: ...
@@ -200,9 +196,7 @@ class CommandsMixin:
         was_at_bottom = self._is_chat_at_bottom()
 
         with self.batch_update():  # type: ignore[attr-defined]
-            self._show_completion_list(
-                items, searchable=searchable, max_label_width=max_label_width
-            )
+            self._show_completion_list(items, searchable=searchable, max_label_width=max_label_width)
             input_box.clear()
             input_box.set_autocomplete_enabled(False)
             input_box.set_completing(True)
@@ -216,9 +210,7 @@ class CommandsMixin:
     ) -> list[ListItem[Choice]]:
         return [
             ListItem(
-                value=choice,
-                label=f"{choice} ✓" if choice == current else choice,
-                description=descriptions[choice],
+                value=choice, label=f"{choice} ✓" if choice == current else choice, description=descriptions[choice]
             )
             for choice in choices
         ]
@@ -242,14 +234,10 @@ class CommandsMixin:
                 select(cast(Choice, requested))
             else:
                 valid = ", ".join(choices)
-                chat.add_info_message(
-                    f"Invalid {name} mode: {requested}. Use one of: {valid}", error=True
-                )
+                chat.add_info_message(f"Invalid {name} mode: {requested}. Use one of: {valid}", error=True)
             return
 
-        self._show_selection_picker(
-            self._build_choice_items(choices, current, descriptions), selection_mode
-        )
+        self._show_selection_picker(self._build_choice_items(choices, current, descriptions), selection_mode)
 
     def _handle_model_command(self, args: str) -> None:
         models = get_all_models()
@@ -265,11 +253,7 @@ class CommandsMixin:
             if not m.supports_images:
                 parts.append("[no-vision]")
             caption = " ".join(parts)
-            label = (
-                f"{m.id} ✓"
-                if m.id == self._runtime.model and m.provider == self._runtime.model_provider
-                else m.id
-            )
+            label = f"{m.id} ✓" if m.id == self._runtime.model and m.provider == self._runtime.model_provider else m.id
             items.append(ListItem(value=m, label=label, description=caption))
 
         self._show_selection_picker(items, SelectionMode.MODEL)
@@ -327,15 +311,11 @@ class CommandsMixin:
                 self._select_thinking_level(requested)
             else:
                 valid_levels = ", ".join(self._runtime.provider.thinking_levels)
-                chat.add_info_message(
-                    f"Invalid thinking level: {requested}. Use one of: {valid_levels}", error=True
-                )
+                chat.add_info_message(f"Invalid thinking level: {requested}. Use one of: {valid_levels}", error=True)
             return
 
         items = [
-            ListItem(
-                value=level, label=f"{level} ✓" if level == self._runtime.thinking_level else level
-            )
+            ListItem(value=level, label=f"{level} ✓" if level == self._runtime.thinking_level else level)
             for level in self._runtime.provider.thinking_levels
         ]
         self._show_selection_picker(items, SelectionMode.THINKING)
@@ -363,17 +343,13 @@ class CommandsMixin:
             "5": "show 5 lines",
             "none": "no truncation",
         }
-        items = self._build_choice_items(
-            THINKING_LINES_OPTIONS, config.ui.thinking_lines, descriptions
-        )
+        items = self._build_choice_items(THINKING_LINES_OPTIONS, config.ui.thinking_lines, descriptions)
         self._show_selection_picker(items, SelectionMode.THINKING_LINES)
 
     def _select_thinking_lines(self, lines: ThinkingLinesOption) -> None:
         set_thinking_lines(lines)
         chat = self.query_one("#chat-log", ChatLog)
-        label = (
-            "no truncation" if lines == "none" else f"{lines} line{'s' if lines != '1' else ''}"
-        )
+        label = "no truncation" if lines == "none" else f"{lines} line{'s' if lines != '1' else ''}"
         chat.show_status(f"Thinking lines changed to {label}")
 
     def _handle_notifications_command(self, args: str) -> None:
@@ -413,24 +389,14 @@ class CommandsMixin:
         colored_badge_status = "on" if config.ui.colored_tool_badge else "off"
         git_context_status = "on" if config.llm.system_prompt.git_context else "off"
         return [
-            ListItem(
-                value="colored-tool-badge",
-                label="colored-tool-badge",
-                description=colored_badge_status,
-            ),
+            ListItem(value="colored-tool-badge", label="colored-tool-badge", description=colored_badge_status),
             ListItem(value="git-context", label="git-context", description=git_context_status),
-            ListItem(
-                value="notifications", label="notifications", description=notification_status
-            ),
+            ListItem(value="notifications", label="notifications", description=notification_status),
             ListItem(value="show-shortcuts", label="show-shortcuts", description=shortcut_status),
-            ListItem(
-                value="permissions", label="permissions", description=config.permissions.mode
-            ),
+            ListItem(value="permissions", label="permissions", description=config.permissions.mode),
             ListItem(value="themes", label="themes", description=config.ui.theme),
             ListItem(value="thinking", label="thinking", description=thinking_level),
-            ListItem(
-                value="thinking-lines", label="thinking-lines", description=thinking_lines_status
-            ),
+            ListItem(value="thinking-lines", label="thinking-lines", description=thinking_lines_status),
         ]
 
     def _show_settings_picker(self, selected_value: str | None = None) -> None:
@@ -508,8 +474,7 @@ class CommandsMixin:
             chat = self.query_one("#chat-log", ChatLog)
             chat.show_status(f"Git context turned {mode}")
             chat.add_info_message(
-                "Git context change applies on new conversations (use /new) or on kon restart.",
-                warning=True,
+                "Git context change applies on new conversations (use /new) or on kon restart.", warning=True
             )
             self._show_settings_picker(selected_value=item_value)
             return "reopened-picker"
@@ -521,8 +486,7 @@ class CommandsMixin:
         self._apply_theme(theme_id)
         chat = self.query_one("#chat-log", ChatLog)
         chat.add_info_message(
-            f"Theme changed to {theme_id}. Full theme refresh applies when kon is restarted.",
-            warning=True,
+            f"Theme changed to {theme_id}. Full theme refresh applies when kon is restarted.", warning=True
         )
 
     def _select_model(self, model) -> None:
@@ -572,9 +536,7 @@ class CommandsMixin:
             self._sync_slash_commands()
             # TODO: Surface self._runtime.agent.context.skill_warnings in UI
             chat.add_loaded_resources(
-                context_paths=[
-                    format_path(f.path) for f in self._runtime.agent.context.agents_files
-                ],
+                context_paths=[format_path(f.path) for f in self._runtime.agent.context.agents_files],
                 skills=self._runtime.agent.context.skills,
                 tools=self._runtime.tools,
             )
@@ -586,19 +548,13 @@ class CommandsMixin:
             chat.add_info_message("Cannot handoff while agent is running", error=True)
             return
 
-        if (
-            self._runtime.provider is None
-            or self._runtime.session is None
-            or self._runtime.agent is None
-        ):
+        if self._runtime.provider is None or self._runtime.session is None or self._runtime.agent is None:
             chat.add_info_message("Agent not initialized", error=True)
             return
 
         query = args.strip()
         if not query:
-            chat.add_info_message(
-                "Usage: /handoff <query>. Example: /handoff implement phase two", error=True
-            )
+            chat.add_info_message("Usage: /handoff <query>. Example: /handoff implement phase two", error=True)
             return
 
         if not self._runtime.session.all_messages:
@@ -620,11 +576,7 @@ class CommandsMixin:
         status = self.query_one("#status-line", StatusLine)
         input_box = self.query_one("#input-box", InputBox)
 
-        if (
-            self._runtime.provider is None
-            or self._runtime.session is None
-            or self._runtime.agent is None
-        ):
+        if self._runtime.provider is None or self._runtime.session is None or self._runtime.agent is None:
             chat.add_info_message("Agent not initialized", error=True)
             return
 
@@ -702,15 +654,7 @@ class CommandsMixin:
                 prefix = f"{'   ' * (depth - 1)} └ [handoff] "
             label = self._format_session_label(node.first_message)
             caption = f"{self._format_session_age(node.modified)} {node.message_count}"
-            items.append(
-                ListItem(
-                    value=node,
-                    label=label,
-                    description=caption,
-                    prefix=prefix,
-                    prefix_style=accent,
-                )
-            )
+            items.append(ListItem(value=node, label=label, description=caption, prefix=prefix, prefix_style=accent))
             for child in children.get(node.id, []):
                 _walk(child, depth + 1)
 
@@ -743,9 +687,7 @@ class CommandsMixin:
     def _show_resume_sessions(self) -> None:
         items = self._build_resume_items()
         if not items:
-            self.notify(
-                "No saved sessions found", title="Sessions", timeout=3, severity="information"
-            )
+            self.notify("No saved sessions found", title="Sessions", timeout=3, severity="information")
             return
 
         self._show_selection_picker(items, SelectionMode.SESSION, max_label_width=87)
@@ -767,9 +709,7 @@ class CommandsMixin:
             current_session_path = Path(self._runtime.session.session_file)
 
         if current_session_path is not None and session_path == current_session_path:
-            self.notify(
-                "Cannot delete current session", title="Sessions", timeout=2, severity="warning"
-            )
+            self.notify("Cannot delete current session", title="Sessions", timeout=2, severity="warning")
             return
 
         try:
@@ -777,9 +717,7 @@ class CommandsMixin:
         except FileNotFoundError:
             pass
         except Exception as exc:
-            self.notify(
-                f"Failed to delete session: {exc}", title="Sessions", timeout=3, severity="error"
-            )
+            self.notify(f"Failed to delete session: {exc}", title="Sessions", timeout=3, severity="error")
             return
 
         items = self._build_resume_items()
@@ -790,12 +728,7 @@ class CommandsMixin:
             input_box.set_autocomplete_enabled(True)
             input_box.set_completing(False)
             self._selection_mode = None
-            self.notify(
-                "Session deleted (no saved sessions left)",
-                title="Sessions",
-                timeout=2,
-                severity="information",
-            )
+            self.notify("Session deleted (no saved sessions left)", title="Sessions", timeout=2, severity="information")
         else:
             completion_list.update_items(items)
             self.notify("Session deleted", title="Sessions", timeout=2, severity="information")
@@ -810,11 +743,7 @@ class CommandsMixin:
 
         self._show_selection_picker(
             [
-                ListItem(
-                    value=provider_id,
-                    label=name,
-                    description="saved credentials" if has_credentials else "",
-                )
+                ListItem(value=provider_id, label=name, description="saved credentials" if has_credentials else "")
                 for provider_id, name, has_credentials in providers
             ],
             SelectionMode.LOGIN,
@@ -838,9 +767,7 @@ class CommandsMixin:
             webbrowser.open(url)
             self.call_later(
                 chat.add_info_message,
-                f"Opening browser to: {url}\n"
-                f"Enter this code: {code}\n\n"
-                "Waiting for authorization...",
+                f"Opening browser to: {url}\nEnter this code: {code}\n\nWaiting for authorization...",
             )
 
         try:
@@ -849,16 +776,13 @@ class CommandsMixin:
                 return
 
             if had_saved_credentials:
-                chat.add_info_message(
-                    "Your saved GitHub Copilot session is no longer valid.", warning=True
-                )
+                chat.add_info_message("Your saved GitHub Copilot session is no longer valid.", warning=True)
             else:
                 chat.add_info_message("Starting GitHub Copilot login...")
 
             await copilot_login(on_user_code=on_user_code)
             chat.add_info_message(
-                "Successfully logged in to GitHub Copilot!\n"
-                "You can now use /model to select Copilot models."
+                "Successfully logged in to GitHub Copilot!\nYou can now use /model to select Copilot models."
             )
         except Exception as e:
             chat.add_info_message(f"Login failed: {e}", error=True)
@@ -884,16 +808,13 @@ class CommandsMixin:
                 return
 
             if had_saved_credentials:
-                chat.add_info_message(
-                    "Your saved OpenAI session is no longer valid.", warning=True
-                )
+                chat.add_info_message("Your saved OpenAI session is no longer valid.", warning=True)
             else:
                 chat.add_info_message("Starting OpenAI login...")
 
             await openai_login(on_auth_url=on_auth_url)
             chat.add_info_message(
-                "Successfully logged in to OpenAI!\n"
-                "You can now use /model to select openai-codex models."
+                "Successfully logged in to OpenAI!\nYou can now use /model to select openai-codex models."
             )
         except Exception as e:
             chat.add_info_message(f"Login failed: {e}", error=True)
@@ -916,9 +837,7 @@ class CommandsMixin:
 
         try:
             async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.get(
-                    f"{get_config().rta.server_url}/v1/auth/me", headers=headers
-                )
+                resp = await client.get(f"{get_config().rta.server_url}/v1/auth/me", headers=headers)
 
             if resp.status_code == 200:
                 data = resp.json()
@@ -993,9 +912,7 @@ class CommandsMixin:
             with open(os.path.join(project_name, ".rta_project.json"), "w") as f:
                 json.dump(project_info, f, indent=2)
 
-            chat.add_info_message(
-                f"Successfully initialized project '{project_name}'\nRun: cd {project_name} && kon"
-            )
+            chat.add_info_message(f"Successfully initialized project '{project_name}'\nRun: cd {project_name} && kon")
         except Exception as e:
             chat.add_info_message(f"Initialization failed: {e}", error=True)
 
@@ -1012,10 +929,7 @@ class CommandsMixin:
             return
 
         self._show_selection_picker(
-            [
-                ListItem(value=provider_id, label=name, description="")
-                for provider_id, name in providers
-            ],
+            [ListItem(value=provider_id, label=name, description="") for provider_id, name in providers],
             SelectionMode.LOGOUT,
         )
 
