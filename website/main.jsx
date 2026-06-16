@@ -4,6 +4,7 @@ import Dashboard from './dashboard.jsx';
 import ChatInterface from './chat_interface.jsx';
 import { Router, Route, Link, useLocation, useRoute, Switch } from 'wouter';
 import { BlogPage } from './blog.jsx';
+import { DocsPage } from './docs.jsx';
 import { Analytics } from "@vercel/analytics/react";
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
@@ -631,119 +632,6 @@ const ReleasesPage = () => {
       </div>
       <div class="status-board">
         <DownloadsSection os={os} />
-      </div>
-    </div>
-  );
-};
-
-const DocsPage = () => {
-  const sections = [
-    {
-      id: "installation",
-      title: "Installation",
-      content: `
-### Get the Binary
-Rta is distributed as a standalone binary. No Python or dependencies required to run the core.
-
-- **Linux/macOS**: [Download Binary](/rta)
-- **Windows**: [Download Binary](/rta.exe)
-
-### Linux/macOS Setup
-Once downloaded, move the binary to your path and make it executable:
-\`\`\`bash
-chmod +x rta
-sudo mv rta /usr/local/bin/
-\`\`\`
-
-### Windows Setup
-1. Download \`rta.exe\`.
-2. Move it to a folder (e.g., \`C:\\bin\`).
-3. Add that folder to your **System PATH** environment variable.
-4. Open a new Terminal (PowerShell or CMD).
-
-### Authenticate
-Run the login command to link your account and get your API key:
-\`\`\`bash
-rta login
-\`\`\`
-`
-    },
-    {
-      id: "usage",
-      title: "Basic Usage",
-      content: `
-### Start a Chat
-Navigate to your project directory and initialize a session:
-\`\`\`bash
-rta chat
-\`\`\`
-
-### Key Commands
-- \`/review\`: Toggle **Review Mode** (read-only safety).
-- \`/skill list\`: View available prompt-based skills.
-- \`/exit\`: End the session.
-
-### Semantic Search
-Rta uses a lean BM25 index to "know" your codebase. It indexes your files locally (no heavy ML models) to provide architectural awareness.
-`
-    },
-    {
-      id: "mcp",
-      title: "The Constellation (MCP)",
-      content: `
-### What is MCP?
-The Model Context Protocol (MCP) allows Rta to connect to external tools like GitHub, Google Search, or local databases.
-
-### Configuration
-Edit your configuration at \`~/.rta/mcp_config.json\`. Rta generates a template on first run.
-
-### GitHub Integration
-Add your Personal Access Token to the config to enable repository management, issue tracking, and PR reviews.
-
-\`\`\`json
-{
-  "mcpServers": {
-    "github": {
-      "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-github"],
-      "env": { "GITHUB_PERSONAL_ACCESS_TOKEN": "..." }
-    }
-  }
-}
-\`\`\`
-`
-    }
-  ];
-
-  return (
-    <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px;">
-      <div class="docs-layout">
-        <aside class="docs-sidebar">
-          <h4 style="margin-bottom: 2rem; color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Index</h4>
-          <nav style="display: flex; flex-direction: column; gap: 1rem;">
-            {sections.map(s => (
-              <a href={`#${s.id}`} class="nav-link" style="font-size: 0.85rem;" key={s.id}>{s.title}</a>
-            ))}
-          </nav>
-        </aside>
-
-        <div style="flex: 1; max-width: 700px; width: 100%;">
-          <div class="section-header" style="text-align: left; margin-bottom: 4rem;">
-            <h2>Documentation</h2>
-            <p>System Operation Manual v0.6.0</p>
-          </div>
-
-          {sections.map(s => (
-            <div id={s.id} style="margin-bottom: 6rem;" key={s.id}>
-              <h3 style="font-size: clamp(1.4rem, 4vw, 1.8rem); margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1rem;">
-                {s.title}
-              </h3>
-              <div class="markdown-body" style="font-size: 1rem; line-height: 1.8; color: var(--text-secondary);">
-                <div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(marked.parse(s.content)) }} />
-              </div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );
