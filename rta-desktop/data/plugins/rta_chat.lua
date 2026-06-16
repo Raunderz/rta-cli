@@ -79,6 +79,63 @@ local function save_rta_path(path)
 end
 
 
+--- Compute a simple line-by-line diff between two strings.
+--- Returns an array of {type="add"|"del"|"same", line=text}.
+local function compute_diff(old_text, new_text)
+  local old_lines = {}
+  for line in (old_text .. "\n"):gmatch("([^\n]*)\n") do
+    old_lines[#old_lines + 1] = line
+  end
+  local new_lines = {}
+  for line in (new_text .. "\n"):gmatch("([^\n]*)\n") do
+    new_lines[#new_lines + 1] = line
+  end
+
+  local result = {}
+  local oi, ni = 1, 1
+  while oi <= #old_lines or ni <= #new_lines do
+    if oi > #old_lines then
+      result[#result + 1] = { type = "add", line = new_lines[ni] }
+      ni = ni + 1
+    elseif ni > #new_lines then
+      result[#result + 1] = { type = "del", line = old_lines[oi] }
+      oi = oi + 1
+    elseif old_lines[oi] == new_lines[ni] then
+      result[#result + 1] = { type = "same", line = old_lines[oi] }
+      oi = oi + 1
+      ni = ni + 1
+    else
+      -- Simple: mark old as del, new as add
+      result[#result + 1] = { type = "del", line = old_lines[oi] }
+      result[#result + 1] = { type = "add", line = new_lines[ni] }
+      oi = oi + 1
+      ni = ni + 1
+    end
+  end
+  return result
+end
+
+
+--- Read file content, returning empty string on error.
+local function read_file_safe(path)
+  local f = io.open(path, "r")
+  if not f then return "" end
+  local content = f:read("*a")
+  f:close()
+  return content or ""
+end
+
+
+--- Write file content, returning true on success.
+local function write_file_safe(path, content)
+  local f = io.open(path, "w")
+  if not f then return false end
+  f:write(content)
+  f:close()
+  return true
+end
+
+
 local RtaChat = View:extend()
 
 function RtaChat:__tostring()
@@ -105,6 +162,10 @@ function RtaChat:new()
   self.history_hover = -1
   self.mouse_x = 0
   self.mouse_y = 0
+  self.last_render_time = 0
+  self.tool_click_areas = {}
+  self.diff_click_areas = {}
+  self.pending_diffs = {}
 
   if self.rta_path then
     table.insert(self.messages, {
@@ -180,8 +241,9 @@ function RtaChat:get_line_height_msg(msg)
   local tools_h = 0
   if msg.tools and #msg.tools > 0 then
     for _, tool in ipairs(msg.tools) do
-      local label = string.format("[%s %s]", tool.status == "running" and "~" or "+", tool.name)
-      if tool.display and #tool.display > 0 then
+      local icon = tool.status == "running" and "~" or (tool.expanded and "-" or "+")
+      local label = string.format("[%s %s]", icon, tool.name)
+      if tool.status == "done" and tool.display and #tool.display > 0 then
         label = label .. " " .. tool.display
       end
       local tool_lines = 1
@@ -189,9 +251,25 @@ function RtaChat:get_line_height_msg(msg)
         tool_lines = math.max(1, math.ceil(style.font:get_width(label) / max_w))
       end
       tools_h = tools_h + tool_lines * (style.font:get_height() + style.padding.y) + style.padding.y * 0.5
+      -- Expanded result height
+      if tool.expanded and tool.status == "done" and tool.display and #tool.display > 0 then
+        tools_h = tools_h + style.font:get_height() + style.padding.y
+      end
     end
   end
-  return text_h + tools_h + style.padding.y * 2
+  -- Diff preview height
+  local diffs_h = 0
+  for _, diff in ipairs(self.pending_diffs) do
+    if diff.msg == msg then
+      local line_h = style.font:get_height() + style.padding.y
+      diffs_h = diffs_h + line_h  -- header
+      diffs_h = diffs_h + #diff.lines * line_h  -- diff lines
+      if diff.original then
+        diffs_h = diffs_h + line_h  -- undo button
+      end
+    end
+  end
+  return text_h + tools_h + diffs_h + style.padding.y * 2
 end
 
 function RtaChat:get_scrollable_size()
@@ -278,6 +356,33 @@ function RtaChat:on_mouse_pressed(button, x, y, clicks)
     return true
   end
 
+  -- Tool expand/collapse clicks
+  for _, area in ipairs(self.tool_click_areas) do
+    if y >= area.y and y <= area.y + area.h and x >= area.x and x <= area.x + area.w then
+      local msg = area.msg
+      local tool = msg.tools[area.tool_index]
+      if tool and tool.status == "done" then
+        tool.expanded = not tool.expanded
+        core.redraw = true
+      end
+      return true
+    end
+  end
+
+  -- Diff undo clicks
+  for i, area in ipairs(self.diff_click_areas) do
+    if y >= area.y and y <= area.y + area.h and x >= area.x and x <= area.x + area.w then
+      local diff = area.diff
+      if diff.original and diff.path then
+        if write_file_safe(diff.path, diff.original) then
+          table.remove(self.pending_diffs, i)
+          core.redraw = true
+        end
+      end
+      return true
+    end
+  end
+
   -- Approval button clicks
   for i, approval in ipairs(self.pending_approvals) do
     local ay = approval.y
@@ -312,6 +417,22 @@ function RtaChat:delete_backward()
     byte_pos = byte_pos - 1
   end
   self.input_buffer = self.input_buffer:sub(1, byte_pos - 1)
+  core.redraw = true
+end
+
+
+function RtaChat:delete_word()
+  if not self.input_focused or #self.input_buffer == 0 then return end
+  local pos = #self.input_buffer
+  -- Skip trailing spaces
+  while pos > 0 and self.input_buffer:byte(pos) == 32 do
+    pos = pos - 1
+  end
+  -- Skip to start of word
+  while pos > 0 and self.input_buffer:byte(pos) ~= 32 do
+    pos = pos - 1
+  end
+  self.input_buffer = self.input_buffer:sub(1, pos)
   core.redraw = true
 end
 
@@ -371,7 +492,11 @@ function RtaChat:handle_line(line)
       self.current_stream.text = self.current_stream.text .. (obj.content or "")
     end
     self.scroll.to.y = self:get_scrollable_size()
-    core.redraw = true
+    local now = os.clock()
+    if now - self.last_render_time >= 0.033 then
+      self.last_render_time = now
+      core.redraw = true
+    end
 
   elseif t == "text_done" then
     self.streaming = false
@@ -384,6 +509,8 @@ function RtaChat:handle_line(line)
       table.insert(self.current_stream.tools, {
         name = obj.tool or "unknown",
         status = "running",
+        display = "",
+        expanded = false,
       })
     end
     self.current_tool = obj.tool
@@ -395,6 +522,38 @@ function RtaChat:handle_line(line)
         if tool.name == obj.tool and tool.status == "running" then
           tool.status = "done"
           tool.display = obj.display or ""
+          -- Capture diff for edit/write tools
+          local args = obj.args or {}
+          if obj.tool == "edit" and args.old_string and args.new_string then
+            local path = args.file_path or args.path or "unknown"
+            local diff_lines = compute_diff(args.old_string, args.new_string)
+            -- Truncate large diffs
+            if #diff_lines > 50 then
+              local truncated = {}
+              for i = 1, 25 do truncated[#truncated + 1] = diff_lines[i] end
+              truncated[#truncated + 1] = { type = "same", line = string.format("... (%d more lines)", #diff_lines - 50) }
+              for i = #diff_lines - 24, #diff_lines do
+                truncated[#truncated + 1] = diff_lines[i]
+              end
+              diff_lines = truncated
+            end
+            self.pending_diffs[#self.pending_diffs + 1] = {
+              path = path,
+              lines = diff_lines,
+              original = args.old_string,
+              msg = self.current_stream,
+              tool_index = #self.current_stream.tools,
+            }
+          elseif obj.tool == "write" and (args.file_path or args.path) then
+            local path = args.file_path or args.path
+            self.pending_diffs[#self.pending_diffs + 1] = {
+              path = path,
+              lines = { { type = "same", line = "(file overwritten)" } },
+              original = nil,
+              msg = self.current_stream,
+              tool_index = #self.current_stream.tools,
+            }
+          end
           break
         end
       end
@@ -565,6 +724,7 @@ function RtaChat:new_session()
   self.current_stream = nil
   self.pending_approvals = {}
   self.show_history = false
+  self.last_render_time = 0
 
   if self.rta_path then
     table.insert(self.messages, {
@@ -674,26 +834,32 @@ end
 
 function RtaChat:draw()
   if not self.visible then return end
-  self:draw_background(style.background2)
-  local ox, oy = self:get_content_offset()
+  self.tool_click_areas = {}
+  self.diff_click_areas = {}
+
   local w = self.size.x
+  local h = self.size.y
   local input_h = self:get_input_height()
   local lh = self:get_line_height()
-  local toolbar_h = style.font:get_height() + style.padding.y * 2
-  local msg_start_y = self.position.y + style.padding.y
+  local pad = style.padding.x
+  local small_pad = style.padding.y
+  local font_h = style.font:get_height()
+  local toolbar_h = font_h + small_pad * 2
 
-  -- Messages (clipped to exclude toolbar and input)
-  local y = msg_start_y - self.scroll.y
-  local clip_h = self.size.y - self:get_input_height() - toolbar_h - style.divider_size * 2
-  core.push_clip_rect(self.position.x, self.position.y, w, clip_h)
+  -- Panel background with subtle left border
+  self:draw_background(style.background)
+  renderer.draw_rect(self.position.x, self.position.y, 1, h, style.accent)
 
-  for _, msg in ipairs(self.messages) do
+  -- Messages area (clipped)
+  local msg_area_h = h - input_h - toolbar_h - 2
+  local y = self.position.y + small_pad - self.scroll.y
+  core.push_clip_rect(self.position.x, self.position.y, w, msg_area_h)
+
+  for i, msg in ipairs(self.messages) do
     local mlh = self:get_line_height_msg(msg)
     local msg_top = y
-    local msg_bottom = y + mlh
-    if msg_bottom > self.position.y and msg_top < self.position.y + self.size.y - input_h then
-      local pad = style.padding.x
-      local text_w = w - pad * 2
+    if msg_top + mlh > self.position.y and msg_top < self.position.y + msg_area_h then
+      local text_w = w - pad * 2 - 10
 
       -- Calculate actual text height
       local text_h = 0
@@ -706,190 +872,264 @@ function RtaChat:draw()
           end
           if #cut == 0 then cut = remaining:sub(1, 1); remaining = remaining:sub(2)
           else remaining = remaining:sub(#cut + 1) end
-          text_h = text_h + style.font:get_height() + style.padding.y
+          text_h = text_h + font_h + small_pad
         end
       else
-        text_h = style.font:get_height() + style.padding.y
+        text_h = font_h + small_pad
       end
 
       -- Calculate tool height
       local tools_h = 0
       if msg.tools and #msg.tools > 0 then
-        tools_h = #msg.tools * lh + style.padding.y
+        tools_h = #msg.tools * lh + small_pad
       end
 
-      mlh = text_h + tools_h + style.padding.y * 2
-
-      -- Separator line between messages
-      if _ ~= 1 then
-        renderer.draw_rect(self.position.x + pad, msg_top, text_w, style.divider_size, style.divider)
-      end
+      mlh = text_h + tools_h + small_pad * 2
 
       if msg.role == "user" then
-        -- User: indented, selection bg, accent text
-        renderer.draw_rect(self.position.x + 6, msg_top, w - 12, mlh, style.selection)
-        renderer.draw_rect(self.position.x + 6, msg_top, 3, mlh, style.accent)
+        -- User bubble: accent-tinted bg, left bar, label
+        local bubble_x = self.position.x + 8
+        local bubble_w = w - 16
+        -- Shadow (subtle)
+        renderer.draw_rect(bubble_x + 1, msg_top + 1, bubble_w, mlh, {0, 0, 0})
+        -- Bubble body
+        renderer.draw_rect(bubble_x, msg_top, bubble_w, mlh, style.selection)
+        -- Left accent bar
+        renderer.draw_rect(bubble_x, msg_top, 3, mlh, style.accent)
+        -- "you" label
         common.draw_text(style.font, style.accent, "you", nil,
-          self.position.x + pad + 6, msg_top + style.padding.y * 0.3, text_w, style.font:get_height())
-        draw_wrapped_text(style.font, style.accent, msg.text,
-          self.position.x + pad + 6, msg_top + style.padding.y * 0.3 + style.font:get_height(), text_w, style.font:get_height() + style.padding.y)
+          bubble_x + pad, msg_top + small_pad * 0.5, text_w, font_h)
+        -- Message text
+        draw_wrapped_text(style.font, style.text, msg.text,
+          bubble_x + pad, msg_top + small_pad * 0.5 + font_h, text_w, font_h + small_pad)
 
       elseif msg.role == "assistant" then
-        -- Assistant: full width, left accent bar
-        renderer.draw_rect(self.position.x, msg_top, 3, mlh, style.accent)
+        -- Assistant: clean, subtle left accent bar
+        renderer.draw_rect(self.position.x + 6, msg_top, 2, mlh, style.accent)
+        local end_y = msg_top + small_pad * 0.5
         if #msg.text > 0 then
-          draw_wrapped_text(style.font, style.text, msg.text,
-            self.position.x + pad, msg_top + style.padding.y * 0.5, text_w, style.font:get_height() + style.padding.y)
+          end_y = draw_wrapped_text(style.font, style.text, msg.text,
+            self.position.x + pad + 6, msg_top + small_pad * 0.5, text_w, font_h + small_pad)
+        end
+        -- Blinking cursor during streaming
+        if self.streaming and msg == self.current_stream and os.clock() % 1 < 0.5 then
+          renderer.draw_rect(self.position.x + pad + 6, end_y, style.caret_width, font_h, style.caret)
         end
 
       else
-        -- System: dim centered
+        -- System: centered, small, dimmed with subtle bg
+        local sys_h = font_h + small_pad
+        renderer.draw_rect(self.position.x + 20, msg_top, w - 40, sys_h, style.background2)
         common.draw_text(style.font, style.dim, msg.text, "center",
-          self.position.x + pad, msg_top + style.padding.y * 0.5, text_w, style.font:get_height())
+          self.position.x + 30, msg_top + small_pad * 0.3, w - 60, font_h)
+        mlh = sys_h + small_pad
       end
 
-      -- Tool indicators below text
+      -- Tool indicators
+      local ty = msg_top + text_h + small_pad * 0.5
       if msg.tools and #msg.tools > 0 then
-        local ty = msg_top + text_h + style.padding.y * 0.5
-        for _, tool in ipairs(msg.tools) do
-          local icon = tool.status == "running" and "~" or "+"
-          local color = tool.status == "running" and style.warn or style.good
-          local label = string.format("[%s %s]", icon, tool.name)
-          if tool.display and #tool.display > 0 then
-            label = label .. " " .. tool.display
+        for ti, tool in ipairs(msg.tools) do
+          local is_running = tool.status == "running"
+          local icon = is_running and "~" or (tool.expanded and "-" or "+")
+          local color = is_running and style.warn or style.good
+          local label = string.format("%s %s", icon, tool.name)
+          if tool.status == "done" and tool.display and #tool.display > 0 then
+            label = label .. "  " .. tool.display
           end
-          -- Calculate wrapped tool height
+          -- Tool indicator background
           local tool_lines = 1
           if #label > 0 and text_w > 0 then
-            local tw = style.font:get_width(label)
-            tool_lines = math.max(1, math.ceil(tw / text_w))
+            tool_lines = math.max(1, math.ceil(style.font:get_width(label) / text_w))
           end
-          local tool_h = tool_lines * (style.font:get_height() + style.padding.y) + style.padding.y * 0.5
-          renderer.draw_rect(self.position.x + pad, ty, text_w, tool_h, style.background3)
+          local tool_h = tool_lines * (font_h + small_pad) + small_pad * 0.5
+          renderer.draw_rect(self.position.x + pad + 6, ty, text_w - 6, tool_h, style.background2)
+          -- Status dot
+          renderer.draw_rect(self.position.x + pad + 6, ty + tool_h * 0.5 - 2, 4, 4, color)
           draw_wrapped_text(style.font, color, label,
-            self.position.x + pad + style.padding.x * 0.5, ty + style.padding.y * 0.25, text_w - style.padding.x, style.font:get_height() + style.padding.y)
+            self.position.x + pad + 16, ty + small_pad * 0.25, text_w - 22, font_h + small_pad)
+          -- Click area
+          self.tool_click_areas[#self.tool_click_areas + 1] = {
+            msg = msg, tool_index = ti,
+            y = ty, h = tool_h,
+            x = self.position.x + pad + 6, w = text_w - 6,
+          }
+          -- Expanded result
+          if tool.expanded and tool.status == "done" and tool.display and #tool.display > 0 then
+            local res_y = ty + tool_h
+            local res_h = font_h + small_pad
+            renderer.draw_rect(self.position.x + pad + 12, res_y, text_w - 12, res_h, style.background)
+            draw_wrapped_text(style.font, style.dim, tool.display,
+              self.position.x + pad + 18, res_y + small_pad * 0.25, text_w - 24, font_h + small_pad)
+            ty = res_y + res_h
+          end
           ty = ty + tool_h
+        end
+      end
+
+      -- Diff previews
+      for _, diff in ipairs(self.pending_diffs) do
+        if diff.msg == msg then
+          local hdr = "~ " .. diff.path
+          renderer.draw_rect(self.position.x + pad + 6, ty, text_w - 6, font_h + small_pad, style.background2)
+          draw_wrapped_text(style.font, style.accent, hdr,
+            self.position.x + pad + 14, ty + small_pad * 0.25, text_w - 14, font_h + small_pad)
+          ty = ty + font_h + small_pad
+
+          for _, dline in ipairs(diff.lines) do
+            local dcolor = dline.type == "add" and style.good or (dline.type == "del" and style.warn or style.dim)
+            local prefix = dline.type == "add" and "+ " or (dline.type == "del" and "- " or "  ")
+            local dbg = dline.type == "add" and {style.good[1] * 0.12, style.good[2] * 0.12, style.good[3] * 0.12}
+              or (dline.type == "del" and {style.warn[1] * 0.12, style.warn[2] * 0.12, style.warn[3] * 0.12} or nil)
+            if dbg then
+              renderer.draw_rect(self.position.x + pad + 6, ty, text_w - 6, font_h + small_pad, dbg)
+            end
+            draw_wrapped_text(style.font, dcolor, prefix .. dline.line,
+              self.position.x + pad + 14, ty + small_pad * 0.25, text_w - 14, font_h + small_pad)
+            ty = ty + font_h + small_pad
+          end
+
+          if diff.original then
+            local btn_text = " Undo "
+            local btn_w = style.font:get_width(btn_text) + pad
+            local btn_h = font_h + small_pad
+            renderer.draw_rect(self.position.x + pad + 6, ty, btn_w, btn_h, style.accent)
+            draw_wrapped_text(style.font, style.background, btn_text,
+              self.position.x + pad + 10, ty + small_pad * 0.25, btn_w, font_h + small_pad)
+            self.diff_click_areas[#self.diff_click_areas + 1] = {
+              diff = diff, y = ty, h = btn_h,
+              x = self.position.x + pad + 6, w = btn_w,
+            }
+            ty = ty + btn_h
+          end
         end
       end
     end
     y = y + mlh
   end
 
-  -- Tool approval buttons
+  -- Approval cards
   for _, approval in ipairs(self.pending_approvals) do
     local ay = y - self.scroll.y
-    local ah = style.font:get_height() + style.padding.y * 2
+    local ah = font_h + small_pad * 3
     approval.y = ay + self.position.y
 
-    local pad = style.padding.x
-    local label = string.format("[%s] %s", approval.tool, approval.display:sub(1, 50))
-    common.draw_text(style.font, style.warn, label, nil,
-      self.position.x + pad, ay + style.padding.y * 0.5, w - pad * 2, ah)
+    local card_x = self.position.x + 8
+    local card_w = w - 16
+    -- Card background
+    renderer.draw_rect(card_x, ay, card_w, ah, style.background2)
+    renderer.draw_rect(card_x, ay, 3, ah, style.warn)
+    -- Tool label
+    local label = string.format("%s: %s", approval.tool, approval.display:sub(1, 40))
+    draw_wrapped_text(style.font, style.warn, label,
+      card_x + pad, ay + small_pad, card_w - pad * 2, font_h + small_pad)
 
-    local bw = 50 * SCALE
-    local btn_y = ay + style.padding.y * 0.5
-    local btn_h = style.font:get_height() + style.padding.y
+    -- Buttons
+    local bw = 52 * SCALE
+    local btn_y = ay + small_pad * 2
+    local btn_h = font_h + small_pad
 
-    local approve_x = self.position.x + w - bw * 2 - style.padding.x * 2
-    local deny_x = self.position.x + w - bw - style.padding.x
+    local approve_x = card_x + card_w - bw * 2 - small_pad
+    local deny_x = card_x + card_w - bw - small_pad * 2
     approval.approve_x = approve_x
     approval.deny_x = deny_x
 
-    renderer.draw_rect(approve_x, btn_y, bw, btn_h, style.background3)
-    common.draw_text(style.font, style.accent, "Yes", "center", approve_x, btn_y, bw, btn_h)
+    renderer.draw_rect(approve_x, btn_y, bw, btn_h, style.good)
+    common.draw_text(style.font, style.background, "Yes", "center", approve_x, btn_y, bw, btn_h)
 
-    renderer.draw_rect(deny_x, btn_y, bw, btn_h, style.background3)
-    common.draw_text(style.font, style.warn, "No", "center", deny_x, btn_y, bw, btn_h)
+    renderer.draw_rect(deny_x, btn_y, bw, btn_h, style.warn)
+    common.draw_text(style.font, style.background, "No", "center", deny_x, btn_y, bw, btn_h)
 
-    y = y + ah
+    y = y + ah + small_pad
   end
 
   -- Streaming indicator
   if self.streaming then
-    local dots = (os.clock() * 2) % 4
-    local text = "Thinking" .. string.rep(".", math.floor(dots))
-    common.draw_text(style.font, style.dim, text, nil,
-      self.position.x + style.padding.x, y + style.padding.y * 0.5, w - style.padding.x * 2, lh)
+    local spin = "|/-\\"
+    local idx = math.floor(os.clock() * 4) % #spin + 1
+    local text = " " .. spin:sub(idx, idx) .. "  Thinking"
+    common.draw_text(style.font, style.accent, text, nil,
+      self.position.x + pad + 6, y + small_pad * 0.5, w - pad * 2, lh)
   end
 
   core.pop_clip_rect()
 
   -- History panel overlay
   if self.show_history then
-    local panel_h = self.size.y - input_h - toolbar_h
+    local panel_h = h - input_h - toolbar_h - 2
     renderer.draw_rect(self.position.x, self.position.y, w, panel_h, style.background)
+    renderer.draw_rect(self.position.x, self.position.y, 1, panel_h, style.accent)
 
-    local title_h = style.font:get_height() + style.padding.y * 2
-    common.draw_text(style.font, style.accent, "Session History", nil,
-      self.position.x + style.padding.x, self.position.y + style.padding.y, w - style.padding.x * 2, title_h)
-
+    local title_h = font_h + small_pad * 2
+    draw_wrapped_text(style.font, style.accent, "Sessions",
+      self.position.x + pad + 6, self.position.y + small_pad, w - pad * 2, font_h + small_pad)
     renderer.draw_rect(self.position.x, self.position.y + title_h, w, style.divider_size, style.divider)
 
     self.history_hover = -1
-    local item_y = self.position.y + title_h + style.padding.y
-    local item_h = style.font:get_height() + style.padding.y * 2
-    local max_label_w = w - style.padding.x * 4
+    local item_y = self.position.y + title_h + small_pad
+    local item_h = font_h + small_pad * 2
+    local max_label_w = w - pad * 4
     if #self.history_sessions == 0 then
-      common.draw_text(style.font, style.dim, "No sessions found.", nil,
-        self.position.x + style.padding.x, item_y, w - style.padding.x * 2, item_h)
+      common.draw_text(style.font, style.dim, "No sessions.", nil,
+        self.position.x + pad + 6, item_y, w - pad * 2, item_h)
     else
       for i, sess in ipairs(self.history_sessions) do
         local is_hover = (self.mouse_y >= item_y and self.mouse_y < item_y + item_h)
         if is_hover then
           self.history_hover = i
-          renderer.draw_rect(self.position.x, item_y, w, item_h, style.selection)
+          renderer.draw_rect(self.position.x + 4, item_y, w - 8, item_h, style.selection)
         end
         local col = is_hover and style.accent or style.text
         local label = sess.display
         if sess.preview and #sess.preview > 0 then
           label = label .. "  " .. sess.preview
         end
-        -- Truncate label to fit width
         while #label > 0 and style.font:get_width(label) > max_label_w do
           label = label:sub(1, -2)
         end
-        if #label < (sess.display .. "  " .. (sess.preview or "")) then
+        if #label < #(sess.display .. "  " .. (sess.preview or "")) then
           label = label .. ".."
         end
         common.draw_text(style.font, col, label, nil,
-          self.position.x + style.padding.x * 2, item_y + style.padding.y * 0.5, max_label_w, style.font:get_height())
+          self.position.x + pad + 10, item_y + small_pad * 0.5, max_label_w, font_h)
         item_y = item_y + item_h
       end
     end
   end
 
-  -- Toolbar: sits just above input area
-  local toolbar_h = style.font:get_height() + style.padding.y * 2
-  local input_top = self.position.y + self.size.y - input_h
-  local toolbar_top = input_top - style.divider_size - toolbar_h
+  -- Toolbar
+  local input_top = self.position.y + h - input_h
+  local toolbar_top = input_top - toolbar_h
 
-  -- Divider between toolbar and input
-  renderer.draw_rect(self.position.x, input_top - style.divider_size, w, style.divider_size, style.divider)
+  renderer.draw_rect(self.position.x, toolbar_top, w, toolbar_h, style.background2)
+  renderer.draw_rect(self.position.x, toolbar_top, w, style.divider_size, style.divider)
 
-  -- Toolbar background
-  renderer.draw_rect(self.position.x, toolbar_top, w, toolbar_h, style.background3)
-
-  -- Toolbar buttons: [+] (new session) and [=] (history)
-  local icon_size = style.font:get_height()
+  local icon_size = font_h
   local icon_y = toolbar_top + (toolbar_h - icon_size) / 2
 
-  -- + icon (new session)
-  local plus_x = self.position.x + style.padding.x
+  -- New session button [+]
+  local plus_x = self.position.x + pad + 4
+  renderer.draw_rect(plus_x - 2, icon_y - 2, icon_size + 4, icon_size + 4, style.background3)
   common.draw_text(style.font, style.dim, "+", nil, plus_x, icon_y, icon_size, icon_size)
 
-  -- = icon (history) - using ASCII = that renders in all fonts
-  local hist_x = plus_x + icon_size + style.padding.x * 2
-  local hist_color = self.show_history and style.accent or style.dim
-  common.draw_text(style.font, hist_color, "~", nil, hist_x, icon_y, icon_size, icon_size)
+  -- History button [~]
+  local hist_x = plus_x + icon_size + pad * 2
+  local hist_bg = self.show_history and style.accent or style.background3
+  local hist_col = self.show_history and style.background or style.dim
+  renderer.draw_rect(hist_x - 2, icon_y - 2, icon_size + 4, icon_size + 4, hist_bg)
+  common.draw_text(style.font, hist_col, "~", nil, hist_x, icon_y, icon_size, icon_size)
 
-  -- Input area (at bottom, below toolbar)
-  local input_area_y = self.position.y + self.size.y - input_h
-  renderer.draw_rect(self.position.x, input_area_y, w, input_h, self.input_focused and style.background or style.background3)
+  -- Input area
+  local input_area_y = self.position.y + h - input_h
+  local input_border = self.input_focused and style.accent or style.divider
+  -- Input background
+  renderer.draw_rect(self.position.x, input_area_y, w, input_h, style.background2)
+  -- Top border (focused = accent, else subtle)
+  renderer.draw_rect(self.position.x, input_area_y, w, style.divider_size, input_border)
 
   -- Input text
-  local input_text_x = self.position.x + style.padding.x
-  local input_text_y = input_area_y + style.padding.y
-  local input_text_w = w - style.padding.x * 2 - 70 * SCALE
+  local input_text_x = self.position.x + pad + 4
+  local input_text_y = input_area_y + small_pad
+  local input_text_w = w - pad * 2 - 70 * SCALE
   local placeholder = self.input_focused and "" or "Type a message..."
   local display_text = #self.input_buffer > 0 and self.input_buffer or placeholder
   local text_col = #self.input_buffer > 0 and style.text or style.dim
@@ -903,8 +1143,8 @@ function RtaChat:draw()
       end
       if #cut == 0 then cut = remaining:sub(1, 1); remaining = remaining:sub(2)
       else remaining = remaining:sub(#cut + 1) end
-      common.draw_text(style.font, text_col, cut, nil, input_text_x, ty, input_text_w, style.font:get_height())
-      ty = ty + style.font:get_height() + style.padding.y
+      common.draw_text(style.font, text_col, cut, nil, input_text_x, ty, input_text_w, font_h)
+      ty = ty + font_h + small_pad
     end
   end
 
@@ -923,22 +1163,23 @@ function RtaChat:draw()
         else remaining = remaining:sub(#cut + 1) end
         cursor_x = input_text_x + style.font:get_width(cut)
         if #remaining > 0 then
-          cursor_y = cursor_y + style.font:get_height() + style.padding.y
+          cursor_y = cursor_y + font_h + small_pad
         end
       end
     end
-    renderer.draw_rect(cursor_x, cursor_y, style.caret_width, style.font:get_height(), style.caret)
+    renderer.draw_rect(cursor_x, cursor_y, style.caret_width, font_h, style.caret)
   end
 
   -- Send button
-  local btn_x = self.position.x + w - 65 * SCALE
-  local btn_y = input_area_y + style.padding.y * 0.5
-  local btn_w = 60 * SCALE
-  local btn_h = input_h - style.divider_size - style.padding.y
+  local btn_x = self.position.x + w - 62 * SCALE
+  local btn_y = input_area_y + small_pad * 0.5
+  local btn_w = 56 * SCALE
+  local btn_h = input_h - small_pad * 1.5
   local can_send = #self.input_buffer > 0 and not self.streaming
-  local btn_color = can_send and style.accent or style.dim
-  renderer.draw_rect(btn_x, btn_y, btn_w, btn_h, style.background3)
-  common.draw_text(style.font, btn_color, "Send", "center", btn_x, btn_y, btn_w, btn_h)
+  local btn_bg = can_send and style.accent or style.background3
+  local btn_col = can_send and style.background or style.dim
+  renderer.draw_rect(btn_x, btn_y, btn_w, btn_h, btn_bg)
+  common.draw_text(style.font, btn_col, "Send", "center", btn_x, btn_y, btn_w, btn_h)
 
   -- Scrollbar
   self:draw_scrollbar()
@@ -981,6 +1222,9 @@ command.add(RtaChat, {
   ["rta-chat:backspace"] = function(v)
     v:delete_backward()
   end,
+  ["rta-chat:delete-word"] = function(v)
+    v:delete_word()
+  end,
   ["rta-chat:focus"] = function(v)
     v.input_focused = not v.input_focused
     if v.input_focused then core.set_active_view(v) end
@@ -1016,8 +1260,12 @@ command.add(nil, {
 
 keymap.add {
   ["return"] = "rta-chat:submit",
+  ["ctrl+return"] = "rta-chat:submit",
   ["backspace"] = "rta-chat:backspace",
+  ["ctrl+backspace"] = "rta-chat:delete-word",
   ["ctrl+shift+c"] = "rta-chat:toggle",
+  ["ctrl+n"] = "rta-chat:new-session",
+  ["ctrl+h"] = "rta-chat:history",
   ["ctrl+shift+l"] = "log-view:toggle",
   ["escape"] = "rta-chat:cancel",
 }

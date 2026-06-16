@@ -1,71 +1,77 @@
-
 # RTA Desktop (Lite XL)
 
 RTA Desktop is a lightweight, AI-powered IDE based on [Lite XL](https://github.com/lite-xl/lite-xl), powered by the RTA Python CLI.
 
 ## Overview
 
-RTA Desktop pivots from the heavy Eclipse Theia architecture to Lite XL to provide a faster, more stable, and more responsive development experience.
-
 - **Frontend**: Lite XL (C/Lua)
 - **Engine**: RTA Python CLI (`rta` binary)
 - **Integration**: Lua plugins connecting Lite XL to the CLI via JSON-lines pipe IPC.
 
-## Project Structure
+## Chat Plugin
 
-- `bin/`: RTA CLI binary (gitignored, built from `cli/` source)
-- `src/`: Lite XL core C source code.
-- `data/`: Lite XL Lua core and plugins.
-- `data/plugins/rta_chat.lua`: Chat plugin for RTA CLI integration.
+The built-in chat panel (`data/plugins/rta_chat.lua`) provides a sidebar for interacting with the RTA CLI agent.
 
-## Quick Start
+### Features
+
+- **Streaming responses** with 30fps rate-limited rendering
+- **Tool call display** with expand/collapse (click tool indicators)
+- **Diff previews** for file edits with undo support
+- **Session history** — browse and load previous sessions
+- **Auto-approve** — all tool calls are approved automatically in desktop mode
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Return` / `Ctrl+Return` | Send message |
+| `Ctrl+N` | New session |
+| `Ctrl+H` | Toggle session history |
+| `Ctrl+Backspace` | Delete word |
+| `Escape` | Cancel streaming / Close history |
+| `Ctrl+Shift+C` | Toggle chat panel |
+
+### Setup
+
+1. Build the CLI binary (see below)
+2. Either place `rta` in your `PATH`, or create `~/.rta/cli_path` containing the path to the binary
+3. Launch `rta-desktop` — the chat panel appears on the right side
+
+### Running Tests
+
+```bash
+cd rta-desktop/tests
+lua run.lua
+```
+
+## Building
 
 ### Prerequisites
 
-You will need the following tools installed:
+- Meson (>=0.63), Ninja, C compiler (GCC/Clang)
+- SDL3, PCRE2, FreeType2, Lua 5.4
+- RTA CLI binary
 
-- Meson (>=0.63)
-- Ninja
-- SDL2 (or SDL3 depending on the version)
-- PCRE2
-- FreeType2
-- Lua 5.4
-- A working C compiler (GCC / Clang)
-- RTA CLI (`rta` binary, built from `cli/` source)
+### Build Desktop
 
-### Building RTA Desktop (Lite XL)
+```bash
+meson setup build --wrap-mode=forcefallback
+meson compile -C build
+ln -sf ../../data build/src/data
+./build/src/rta-desktop
+```
 
-1. **Install Build Tools**: Ensure you have `meson`, `ninja`, and a C compiler (GCC/Clang) installed on your system.
-2. **Setup Build Directory**:
-   ```bash
-   meson setup build --wrap-mode=forcefallback
-   ```
-   *Note: `--wrap-mode=forcefallback` ensures all dependencies like Lua, PCRE2, and FreeType2 are downloaded and built statically if not found on your system.*
-3. **Compile**:
-   ```bash
-   meson compile -C build
-   ```
-4. **Run**:
-   ```bash
-   ./build/src/rta-desktop
-   ```
+Or use the build script: `./scripts/build.sh`
 
-### Building the RTA CLI
+### Build CLI Binary
 
-The CLI is a Python binary built from the `cli/` source directory.
+```bash
+cd ../cli
+uv run python -m PyInstaller --clean --noconfirm rta.spec
+cp dist/rta ../rta-desktop/bin/rta
+```
 
-1. **Build**: From the `cli/` directory:
-   ```bash
-   cd ../cli
-   uv run python -m PyInstaller --clean --noconfirm rta.spec
-   cp dist/rta ../rta-desktop/bin/rta
-   ```
-2. The binary is placed at `bin/rta` (gitignored).
-
-## Proceeding Further
-
-- **Lua Plugins**: The chat integration logic is in `data/plugins/rta_chat.lua`.
-- **UI Customization**: Use `data/core/style.lua` to adjust colors and fonts to match RTA branding.
+The binary is placed at `bin/rta` (gitignored).
 
 ## License
 
