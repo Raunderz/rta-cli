@@ -144,7 +144,7 @@ class ChatLog(VerticalScroll):
     def show_status(self, message: str) -> None:
         self._stop_spinner()
         info_color = config.ui.colors.info
-        text = Text(f"✓ {message}", style=info_color)
+        text = Text.from_markup(f"✓ {message}", style=info_color)
 
         # If our tracked status label is still the last child, update it
         if self._is_last_child_status() and self._last_status_label is not None:
@@ -582,7 +582,7 @@ class ChatLog(VerticalScroll):
         dim_color = config.ui.colors.dim
         token_str = f"{tokens_before:,}"
 
-        text = Text(f"[compaction] Compacted from {token_str} tokens", style=dim_color)
+        text = Text.from_markup(f"[compaction] Compacted from {token_str} tokens", style=dim_color)
         stylize_badge_markers(text, ("[compaction]",))
 
         label = Label(text)
@@ -618,7 +618,7 @@ class ChatLog(VerticalScroll):
             style = error_color
             prefix = "✗ "
 
-        text = Text(f"{prefix}{cleaned_message}", style=style)
+        text = Text.from_markup(f"{prefix}{cleaned_message}", style=style)
         label = Label(text)
         label.add_class("info-message")
         self.mount(label)

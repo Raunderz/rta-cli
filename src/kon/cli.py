@@ -54,7 +54,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--version", action="version", version=f"rta {VERSION}")
     parser.add_argument(
-        "--extra-tools", help="Comma-separated extra tools to enable (e.g. web_search,web_fetch)"
+        "--extra-tools", nargs="?", const="__list__",
+        help="Comma-separated extra tools to enable. Run with no value to list available tools."
     )
     parser.add_argument(
         "--repl",
@@ -106,6 +107,14 @@ def main() -> None:
     extra_tools = (
         [t.strip() for t in args.extra_tools.split(",") if t.strip()] if args.extra_tools else None
     )
+
+    if args.extra_tools == "__list__":
+        from .tools import EXTRA_TOOLS
+        print("Available extra tools:")
+        for t in sorted(EXTRA_TOOLS):
+            print(f"  {t}")
+        print(f"\nUsage: rta --extra-tools web_search,web_fetch,memory")
+        sys.exit(0)
 
     if extra_tools:
         from .tools import EXTRA_TOOLS
