@@ -1,4 +1,4 @@
-project('lite-xl',
+project('rta-desktop',
     ['c'],
     version : '2.1.7',
     license : 'MIT',
