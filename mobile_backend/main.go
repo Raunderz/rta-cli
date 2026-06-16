@@ -61,16 +61,57 @@ var (
 	logMutex   = sync.Mutex{}
 )
 
+const (
+	rateLimitMax    = 60               // max requests per window
+	rateLimitWindow = 1 * time.Minute  // sliding window
+)
+
+func checkRateLimit(ip string) bool {
+	val, _ := rateLimits.Load(ip)
+	if val != nil {
+		entry := val.(*rateLimitEntry)
+		if time.Since(entry.start) < rateLimitWindow {
+			if entry.count >= rateLimitMax {
+				return false // rate limited
+			}
+			entry.count++
+			return true
+		}
+		// Window expired, reset
+		rateLimits.Store(ip, &rateLimitEntry{count: 1, start: time.Now()})
+		return true
+	}
+	rateLimits.Store(ip, &rateLimitEntry{count: 1, start: time.Now()})
+	return true
+}
+
+type rateLimitEntry struct {
+	count int
+	start time.Time
+}
+
+func rateLimit(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := extractIP(r)
+		if !checkRateLimit(ip) {
+			log.Printf("🚫 Rate limit exceeded for %s", ip)
+			http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+			return
+		}
+		next(w, r)
+	}
+}
+
 func main() {
-	// HTTP routes with body limits and timeouts
+	// HTTP routes with body limits, timeouts, and rate limiting
 	mux := http.NewServeMux()
-	mux.HandleFunc("/env", limitBody(handleCreateEnv, 1024*1024)) // 1MB limit for env creation
-	mux.HandleFunc("/env/", limitBody(handleEnvAction, 100*1024*1024)) // 100MB limit for uploads
-	mux.HandleFunc("/ws/env/", handleShell) // WebSocket upgrade handles its own auth
-	mux.HandleFunc("/env/chat/", limitBody(handleChat, 10*1024)) // 10KB limit for chat prompts
-	mux.HandleFunc("/expose/", limitBody(handleExpose, 1024))
-	mux.HandleFunc("/envs", limitBody(handleListEnvs, 1024))
-	mux.HandleFunc("/status", limitBody(handleStatus, 1024))
+	mux.HandleFunc("/env", rateLimit(limitBody(handleCreateEnv, 1024*1024))) // 1MB limit for env creation
+	mux.HandleFunc("/env/", rateLimit(limitBody(handleEnvAction, 100*1024*1024))) // 100MB limit for uploads
+	mux.HandleFunc("/ws/env/", handleShell) // WebSocket handles its own auth
+	mux.HandleFunc("/env/chat/", rateLimit(limitBody(handleChat, 10*1024))) // 10KB limit for chat prompts
+	mux.HandleFunc("/expose/", rateLimit(limitBody(handleExpose, 1024)))
+	mux.HandleFunc("/envs", rateLimit(limitBody(handleListEnvs, 1024)))
+	mux.HandleFunc("/status", rateLimit(limitBody(handleStatus, 1024)))
 	mux.Handle("/", http.FileServer(http.Dir("./public")))
 
 	// Background goroutines
@@ -329,6 +370,20 @@ func handleEnvAction(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Failed to extract workspace in container", http.StatusInternalServerError)
 			return
 		}
+
+		// ZIP bomb protection: check extracted size doesn't exceed 500MB
+		sizeCmd := exec.Command("docker", "exec", env.Container, "du", "-sm", "/workspace")
+		sizeOutput, err := sizeCmd.Output()
+		if err == nil {
+			var sizeMB int
+			fmt.Sscanf(strings.TrimSpace(string(sizeOutput)), "%d", &sizeMB)
+			if sizeMB > 500 {
+				log.Printf("⚠️ ZIP bomb detected: env %s extracted to %dMB (limit 500MB)", id, sizeMB)
+				exec.Command("docker", "exec", env.Container, "rm", "-rf", "/workspace").Run()
+				http.Error(w, "Workspace too large after extraction (limit 500MB)", http.StatusRequestEntityTooLarge)
+				return
+			}
+		}
 		
 		os.Remove(tmpPath)
 		w.WriteHeader(http.StatusOK)
@@ -433,7 +488,13 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 		apiKey = r.URL.Query().Get("api_key")
 	}
 	if apiKey == "" {
-		apiKey = r.Header.Get("Sec-WebSocket-Protocol")
+		proto := r.Header.Get("Sec-WebSocket-Protocol")
+		// Browser WebSocket API sends "Bearer <key>" or just "<key>" as subprotocol
+		if strings.HasPrefix(proto, "Bearer ") {
+			apiKey = strings.TrimPrefix(proto, "Bearer ")
+		} else if proto != "" {
+			apiKey = proto
+		}
 	}
 
 	if apiKey != env.APIKey {
@@ -443,7 +504,11 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Upgrade to WebSocket
-	conn, err := upgrader.Upgrade(w, r, nil)
+	// If client sent Sec-WebSocket-Protocol, echo it back (required by WebSocket spec)
+	subprotocol := r.Header.Get("Sec-WebSocket-Protocol")
+	conn, err := upgrader.Upgrade(w, r, http.Header{
+		"Sec-WebSocket-Protocol": []string{subprotocol},
+	})
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
 		return

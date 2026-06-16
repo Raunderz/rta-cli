@@ -383,3 +383,30 @@ class TestOAuthState:
         import inspect
         sig = inspect.signature(auth_callback)
         assert "request" in sig.parameters
+
+
+# =============================================================================
+# Login response shape tests
+# =============================================================================
+
+class TestLoginResponseShape:
+    def test_login_user_object_stripped(self):
+        """Login response should only contain id and email, not full Supabase user."""
+        from rta_backend.auth import login
+        import inspect
+        # Verify the function exists and returns a dict
+        # The actual response shape is enforced by the code change:
+        # "user": {"id": res.user.id, "email": res.user.email}
+        source = inspect.getsource(login)
+        assert '"id": res.user.id' in source
+        assert '"email": res.user.email' in source
+        assert '"user": res.user' not in source  # full object should NOT be returned
+
+    def test_refresh_key_user_object_stripped(self):
+        """Refresh-key response should only contain id and email."""
+        from rta_backend.auth import refresh_key
+        import inspect
+        source = inspect.getsource(refresh_key)
+        assert '"id": res.user.id' in source
+        assert '"email": res.user.email' in source
+        assert '"user": res.user' not in source

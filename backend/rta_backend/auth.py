@@ -227,7 +227,7 @@ async def login(request: Request, data: LoginRequest):
         return {
             "access_token": res.session.access_token,
             "refresh_token": res.session.refresh_token,
-            "user": res.user,
+            "user": {"id": res.user.id, "email": res.user.email},
             "api_key": raw_key
         }
     except Exception as e:
@@ -258,7 +258,7 @@ async def refresh_key(request: Request, data: RefreshKeyRequest):
         return {
             "access_token": res.session.access_token,
             "refresh_token": res.session.refresh_token,
-            "user": res.user,
+            "user": {"id": res.user.id, "email": res.user.email},
             "api_key": raw_key
         }
     except Exception as e:
