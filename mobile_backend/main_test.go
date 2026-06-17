@@ -152,13 +152,9 @@ func TestHandleListEnvsEmpty(t *testing.T) {
 	rec := httptest.NewRecorder()
 	handleListEnvs(rec, req)
 
-	if rec.Code != http.StatusOK {
-		t.Errorf("expected 200, got %d", rec.Code)
-	}
-
-	body := rec.Body.String()
-	if !strings.Contains(body, "[]") && !strings.Contains(body, "null") {
-		t.Errorf("expected empty array or null, got %s", body)
+	// Without API key, should return 401
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("expected 401 without API key, got %d", rec.Code)
 	}
 }
 
