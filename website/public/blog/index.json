@@ -1,0 +1,176 @@
+[
+  {
+    "slug": "back-to-desktop-abandoning-vscode-extension",
+    "title": "Back to Desktop: Why We Abandoned the VS Code Extension",
+    "date": "June 15, 2026",
+    "readTime": "4 min read",
+    "excerpt": "We tried building a VS Code extension. The binary was too big, the integration was too complex. So we went back to the desktop app — and it's working.",
+    "tags": [
+      "Desktop",
+      "VS Code",
+      "Lite XL",
+      "Strategy"
+    ]
+  },
+  {
+    "slug": "rta-api-openai-compatible",
+    "title": "Rta API: OpenAI-Compatible Endpoints for AI-Powered Development",
+    "date": "June 5, 2026",
+    "readTime": "3 min read",
+    "excerpt": "We've launched a public API with OpenAI-compatible response formats. Build your own tools, integrate with any SDK, and chain Rta into your workflows.",
+    "tags": [
+      "API",
+      "OpenAI",
+      "Developer Tools"
+    ]
+  },
+  {
+    "slug": "forking-kon-a-new-cli-foundation",
+    "title": "Forking Kon: Why We Replaced the CLI with a Better Engine",
+    "date": "June 5, 2026",
+    "readTime": "5 min read",
+    "excerpt": "After six major releases of the original Rta CLI, we're replacing the entire engine with a forked and enhanced version of the open-source kon project. Here's why.",
+    "tags": [
+      "CLI",
+      "Architecture",
+      "Technical Debt",
+      "Kon"
+    ]
+  },
+  {
+    "slug": "rta-cli-domain-exploration",
+    "title": "Domain Exploration: Web Research Comes to Rta CLI",
+    "date": "May 31, 2026",
+    "readTime": "5 min read",
+    "excerpt": "fetch_url, multi-engine research expansion, and a roadmap for turning the CLI into a full research tool for AI-assisted development.",
+    "tags": [
+      "CLI",
+      "Research",
+      "Web",
+      "Architecture"
+    ]
+  },
+  {
+    "slug": "cli-first-then-editor",
+    "title": "CLI-First, Then Editor: Why We're Building a VS Code Extension",
+    "date": "May 31, 2026",
+    "readTime": "4 min read",
+    "excerpt": "Halting work on the standalone Lite XL desktop IDE and refocusing on a VS Code extension that wraps our existing CLI agent.",
+    "tags": [
+      "Desktop",
+      "VS Code",
+      "Extension",
+      "Strategy"
+    ]
+  },
+  {
+    "slug": "securing-the-rta-ecosystem",
+    "title": "Securing the Rta Ecosystem: Hardening Phase Complete",
+    "date": "May 31, 2026",
+    "readTime": "4 min read",
+    "excerpt": "A deep dive into the technical measures we've taken to harden our full-stack infrastructure, from cloud terminal safety to advanced frontend sanitization.",
+    "tags": [
+      "Security",
+      "FastAPI",
+      "Go",
+      "Architecture"
+    ]
+  },
+  {
+    "slug": "rta-cli-v050-modern-core",
+    "title": "Rta CLI v0.5.0: The Modern Core Rewrite",
+    "date": "May 30, 2026",
+    "readTime": "7 min read",
+    "excerpt": "A complete async event-driven rewrite of the Rta CLI — faster, more reliable, and feature-complete with all legacy tools ported.",
+    "tags": [
+      "CLI",
+      "Architecture",
+      "Async",
+      "Python"
+    ]
+  },
+  {
+    "slug": "mobile-terminal-keyboard",
+    "title": "The Mobile Terminal Keyboard Odyssey",
+    "date": "May 28, 2026",
+    "readTime": "6 min read",
+    "excerpt": "Getting Android to show a keyboard inside a WebView terminal took longer than building the entire backend. Here is the full saga.",
+    "tags": [
+      "Mobile",
+      "Android",
+      "Terminal",
+      "WebView"
+    ]
+  },
+  {
+    "slug": "desktop-ide-evolution",
+    "title": "RTA Desktop: From Brackets to Lite XL",
+    "date": "May 25, 2026",
+    "readTime": "5 min read",
+    "excerpt": "Why we walked away from Eclipse Theia and forked a lightweight C editor instead.",
+    "tags": [
+      "Architecture",
+      "Desktop",
+      "Lite XL"
+    ]
+  },
+  {
+    "slug": "rta-cli-v040-constellation",
+    "title": "Rta CLI v0.4.0: The Constellation Update",
+    "date": "May 14, 2026",
+    "readTime": "4 min read",
+    "excerpt": "Dynamic MCP plugins, infinite extensibility, and the arrival of the tool constellation.",
+    "tags": [
+      "MCP",
+      "Plugins",
+      "Architecture"
+    ]
+  },
+  {
+    "slug": "rta-cli-v030-raw",
+    "title": "Rta CLI v0.3.0: Going Raw",
+    "date": "May 9, 2026",
+    "readTime": "3 min read",
+    "excerpt": "Why we stripped the UI, removed Rich, and moved to a minimalist v0.3.0 architecture.",
+    "tags": [
+      "CLI",
+      "Performance",
+      "Minimalism"
+    ]
+  },
+  {
+    "slug": "mobile-cloud-ide",
+    "title": "Building Rta: A Cloud IDE for Mobile",
+    "date": "May 8, 2026",
+    "readTime": "5 min read",
+    "excerpt": "How we're reimagining mobile development with ephemeral containers, streaming terminals, and an AI-native workflow.",
+    "tags": [
+      "Architecture",
+      "Mobile",
+      "AI"
+    ]
+  },
+  {
+    "slug": "why-built-rta",
+    "title": "Why We Built Rta",
+    "date": "May 7, 2026",
+    "readTime": "4 min read",
+    "excerpt": "Understanding the purpose and motivation behind Rta: A mobile-first, AI-assisted code editor.",
+    "tags": [
+      "Product",
+      "Vision"
+    ]
+  },
+  {
+    "slug": "cli-agent-architecture",
+    "title": "Building the RTA CLI Agent",
+    "date": "May 6, 2026",
+    "readTime": "6 min read",
+    "excerpt": "How we implemented project auto-discovery, context persistence, and parallel tool execution.",
+    "tags": [
+      "CLI",
+      "Python",
+      "Architecture"
+    ]
+  }
+]
