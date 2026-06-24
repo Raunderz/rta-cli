@@ -82,7 +82,7 @@ def _parse_fetch_url(url: str) -> tuple[str, int]:
 async def _resolve_host_addresses(host: str, port: int) -> list[str]:
     loop = asyncio.get_running_loop()
     results = await loop.getaddrinfo(host, port, type=socket.SOCK_STREAM)
-    return list(dict.fromkeys(sockaddr[0] for *_, sockaddr in results))
+    return list(dict.fromkeys(str(sockaddr[0]) for *_, sockaddr in results))
 
 
 def _curl_resolve_entry(host: str, port: int, addresses: list[str]) -> str:
