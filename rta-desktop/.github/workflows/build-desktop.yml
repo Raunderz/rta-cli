@@ -1,0 +1,99 @@
+name: Build Desktop Binaries
+
+on:
+  push:
+    tags:
+      - 'v-desktop-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            git
+            mingw-w64-ucrt-x86_64-meson
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-pcre2
+            mingw-w64-ucrt-x86_64-freetype
+            mingw-w64-ucrt-x86_64-curl
+            mingw-w64-ucrt-x86_64-cmake
+
+      - name: Build
+        run: |
+          meson setup build --buildtype=release
+          meson compile -C build
+
+      - name: Rename binary
+        run: cp build/rta-desktop.exe rta-desktop-windows.exe
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rta-desktop-windows
+          path: rta-desktop-windows.exe
+
+  build-linux:
+    name: Linux
+    runs-on: ubuntu-latest
+    needs: build-windows
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y meson ninja-build gcc libpcre2-dev libfreetype-dev libcurl4-openssl-dev cmake
+
+      - name: Build
+        run: |
+          meson setup build --buildtype=release --wrap-mode=forcefallback
+          meson compile -C build
+
+      - name: Rename binary
+        run: cp build/src/rta-desktop rta-desktop-linux
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rta-desktop-linux
+          path: rta-desktop-linux
+
+  release:
+    name: Attach to Release
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-linux]
+    steps:
+      - name: Download Windows artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rta-desktop-windows
+          path: ./artifacts
+
+      - name: Download Linux artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: rta-desktop-linux
+          path: ./artifacts
+
+      - name: Create release and attach binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ./artifacts/rta-desktop-windows.exe
+            ./artifacts/rta-desktop-linux
+          fail_on_unmatched_files: true
