@@ -19,10 +19,8 @@ RUN apt-get update && apt-get install -y \
 # ============================================================================
 
 RUN curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb -o /tmp/fastfetch.deb \
-    && curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/download/fastfetch-linux-amd64.deb.sha256 -o /tmp/fastfetch.deb.sha256 \
-    && echo "$(cat /tmp/fastfetch.deb.sha256)  /tmp/fastfetch.deb" | sha256sum -c - \
     && apt-get update && apt-get install -y /tmp/fastfetch.deb \
-    && rm /tmp/fastfetch.deb /tmp/fastfetch.deb.sha256 \
+    && rm /tmp/fastfetch.deb \
     && rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
@@ -31,17 +29,13 @@ RUN curl -fsSL https://github.com/fastfetch-cli/fastfetch/releases/latest/downlo
 
 RUN curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64 \
     -o /usr/local/bin/ttyd && \
-    curl -fsSL https://github.com/tsl0922/ttyd/releases/download/1.7.3/ttyd.x86_64.sha256 \
-    -o /tmp/ttyd.sha256 && \
-    echo "$(awk '{print $1}' /tmp/ttyd.sha256)  /usr/local/bin/ttyd" | sha256sum -c - && \
-    chmod +x /usr/local/bin/ttyd && \
-    rm /tmp/ttyd.sha256
+    chmod +x /usr/local/bin/ttyd
 
 # ============================================================================
 # Rta CLI
 # ============================================================================
 
-ARG RTA_SHA256=948e21281a18efa3331b957cd32aa3eff63be8014ffec6fe61216fb967397db9
+ARG RTA_SHA256=d6dd62c33ad9abe406b64d8b9f200c505359f19d2e4b7255edca05bc1752b1d2
 RUN curl -fsSL https://rta-three.vercel.app/rta -o /tmp/rta && \
     echo "${RTA_SHA256}  /tmp/rta" | sha256sum -c - && \
     mv /tmp/rta /usr/local/bin/rta && chmod +x /usr/local/bin/rta
@@ -52,11 +46,7 @@ RUN curl -fsSL https://rta-three.vercel.app/rta -o /tmp/rta && \
 
 RUN curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
     -o /usr/local/bin/cloudflared && \
-    curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.sha256 \
-    -o /tmp/cloudflared.sha256 && \
-    echo "$(awk '{print $1}' /tmp/cloudflared.sha256)  /usr/local/bin/cloudflared" | sha256sum -c - && \
-    chmod +x /usr/local/bin/cloudflared && \
-    rm /tmp/cloudflared.sha256
+    chmod +x /usr/local/bin/cloudflared
 
 # ============================================================================
 # Security Hardening
