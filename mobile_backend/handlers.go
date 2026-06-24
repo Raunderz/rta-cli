@@ -137,8 +137,9 @@ func handleUpload(w http.ResponseWriter, r *http.Request, env *Env) {
 		http.Error(w, "Failed to create temp file", http.StatusInternalServerError)
 		return
 	}
-	io.Copy(out, file)
-	out.Close()
+	defer out.Close()
+	// Cap upload at 100MB on disk to prevent /tmp exhaustion (defense-in-depth)
+	io.Copy(out, io.LimitReader(file, 100*1024*1024))
 
 	if err := exec.Command("docker", "cp", tmpPath, fmt.Sprintf("%s:/tmp/workspace.zip", env.Container)).Run(); err != nil {
 		log.Printf("docker cp to container failed: %v", err)
@@ -239,8 +240,15 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/plain")
 	w.Header().Set("Transfer-Encoding", "chunked")
 
+	// Write API key to temp file inside container instead of -e flag
+	// to prevent exposure via docker inspect / /proc/*/cmdline.
+	envFile := fmt.Sprintf("/tmp/.env_%s", env.ID)
+	writeCmd := exec.Command("docker", "exec", env.Container, "bash", "-c",
+		fmt.Sprintf("printf 'rta_api_key=%s' > %s", env.APIKey, envFile))
+	writeCmd.Run()
+
 	cmd := exec.Command("docker", "exec",
-		"-e", "rta_api_key="+env.APIKey,
+		"--env-file", envFile,
 		env.Container,
 		"rta", "ask", req.Prompt, "--workspace", "/workspace",
 	)
@@ -272,6 +280,8 @@ func handleChat(w http.ResponseWriter, r *http.Request) {
 	}
 
 	cmd.Wait()
+	// Clean up env file inside container
+	exec.Command("docker", "exec", env.Container, "rm", "-f", envFile).Run()
 	logEventToBackend(env.APIKey, "chat_prompt", env.ID, map[string]interface{}{"prompt": req.Prompt})
 }
 

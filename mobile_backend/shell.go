@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -64,7 +65,7 @@ func handleShell(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if apiKey != env.APIKey {
+	if subtle.ConstantTimeCompare([]byte(apiKey), []byte(env.APIKey)) != 1 {
 		log.Printf("🚫 Unauthorized shell access attempt for env %s", id)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

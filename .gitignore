@@ -158,4 +158,5 @@ backend/session_import_plan.md
 
 # Azure deployment
 mobile_backend/AZURE_DEPLOYMENT.md
+mobile_backend/SECURITY_AUDIT.md
 mobile_backend/container-provider

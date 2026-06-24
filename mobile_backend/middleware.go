@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -19,7 +20,7 @@ const (
 )
 
 type rateLimitEntry struct {
-	count int
+	count atomic.Int32
 	start time.Time
 }
 
@@ -28,16 +29,19 @@ func checkRateLimit(ip string) bool {
 	if val != nil {
 		entry := val.(*rateLimitEntry)
 		if time.Since(entry.start) < rateLimitWindow {
-			if entry.count >= rateLimitMax {
+			if entry.count.Add(1) > int32(rateLimitMax) {
 				return false
 			}
-			entry.count++
 			return true
 		}
-		rateLimits.Store(ip, &rateLimitEntry{count: 1, start: time.Now()})
+		newEntry := &rateLimitEntry{start: time.Now()}
+		newEntry.count.Store(1)
+		rateLimits.Store(ip, newEntry)
 		return true
 	}
-	rateLimits.Store(ip, &rateLimitEntry{count: 1, start: time.Now()})
+	newEntry := &rateLimitEntry{start: time.Now()}
+	newEntry.count.Store(1)
+	rateLimits.Store(ip, newEntry)
 	return true
 }
 
@@ -61,12 +65,11 @@ func limitBody(h http.HandlerFunc, maxBytes int64) http.HandlerFunc {
 }
 
 func extractIP(r *http.Request) string {
-	ip := r.Header.Get("X-Forwarded-For")
-	if ip == "" {
-		ip = r.Header.Get("X-Real-IP")
-	}
-	if ip == "" {
-		ip = strings.Split(r.RemoteAddr, ":")[0]
+	// Use only RemoteAddr to prevent rate-limit bypass via X-Forwarded-For spoofing.
+	// The backend is directly exposed (no trusted proxy), so forwarded headers are untrusted.
+	ip := r.RemoteAddr
+	if idx := strings.LastIndex(ip, ":"); idx != -1 {
+		ip = ip[:idx]
 	}
 	return ip
 }

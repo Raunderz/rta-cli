@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -105,7 +106,8 @@ func verifyEnvAccess(r *http.Request, env *Env) bool {
 	if apiKey == "" {
 		apiKey = r.URL.Query().Get("api_key")
 	}
-	return apiKey == env.APIKey
+	// Constant-time comparison to prevent timing attacks on API key validation.
+	return subtle.ConstantTimeCompare([]byte(apiKey), []byte(env.APIKey)) == 1
 }
 
 func writeJSON(w http.ResponseWriter, data interface{}) {
