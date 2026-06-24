@@ -177,7 +177,7 @@ You agree to indemnify, defend, and hold harmless Rta and its affiliates from an
 These Terms remain in effect while you use the Service.
 
 ### 16.2 Termination by You
-You may stop using the Service at any time. You may request account deletion by contacting support.
+You may stop using the Service at any time. You may request account deletion by contacting us via our [Discord server](https://discord.gg/ZpxUv9VyGP) (ticket channel) or emailing support@rta.dev.
 
 ### 16.3 Termination by Us
 We may suspend or terminate your access immediately if you violate these Terms, with or without notice.
@@ -199,7 +199,10 @@ These Terms are governed by the laws of the State of Delaware, United States, wi
 
 ### 18.2 Dispute Resolution
 Any disputes arising from these Terms shall be resolved through:
-1. **Informal Resolution**: Contact us first at support@rta.dev to attempt resolution
+### 18.1 Informal Resolution
+Contact us first to attempt resolution:
+- **Discord**: [discord.gg/ZpxUv9VyGP](https://discord.gg/ZpxUv9VyGP) (create a ticket in the #ticket channel)
+- **Email**: legal@rta.dev
 2. **Binding Arbitration**: If informal resolution fails, disputes shall be resolved through binding arbitration under the rules of the American Arbitration Association
 
 ### 18.3 Class Action Waiver
@@ -228,6 +231,7 @@ Failure to enforce any provision does not constitute a waiver of that provision.
 ## 20. Contact Information
 
 For questions about these Terms:
+- **Discord**: [discord.gg/ZpxUv9VyGP](https://discord.gg/ZpxUv9VyGP) (create a ticket in the #ticket channel)
 - **Email**: legal@rta.dev
 - **Website**: [rta-three.vercel.app](https://rta-three.vercel.app)
 

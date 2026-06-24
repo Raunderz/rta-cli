@@ -177,7 +177,7 @@ Under the California Consumer Privacy Act:
 - **Right to non-discrimination** for exercising your rights
 
 ### 9.4 How to Exercise Your Rights
-Contact us at privacy@rta.dev or through the support portal. We will respond to requests within 30 days.
+Contact us via our [Discord server](https://discord.gg/ZpxUv9VyGP) (create a ticket in the #ticket channel) or email privacy@rta.dev. We will respond to requests within 30 days.
 
 ## 10. Children's Privacy
 
@@ -200,9 +200,9 @@ We encourage you to review this policy periodically.
 ## 13. Contact Us
 
 For privacy-related inquiries:
+- **Discord**: [discord.gg/ZpxUv9VyGP](https://discord.gg/ZpxUv9VyGP) (create a ticket in the #ticket channel)
 - **Email**: privacy@rta.dev
 - **Data Protection Officer**: dpo@rta.dev
-- **Website**: [rta-three.vercel.app/privacy](https://rta-three.vercel.app/privacy)
 
 For general inquiries: support@rta.dev
 
