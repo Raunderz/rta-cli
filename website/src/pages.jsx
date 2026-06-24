@@ -149,14 +149,15 @@ export const RoadmapPage = () => {
       ],
     },
     {
-      status: "planned",
+      status: "done",
       title: "Mobile App",
-      date: "Q3 2026",
+      date: "June 2026",
       items: [
         "React Native (Expo) with chat, editor, terminal, file browser",
         "Cloud session sync with conflict detection and resolution",
         "Git integration via isomorphic-git",
         "WebSocket terminal with xterm.js",
+        "Auto-save, session recovery, error boundaries, retry logic",
       ],
     },
     {
