@@ -63,28 +63,19 @@ export const StatusPage = () => {
 
 export const LegalPage = () => {
   useHead({ title: "Terms of Service", description: "Rta terms of service." });
+  const [content, setContent] = useState("");
+
+  useEffect(() => {
+    fetch('/terms.md')
+      .then(res => res.text())
+      .then(text => setContent(marked.parse(text)))
+      .catch(() => setContent("Error loading terms of service."));
+  }, []);
+
   return (
     <div class="container" style="padding-top: clamp(100px, 15vh, 140px); padding-bottom: 80px; max-width: 800px;">
-      <h2 style="margin-bottom: 2rem;">Terms of Service</h2>
-    <div style="color: var(--text-secondary); font-size: 1.05rem; line-height: 1.8;">
-      <p style="margin-bottom: 2rem;">By accessing Rta, you agree to these terms. Read carefully.</p>
-
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">1. Account Usage</h3>
-      <p style="margin-bottom: 1rem;">Users must provide accurate info. One person per account. Sharing credentials is prohibited. We reserve right to terminate access for any violation.</p>
-
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">2. AI & Code Generation</h3>
-      <p style="margin-bottom: 1rem;">Rta provides AI-assisted code. We do not guarantee accuracy or safety of generated code. Review all output before execution. User assumes all risk for code deployed via Rta.</p>
-
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">3. Prohibited Conduct</h3>
-      <p style="margin-bottom: 1rem;">Do not use Rta for: malware creation, illegal hacking, harassment, or bypassing system limits. Do not attempt to reverse engineer the CLI or backend infrastructure.</p>
-
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">4. Intellectual Property</h3>
-      <p style="margin-bottom: 1rem;">You own code you write. We own the Rta platform, branding, and proprietary algorithms. License to use Rta is non-exclusive and revocable.</p>
-
-      <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem;">5. Limitation of Liability</h3>
-      <p style="margin-bottom: 1rem;">Rta is provided "as is". We are not liable for data loss, system failure, or financial damages resulting from use of our tools.</p>
+      <div class="markdown-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(content) }} />
     </div>
-  </div>
   );
 };
 
