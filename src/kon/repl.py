@@ -123,7 +123,7 @@ def _handle_slash(line: str, state: ReplState) -> bool:
         state.runtime.new_session(reload_context=True)
         state.agent = state.runtime.agent
         state.session = state.runtime.session
-        print(f"New session: {state.session.id[:8]}")
+        print(f"New session: {state.session.id[:8]}" if state.session else "New session")
         return True
 
     if cmd == "/model":
@@ -211,6 +211,9 @@ async def _run_turn(state: ReplState, query: str, cancel_event: asyncio.Event) -
     """Run a single user turn and consume events. Returns the stop reason."""
     stop = StopReason.STOP
 
+    if not state.agent:
+        return StopReason.STOP
+
     async for event in state.agent.run(query, cancel_event=cancel_event):
         match event:
             case TextDeltaEvent(delta=delta):
@@ -225,7 +228,8 @@ async def _run_turn(state: ReplState, query: str, cancel_event: asyncio.Event) -
 
             case ToolResultEvent(tool_name=name, result=result):
                 if result and result.is_error:
-                    output = result.output[:200] if result.output else ""
+                    texts = [c.text for c in result.content if c.type == "text"]
+                    output = (texts[0][:200] if texts else "")
                     print(f"  error: {output}")
 
             case ToolApprovalEvent(tool_name=name, display=display, future=future):
@@ -287,7 +291,7 @@ async def _repl_loop(state: ReplState) -> None:
     def handle_sigint(sig, frame):
         if cancel_event.is_set():
             # Second Ctrl+C: exit
-            _print_exit(state.session.id)
+            _print_exit(state.session.id if state.session else "unknown")
             sys.exit(0)
         cancel_event.set()
 

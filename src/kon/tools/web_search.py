@@ -75,7 +75,7 @@ class DeepSearchTool(BaseTool[DeepSearchParams]):
     mutating = False
     tool_icon = "🔎"
 
-    async def execute(self, params: DeepSearchParams, cancel_event: asyncio.Event | None = None) -> ToolResult:
+    async def execute(self, params: DeepSearchParams, cwd: str, cancel_event: asyncio.Event | None = None) -> ToolResult:
         sub_queries = self._expand_queries(params.query, params.num_queries)
         seen_urls = set()
         all_results = []

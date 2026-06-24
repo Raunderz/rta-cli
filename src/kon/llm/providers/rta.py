@@ -2,7 +2,7 @@ import asyncio
 import contextlib
 import logging
 from collections.abc import AsyncIterator
-from typing import Any, ClassVar
+from typing import Any
 
 import httpx
 
@@ -74,7 +74,7 @@ async def stop_heartbeat() -> None:
 
 class RtaProvider(BaseProvider):
     name = "rta"
-    thinking_levels: ClassVar[list[str]] = []  # RTA provider doesn't support reasoning/thinking
+    thinking_levels: list[str] = []  # noqa: RUF012  RTA provider doesn't support reasoning/thinking
 
     def __init__(self, config: ProviderConfig):
         super().__init__(config)
@@ -131,7 +131,7 @@ class RtaProvider(BaseProvider):
         if tools:
             payload["tools"] = self._convert_tools(tools)
 
-        _ensure_heartbeat(self.server_url, self.api_key)
+        _ensure_heartbeat(self.server_url, self.api_key or "")
 
         llm_stream = LLMStream()
         llm_stream.set_iterator(self._process_stream(payload, headers, llm_stream))
@@ -298,6 +298,8 @@ class RtaProvider(BaseProvider):
 
     def should_retry_for_error(self, error: Exception) -> bool:
         retryable = (httpx.ConnectError, httpx.ConnectTimeout, httpx.ReadTimeout, httpx.WriteTimeout)
-        return isinstance(error, retryable) or (
-            isinstance(error, httpx.HTTPStatusError) and error.response.status_code >= 500
-        )
+        if isinstance(error, retryable):
+            return True
+        if isinstance(error, httpx.HTTPStatusError):
+            return error.response.status_code >= 500  # type: ignore[union-attr]
+        return False
