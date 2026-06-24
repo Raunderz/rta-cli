@@ -24,7 +24,7 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --dev
 
       - name: Build with PyInstaller
         run: .venv/Scripts/python.exe -m PyInstaller --clean rta.spec
@@ -55,7 +55,7 @@ jobs:
         run: pip install uv
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --dev
 
       - name: Build with PyInstaller
         run: .venv/bin/python -m PyInstaller --clean rta.spec
@@ -75,6 +75,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-windows, build-linux]
     steps:
+      - uses: actions/checkout@v4
+
       - name: Download Windows artifact
         uses: actions/download-artifact@v4
         with:
