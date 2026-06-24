@@ -12,6 +12,7 @@ import Editor from './components/Editor';
 import Terminal from './components/Terminal';
 import GitUI from './components/GitUI';
 import ConflictResolver from './components/ConflictResolver';
+import ErrorBoundary from './components/ErrorBoundary';
 import useWorkspace from './useWorkspace';
 import useSession from './useSession';
 
@@ -73,38 +74,41 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      {sessionHook.conflicts && (
-        <ConflictResolver
-          conflicts={sessionHook.conflicts}
-          onResolve={sessionHook.resolveConflicts}
-          onCancel={sessionHook.cancelConflicts}
-        />
-      )}
-      {hasKey ? (
-        <MainApp
-          apiKey={apiKey}
-          onLogout={handleLogout}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          selectedFile={selectedFile}
-          onSelectFile={handleSelectFile}
-          onSaveFile={handleSaveFile}
-          onCreateFile={workspace.createFile}
-          onCreateFolder={workspace.createFolder}
-          onDeleteItem={workspace.deleteItem}
-          reloadFiles={workspace.reloadFiles}
-          files={workspace.files}
-          session={sessionHook.session}
-          syncStatus={sessionHook.syncStatus}
-          isStartingSession={sessionHook.isStartingSession}
-          onStartSession={sessionHook.startSession}
-          onEndSession={sessionHook.endSession}
-        />
-      ) : (
-        <LoginScreen onAuthenticated={(key) => { setApiKey(key); setHasKey(true); }} />
-      )}
-    </SafeAreaProvider>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        {sessionHook.conflicts && (
+          <ConflictResolver
+            conflicts={sessionHook.conflicts}
+            onResolve={sessionHook.resolveConflicts}
+            onCancel={sessionHook.cancelConflicts}
+          />
+        )}
+        {hasKey ? (
+          <MainApp
+            apiKey={apiKey}
+            onLogout={handleLogout}
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedFile={selectedFile}
+            onSelectFile={handleSelectFile}
+            onSaveFile={handleSaveFile}
+            onCreateFile={workspace.createFile}
+            onCreateFolder={workspace.createFolder}
+            onDeleteItem={workspace.deleteItem}
+            reloadFiles={workspace.reloadFiles}
+            files={workspace.files}
+            session={sessionHook.session}
+            syncStatus={sessionHook.syncStatus}
+            syncProgress={sessionHook.syncProgress}
+            isStartingSession={sessionHook.isStartingSession}
+            onStartSession={sessionHook.startSession}
+            onEndSession={sessionHook.endSession}
+          />
+        ) : (
+          <LoginScreen onAuthenticated={(key) => { setApiKey(key); setHasKey(true); }} />
+        )}
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 
@@ -112,7 +116,7 @@ function MainApp({
   apiKey, onLogout, activeTab, setActiveTab,
   selectedFile, onSelectFile, onSaveFile,
   onCreateFile, onCreateFolder, onDeleteItem, reloadFiles,
-  files, session, syncStatus, isStartingSession,
+  files, session, syncStatus, syncProgress, isStartingSession,
   onStartSession, onEndSession,
 }) {
   const insets = useSafeAreaInsets();

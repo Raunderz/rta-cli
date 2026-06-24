@@ -22,102 +22,104 @@ export default function Chat({ apiKey, session, onLogout }) {
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const scrollViewRef = useRef();
 
-  const sendMessage = async () => {
-    if (!inputText.trim() || isStreaming) return;
-    
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      let retryCount = 0;
+      const maxRetries = 2;
 
-    const userMessage = { role: 'user', content: inputText };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
-    setInputText('');
-    setIsStreaming(true);
+      const sendMessage = async (attempt = 0) => {
+        if (!inputText.trim() || isStreaming) return;
+        
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const assistantMessage = { role: 'assistant', content: '' };
-    setMessages(prev => [...prev, assistantMessage]);
+        const userMessage = { role: 'user', content: inputText };
+        const newMessages = [...messages, userMessage];
+        setMessages(newMessages);
+        setInputText('');
+        setIsStreaming(true);
 
-    try {
-      const backendUrl = await resolveBackendUrl();
-      const isCloud = session && session.status === 'on' && session.id;
-      const chatUrl = isCloud 
-        ? `${backendUrl}/v1/executor/env/chat/${session.id}`
-        : `${backendUrl}/v1/chat`;
+        const assistantMessage = { role: 'assistant', content: '' };
+        setMessages(prev => [...prev, assistantMessage]);
 
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', chatUrl);
-      xhr.setRequestHeader('Content-Type', 'application/json');
-      xhr.setRequestHeader('X-API-KEY', apiKey);
-      xhr.setRequestHeader('X-Device-ID', 'rta-mobile');
-      xhr.setRequestHeader('X-CLI-Version', '1.0.0');
+        try {
+          const backendUrl = await resolveBackendUrl();
+          const isCloud = session && session.status === 'on' && session.id;
+          const chatUrl = isCloud 
+            ? `${backendUrl}/v1/executor/env/chat/${session.id}`
+            : `${backendUrl}/v1/chat`;
 
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', chatUrl);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.setRequestHeader('X-API-KEY', apiKey);
+          xhr.setRequestHeader('X-Device-ID', 'rta-mobile');
+          xhr.setRequestHeader('X-CLI-Version', '1.0.0');
 
-      let lastProcessedLength = 0;
+          let lastProcessedLength = 0;
 
-      xhr.onreadystatechange = () => {
-        if (xhr.readyState === 3 || xhr.readyState === 4) {
-          const newData = xhr.responseText.substring(lastProcessedLength);
-          lastProcessedLength = xhr.responseText.length;
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState === 3 || xhr.readyState === 4) {
+              const newData = xhr.responseText.substring(lastProcessedLength);
+              lastProcessedLength = xhr.responseText.length;
+
+              if (isCloud) {
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  const updated = { ...last, content: last.content + newData };
+                  return [...prev.slice(0, -1), updated];
+                });
+              } else {
+                const lines = newData.split('\n');
+                lines.forEach(line => {
+                  if (line.startsWith('data: ')) {
+                    const jsonStr = line.replace('data: ', '').trim();
+                    if (jsonStr === '[DONE]') return;
+                    try {
+                      const data = JSON.parse(jsonStr);
+                      if (data.type === 'text') {
+                        setMessages(prev => {
+                          const last = prev[prev.length - 1];
+                          const updated = { ...last, content: last.content + data.content };
+                          return [...prev.slice(0, -1), updated];
+                        });
+                      }
+                    } catch (e) {}
+                  }
+                });
+              }
+            }
+
+            if (xhr.readyState === 4) {
+              setIsStreaming(false);
+            }
+          };
+
+          xhr.onerror = () => {
+            if (attempt < maxRetries) {
+              const delay = 1000 * (attempt + 1);
+              setTimeout(() => sendMessage(attempt + 1), delay);
+            } else {
+              setIsStreaming(false);
+              alert('Connection error — check your network');
+            }
+          };
 
           if (isCloud) {
-            // Executor chat returns raw text stream, not SSE JSON
-            setMessages(prev => {
-              const last = prev[prev.length - 1];
-              const updated = { ...last, content: last.content + newData };
-              return [...prev.slice(0, -1), updated];
-            });
+            xhr.send(JSON.stringify({ prompt: inputText }));
           } else {
-            const lines = newData.split('\n');
-            lines.forEach(line => {
-              if (line.startsWith('data: ')) {
-                const jsonStr = line.replace('data: ', '').trim();
-                if (jsonStr === '[DONE]') return;
-                
-                try {
-                  const data = JSON.parse(jsonStr);
-                  if (data.type === 'text') {
-                    setMessages(prev => {
-                      const last = prev[prev.length - 1];
-                      const updated = { ...last, content: last.content + data.content };
-                      return [...prev.slice(0, -1), updated];
-                    });
-                  }
-                } catch (e) {
-                  // Skip malformed SSE chunks
-                }
-              }
-            });
+            xhr.send(JSON.stringify({
+              messages: newMessages,
+              model: 'auto',
+              provider: 'auto',
+              stream: true,
+              session_id: sessionId,
+              turn_index: newMessages.length
+            }));
           }
-        }
 
-        if (xhr.readyState === 4) {
+        } catch (error) {
+          console.error(error);
           setIsStreaming(false);
         }
       };
-
-      xhr.onerror = () => {
-        setIsStreaming(false);
-        alert('Connection error — check your network');
-      };
-
-      if (isCloud) {
-        // Go executor expects simple prompt JSON
-        xhr.send(JSON.stringify({ prompt: inputText }));
-      } else {
-        xhr.send(JSON.stringify({
-          messages: newMessages,
-          model: 'auto',
-          provider: 'auto',
-          stream: true,
-          session_id: sessionId,
-          turn_index: newMessages.length
-        }));
-      }
-
-    } catch (error) {
-      console.error(error);
-      setIsStreaming(false);
-    }
-  };
 
   useEffect(() => {
     if (!isStreaming && messages.length > 0 && messages[messages.length-1].role === 'assistant') {

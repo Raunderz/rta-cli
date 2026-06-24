@@ -137,6 +137,7 @@ export default function Terminal({ apiKey, session }) {
 
       ws.onopen = function() {
         log('WS Open');
+        retryCount = 0;
         var dims = { cols: term.cols, rows: term.rows };
         ws.send(JSON.stringify(dims));
         setTimeout(function() { ws.send('fastfetch\\n'); }, 1000);
@@ -150,6 +151,9 @@ export default function Terminal({ apiKey, session }) {
         }
       };
 
+      var retryCount = 0;
+      var maxRetries = 5;
+
       ws.onerror = function(err) {
         log('WS Error');
         term.write('\\r\\n\\x1b[31m\\u2717 Connection failed\\x1b[0m\\r\\n');
@@ -158,7 +162,15 @@ export default function Terminal({ apiKey, session }) {
       ws.onclose = function(e) {
         log('WS Closed: ' + e.code);
         window._rta_ws = null;
-        term.write('\\r\\n\\x1b[33m\\u26A0 Disconnected (' + e.code + ')\\x1b[0m\\r\\n');
+
+        if (retryCount < maxRetries && e.code !== 1000) {
+          retryCount++;
+          var delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
+          term.write('\\r\\n\\x1b[33m\\u21A9 Reconnecting in ' + (delay / 1000) + 's (attempt ' + retryCount + '/' + maxRetries + ')\\x1b[0m\\r\\n');
+          setTimeout(connectShell, delay);
+        } else {
+          term.write('\\r\\n\\x1b[33m\\u26A0 Disconnected (' + e.code + ')\\x1b[0m\\r\\n');
+        }
       };
     }
 

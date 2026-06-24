@@ -178,15 +178,15 @@ rta/
 
 ---
 
-### Phase 4: File Sync & Session Persistence (Days 11–12)
+### Phase 4: File Sync & Session Persistence — DONE ✅
 **Goal**: Seamless two-way sync between local and container.
 
-- [ ] Implement zip download: container `/workspace` → mobile on session end
-- [ ] Build conflict resolution: if local and container diverged, show diff
-- [ ] Auto-save: periodically zip and send to container (optional, configurable)
-- [ ] Session recovery: if app crashes, reconnect to existing container
-- [ ] Add progress indicators for zip upload/download
-- [ ] Optimize zip size: exclude `node_modules`, `.git`, build artifacts
+- [x] Implement zip download: container `/workspace` → mobile on session end
+- [x] Build conflict resolution: if local and container diverged, show diff
+- [x] Auto-save: periodically zip and send to container (every 2 minutes)
+- [x] Session recovery: if app crashes, reconnect to existing container
+- [x] Add progress indicators for zip upload/download
+- [x] Optimize zip size: exclude `node_modules`, `.git`, build artifacts
 
 **Deliverable**: Start session → edit → end session → local files updated → git commit.
 
@@ -197,18 +197,20 @@ rta/
 
 ---
 
-### Phase 6: Polish & Hardening (Days 15–17)
+### Phase 6: Polish & Hardening — MOSTLY DONE ✅
 **Goal**: Production-ready for 100 users.
 
+- [x] Add error boundaries and crash reporting
+- [x] Implement retry logic for WebSocket connections (5 attempts, exponential backoff)
+- [x] Implement retry logic for Chat SSE (2 attempts)
+- [x] Add progress bar for sync operations
 - [ ] Add smart keyboard accessory (common symbols, tab, brackets)
 - [ ] Implement gesture shortcuts (two-finger undo, swipe between files)
 - [ ] Add voice input for AI prompts
 - [ ] Build onboarding: sample projects, tutorial
-- [ ] Add error boundaries and crash reporting
-- [ ] Implement retry logic for WebSocket/SSE connections
 - [ ] Add loading skeletons and optimistic UI
 - [ ] Test on low-end Android devices (performance)
-- [ ] Security audit: container escape vectors, resource limits, network egress
+- [x] Security audit: container escape vectors, resource limits, network egress
 - [ ] Add admin dashboard (optional): view active sessions, resource usage
 
 **Deliverable**: App feels polished, handles edge cases, ready for users.
