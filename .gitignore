@@ -150,3 +150,12 @@ website/public/rta
 scripts/*.csv
 backend/gemini_sessions.csv
 backend/session_import_plan.md
+*.csv
+
+# Development tools
+.mimocode/
+.vscode/
+
+# Azure deployment
+mobile_backend/AZURE_DEPLOYMENT.md
+mobile_backend/container-provider

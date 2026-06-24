@@ -37,7 +37,8 @@ SECRET_PATTERNS = [
         r'["\s:=]+([A-Za-z0-9\-._~+/]{20,})'
     )),
 ]
-HOME_PATH_RE = re.compile(r"/home/[a-zA-Z0-9_-]+")
+HOME_PATH_RE = re.compile(r"/home/[a-zA-Z0-9_-]+(?:/[^\s\"'<>,;:]+)*")
+SECRET_KEY_VAL_RE = re.compile(r"(?i)(secret_key|api_key|api_secret|password)\s*[=:]\s*[A-Za-z0-9\-._]{15,}")
 SUPABASE_URL_RE = re.compile(r"(?:https?://)?[a-z0-9]{20,}\.supabase\.co")
 DEPLOYMENT_URL_RE = re.compile(
     r"(?:https?://)?[\w-]+\.onrender\.com"
@@ -73,6 +74,7 @@ def scrub(text) -> str:
         else:
             text = pat.sub(f"[SCRUBBED_{label}]", text)
     text = HOME_PATH_RE.sub("/home/[USER]", text)
+    text = SECRET_KEY_VAL_RE.sub(r"\1: [SCRUBBED]", text)
     text = SUPABASE_URL_RE.sub("[SCRUBBED_SUPABASE_URL]", text)
     text = DEPLOYMENT_URL_RE.sub("[SCRUBBED_URL]", text)
     text = GIT_AUTHOR_RE.sub("Author: [SCRUBBED] <[SCRUBBED]>", text)
@@ -83,6 +85,16 @@ def scrub(text) -> str:
     text = WAKATIME_RE.sub("wakatime.com/share/@[SCRUBBED]", text)
     text = UMAMI_ID_RE.sub("[SCRUBBED_UUID]", text)
     return text
+
+
+def scrub_recursive(obj):
+    if isinstance(obj, str):
+        return scrub(obj)
+    if isinstance(obj, dict):
+        return {k: scrub_recursive(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [scrub_recursive(v) for v in obj]
+    return obj
 
 
 def truncate(text: str, limit: int) -> str:
@@ -323,13 +335,8 @@ def _assemble_turn(user_data, user_parts, text_list, reasoning_list,
 
     response = scrub("\n\n".join(response_parts))
 
-    # Scrub tool call args/outputs
     for tc in tool_calls:
-        if isinstance(tc["args"], dict):
-            tc["args"] = {
-                k: scrub(str(v)) if isinstance(v, str) else v
-                for k, v in tc["args"].items()
-            }
+        tc["args"] = scrub_recursive(tc["args"])
         tc["result_preview"] = truncate(scrub(tc["result_preview"]), 2000)
 
     latency_ms = 0
